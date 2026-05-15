@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Send, X } from 'lucide-react';
 import { aiClient } from '../lib/aiClient.js';
+import { useT } from '../lib/i18n.jsx';
 
 /**
  * AIAssistantDrawer — Floating chat assistant for FAMMY.
@@ -14,6 +15,7 @@ import { aiClient } from '../lib/aiClient.js';
  * personalize the assistant's answers).
  */
 export default function AIAssistantDrawer({ session, families = [], members = [], tasks = [], events = [], activeFamily }) {
+  const { t, lang } = useT();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]); // [{role, content}]
@@ -49,11 +51,11 @@ export default function AIAssistantDrawer({ session, families = [], members = []
       .slice(0, 8)
       .map((ev) => {
         const d = new Date(ev.starts_at);
-        return `${ev.title} — ${d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}`;
+        return `${ev.title} — ${d.toLocaleDateString(lang, { day: 'numeric', month: 'short' })}`;
       });
 
     return {
-      family_name: currentFamily?.name || 'la famiglia',
+      family_name: currentFamily?.name || (lang === 'it' ? 'la famiglia' : 'the family'),
       members: memberNames,
       today_tasks: openTasks,
       upcoming_events: upcoming,
@@ -71,13 +73,13 @@ export default function AIAssistantDrawer({ session, families = [], members = []
         message: text,
         user_id: userId,
         family_context: buildFamilyContext(),
-        lang: 'it',
+        lang,
         session_id: sessionId,
       });
       setSessionId(res.session_id);
       setMessages((m) => [...m, { role: 'assistant', content: res.reply }]);
     } catch (e) {
-      setMessages((m) => [...m, { role: 'assistant', content: `⚠️ Errore: ${e.message}` }]);
+      setMessages((m) => [...m, { role: 'assistant', content: `⚠️ ${e.message}` }]);
     } finally {
       setThinking(false);
       // refocus input for fast follow-up
@@ -85,16 +87,26 @@ export default function AIAssistantDrawer({ session, families = [], members = []
     }
   };
 
+  // Reset chat session whenever the user changes language so the new
+  // conversation starts in the chosen language (and we don't continue a
+  // multi-turn that was started in another language).
+  useEffect(() => {
+    setMessages([]);
+    setSessionId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
   useEffect(() => {
     if (!open) return;
     // Greet on first open
     if (messages.length === 0) {
       const hello = currentFamily
-        ? `Ciao! 👋 Sono FAMMY, l'assistente della tua famiglia "${currentFamily.name}". Cosa ti serve oggi?`
-        : 'Ciao! 👋 Sono FAMMY, il tuo assistente di famiglia. Cosa ti serve oggi?';
+        ? t('ai_greet_with_family').replace('{name}', currentFamily.name)
+        : t('ai_greet_no_family');
       setMessages([{ role: 'assistant', content: hello }]);
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, lang]);
 
   useEffect(() => {
     // auto-scroll to bottom on new messages
@@ -103,10 +115,10 @@ export default function AIAssistantDrawer({ session, families = [], members = []
   }, [messages, thinking]);
 
   const SUGGESTIONS = [
-    'Cosa ho da fare oggi?',
-    'Riassumi la settimana',
-    'Suggerisci un menù per stasera',
-    'Quando è il prossimo compleanno?',
+    t('ai_sugg_today'),
+    t('ai_sugg_summary'),
+    t('ai_sugg_menu'),
+    t('ai_sugg_birthday'),
   ];
 
   return (
@@ -114,7 +126,7 @@ export default function AIAssistantDrawer({ session, families = [], members = []
       <button
         className="fab ai-fab"
         onClick={() => setOpen(true)}
-        title="Assistente AI"
+        title={t('ai_assistant_title')}
         data-testid="ai-assistant-fab"
       >
         <Sparkles size={22} />
@@ -128,9 +140,9 @@ export default function AIAssistantDrawer({ session, families = [], members = []
               <div className="ai-drawer-avatar"><Sparkles size={22} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="ai-drawer-title">FAMMY AI</div>
-                <div className="ai-drawer-sub">L'assistente della tua famiglia</div>
+                <div className="ai-drawer-sub">{t('ai_assistant_subtitle')}</div>
               </div>
-              <button className="ai-drawer-close" onClick={() => setOpen(false)} data-testid="ai-assistant-close" title="Chiudi">
+              <button className="ai-drawer-close" onClick={() => setOpen(false)} data-testid="ai-assistant-close" title={t('close')}>
                 <X size={18} />
               </button>
             </div>
@@ -142,7 +154,7 @@ export default function AIAssistantDrawer({ session, families = [], members = []
                 </div>
               ))}
               {thinking && (
-                <div className="ai-msg assistant thinking">Sto pensando…</div>
+                <div className="ai-msg assistant thinking">{t('ai_thinking')}</div>
               )}
             </div>
 
@@ -170,7 +182,7 @@ export default function AIAssistantDrawer({ session, families = [], members = []
                     e.preventDefault(); send();
                   }
                 }}
-                placeholder="Scrivi un messaggio…"
+                placeholder={t('ai_input_ph')}
                 rows={1}
                 data-testid="ai-input"
               />
@@ -179,7 +191,7 @@ export default function AIAssistantDrawer({ session, families = [], members = []
                 className="ai-drawer-send"
                 disabled={!input.trim() || thinking}
                 data-testid="ai-send-button"
-                title="Invia"
+                title={t('send')}
               >
                 <Send size={18} />
               </button>

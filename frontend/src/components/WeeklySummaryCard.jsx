@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { aiClient } from '../lib/aiClient.js';
+import { useT } from '../lib/i18n.jsx';
 
 /**
  * WeeklySummaryCard
  * Shows an AI-generated weekly recap. Cached in localStorage for the current
- * ISO week so we don't spend a model call every render — but the user can
- * tap "Rigenera" to force a fresh one.
+ * ISO week + language so we don't spend a model call every render — but the
+ * user can tap "Rigenera" to force a fresh one, and changing UI language
+ * automatically pulls (or regenerates) a translated version.
  */
 function isoWeekKey(d = new Date()) {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -18,11 +20,12 @@ function isoWeekKey(d = new Date()) {
 }
 
 export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [], events = [], expenses = [], members = [] }) {
+  const { t, lang } = useT();
   const [data, setData] = useState(null); // { summary, highlights }
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
-  const cacheKey = `fammy_weekly_summary_${familyName}_${isoWeekKey()}`;
+  const cacheKey = `fammy_weekly_summary_${familyName}_${isoWeekKey()}_${lang}`;
 
   const buildPayload = () => {
     const now = new Date();
@@ -75,7 +78,7 @@ export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [],
       .filter((x) => x.days <= 14)
       .sort((a, b) => a.days - b.days)
       .slice(0, 3)
-      .map((x) => `${x.name} — ${x.date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}`);
+      .map((x) => `${x.name} — ${x.date.toLocaleDateString(lang, { day: 'numeric', month: 'short' })}`);
 
     return {
       family_name: familyName,
@@ -84,7 +87,7 @@ export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [],
       upcoming_events: upcomingEvents,
       total_expenses: totalExpenses || null,
       upcoming_birthdays: upcomingBirthdays,
-      lang: 'it',
+      lang,
     };
   };
 
@@ -115,9 +118,13 @@ export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [],
   const hasMaterial = (tasks?.length || 0) > 0 || (events?.length || 0) > 0;
 
   useEffect(() => {
-    if (hasMaterial && !data && !loading) fetchSummary(false);
+    if (hasMaterial) {
+      // Reset and refetch whenever language or family changes
+      setData(null);
+      fetchSummary(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMaterial, familyName]);
+  }, [hasMaterial, familyName, lang]);
 
   if (!hasMaterial) return null;
 
@@ -125,7 +132,7 @@ export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [],
     <div className="ai-summary-card" data-testid="weekly-summary-card">
       <div className="ai-summary-top">
         <span className="ai-summary-spark"><Sparkles size={16} /></span>
-        <span className="ai-summary-eyebrow">Il riepilogo della settimana</span>
+        <span className="ai-summary-eyebrow">{t('weekly_summary_eyebrow')}</span>
       </div>
 
       {loading && !data && (
@@ -157,7 +164,7 @@ export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [],
               disabled={loading}
               data-testid="weekly-summary-refresh"
             >
-              <RefreshCw size={12} /> {loading ? 'Rigenero…' : 'Rigenera'}
+              <RefreshCw size={12} /> {loading ? t('regenerating') : t('regenerate')}
             </button>
           </div>
         </>

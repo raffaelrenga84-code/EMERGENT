@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import { aiClient } from '../lib/aiClient.js';
+import { useT } from '../lib/i18n.jsx';
 
 /**
  * GiftIdeasModal
@@ -20,6 +21,7 @@ function ageFromBirthdate(bd) {
 }
 
 export default function GiftIdeasModal({ member, onClose }) {
+  const { t, lang } = useT();
   const [ideas, setIdeas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -36,24 +38,24 @@ export default function GiftIdeasModal({ member, onClose }) {
         interests: extraNotes || null,
         budget_min: budget.min,
         budget_max: budget.max,
-        lang: 'it',
+        lang,
       });
       setIdeas(res.ideas || []);
     } catch (e) {
-      setErr(e.message || 'Errore');
+      setErr(e.message || 'Error');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchIdeas(''); /* initial load */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchIdeas(''); /* re-fetch when language changes */ }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} data-testid="gift-ideas-modal">
       <div className="modal" style={{ maxHeight: '85vh', overflowY: 'auto' }}>
         <div className="gift-modal-h">
           <span className="gift-modal-spark"><Sparkles size={22} /></span>
-          <h2 style={{ flex: 1 }}>Idee regalo per {member.name}</h2>
+          <h2 style={{ flex: 1 }}>{t('gift_ideas_h').replace('{name}', member.name)}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -63,16 +65,16 @@ export default function GiftIdeasModal({ member, onClose }) {
               background: 'var(--sm)', color: 'var(--km)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
-            title="Chiudi"
+            title={t('close')}
           ><X size={18} /></button>
         </div>
-        <p className="modal-sub">Suggerimenti pensati su misura — premi “Rigenera” per nuove idee.</p>
+        <p className="modal-sub">{t('gift_ideas_sub')}</p>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
           <input
             className="input"
             style={{ flex: '1 1 220px' }}
-            placeholder="Interessi (es. lettura, calcio, cucina)…"
+            placeholder={t('gift_ideas_interests_ph')}
             value={interests}
             onChange={(e) => setInterests(e.target.value)}
             data-testid="gift-ideas-interests"
@@ -105,7 +107,7 @@ export default function GiftIdeasModal({ member, onClose }) {
             onClick={() => fetchIdeas(interests)}
             data-testid="gift-ideas-regen"
           >
-            {loading ? <span className="spin" /> : '✨ Rigenera'}
+            {loading ? <span className="spin" /> : `✨ ${t('regenerate')}`}
           </button>
         </div>
 
