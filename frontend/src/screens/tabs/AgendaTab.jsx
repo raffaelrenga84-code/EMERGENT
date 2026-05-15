@@ -175,21 +175,31 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
 
   return (
     <>
-      {/* Family chip switcher inline cliccabile. Include 'Tutte' quando >1 famiglia. */}
+      {/* Family chip switcher inline cliccabile. Include 'Tutte' quando >1 famiglia.
+          Sticky in alto durante lo scroll così su mobile resta sempre raggiungibile,
+          con tap target più comodo per le dita (min 36px di altezza). */}
       {families && families.length > 1 && (
-        <div style={{ padding: '8px 16px 4px', display: 'flex', gap: 6, overflowX: 'auto', flexWrap: 'nowrap' }}>
+        <div style={{
+          padding: '10px 16px 8px', display: 'flex', gap: 8, overflowX: 'auto',
+          flexWrap: 'nowrap', position: 'sticky',
+          top: 'env(safe-area-inset-top, 0px)',
+          background: 'var(--s)', zIndex: 10,
+          WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none',
+        }}>
           <span style={{
             fontSize: 11, fontWeight: 700, color: 'var(--km)', alignSelf: 'center',
             textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 4,
           }}>📅</span>
           <button
             type="button"
+            data-testid="agenda-family-all"
             onClick={() => onSwitchFamily && onSwitchFamily('all')}
             style={{
-              padding: '4px 10px', borderRadius: 100, border: 'none',
+              padding: '8px 14px', borderRadius: 100, border: 'none',
               background: isAll ? 'var(--k)' : 'var(--ab)',
               color: isAll ? 'white' : 'var(--km)',
-              fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
+              flexShrink: 0,
             }}>
             {t('all_families_chip')}
           </button>
@@ -197,12 +207,14 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
             <button
               key={f.id}
               type="button"
+              data-testid={`agenda-family-${f.id}`}
               onClick={() => onSwitchFamily && onSwitchFamily(f.id)}
               style={{
-                padding: '4px 10px', borderRadius: 100, border: 'none',
+                padding: '8px 14px', borderRadius: 100, border: 'none',
                 background: (!isAll && targetFamilyId === f.id) ? 'var(--k)' : 'var(--ab)',
                 color: (!isAll && targetFamilyId === f.id) ? 'white' : 'var(--km)',
-                fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
+                fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
+                flexShrink: 0,
               }}>
               {f.emoji} {f.name}
             </button>
