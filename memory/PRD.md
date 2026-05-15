@@ -82,6 +82,40 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 9 (15 maggio 2026, notte) — Apple Sign-In + warning duplicati + design polish
+
+### Apple Sign-In abilitato
+- Pulsante Apple ora **attivo** (era greyed out con "Soon"): `loginWithProvider('apple')`.
+- Warning anti-doppione **sotto i pulsanti**: alert ambra "💡 Già registrato?
+  Usa lo stesso provider di sempre per non creare account doppi" — affronta
+  esattamente il problema riportato dall'utente (Google+gmail vs Apple+icloud
+  → 2 utenti distinti).
+- i18n: nuova key `login_warn_dup` in IT/EN/FR/DE.
+- ⚠️ NOTA: il pulsante chiama già Supabase Auth con `provider: 'apple'`, ma
+  per funzionare in produzione richiede:
+  1. Apple Developer Account (99$/anno) → crea Service ID + Sign in with Apple
+  2. Supabase Dashboard → Authentication → Providers → Apple → enable + paste
+     Service ID, Team ID, Key ID, Private Key.
+
+### Test Push notification button (Profile)
+- Nuovo `TestPushButton` component nel Profile → Notifiche.
+- Chiama `send-push` edge function con un messaggio di test "🎉 Test FAMMY".
+- Diagnostica: distingue "nessuna sub registrata" da "edge function non
+  deployata" → l'utente capisce subito cosa sistemare.
+
+### Design polish (CSS-only — `styles-v3.css`)
+Importato dopo `styles.css` in `main.jsx`. Override mirati senza rinominare
+classi:
+- Header hero più editoriale (H1 32px, font Cormorant, letter-spacing -0.025em)
+- Family chip switcher più calligrafico (border-radius 14px, padding più morbido)
+- Collapsible section headers (Bacheca/Agenda) più ariosi
+- Cards con bordo morbido + ombra calda
+- Empty states più grandi (emoji 64px, padding 56px top)
+- Profile section divider con `var(--sd)` invece di `var(--sm)`
+- Member cards più tattili + hover translateY
+- FAB con gradient terracotta + scale hover
+- Bottom nav: indicator visivo (3px bar in alto) sull'item active
+
 ## Iterazione 8 (15 maggio 2026, sera tardi) — Push ad app chiusa + Family Memories
 
 ### Push notifications ad app chiusa (Web Push)

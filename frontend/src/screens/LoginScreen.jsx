@@ -37,38 +37,40 @@ export default function LoginScreen() {
       <p className="login-s" style={{ whiteSpace: 'pre-line' }}>{t('app_tagline')}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <button type="button" className="oauth-btn" onClick={() => loginWithProvider('google')} style={{ padding: '12px 16px', fontSize: 14 }}>
+        <button type="button" className="oauth-btn" onClick={() => loginWithProvider('google')}
+          data-testid="login-with-google"
+          style={{ padding: '12px 16px', fontSize: 14 }}>
           <GoogleIcon />
           <span>{t('login_with_google')}</span>
         </button>
 
-        {/* Bottone Apple — disabilitato finché non configuriamo Apple Developer + Supabase provider.
-            Quando pronto: togliere disabled, cambiare opacity, e onClick={() => loginWithProvider('apple')} */}
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className="oauth-btn"
-            disabled
-            title={t('login_apple_coming_soon')}
-            style={{
-              padding: '12px 16px', fontSize: 14,
-              background: '#000', color: '#fff',
-              border: '1px solid #000',
-              opacity: 0.5, cursor: 'not-allowed',
-              width: '100%',
-            }}
-          >
-            <AppleIcon />
-            <span>{t('login_with_apple')}</span>
-          </button>
-          <span style={{
-            position: 'absolute', top: -8, right: -4,
-            background: 'var(--am)', color: 'var(--k)',
-            fontSize: 10, fontWeight: 700,
-            padding: '2px 6px', borderRadius: 100,
-            border: '1.5px solid white',
-          }}>{t('soon_badge')}</span>
-        </div>
+        <button
+          type="button"
+          className="oauth-btn"
+          data-testid="login-with-apple"
+          onClick={() => loginWithProvider('apple')}
+          style={{
+            padding: '12px 16px', fontSize: 14,
+            background: '#000', color: '#fff', border: '1px solid #000',
+            width: '100%',
+          }}
+        >
+          <AppleIcon />
+          <span>{t('login_with_apple')}</span>
+        </button>
+      </div>
+
+      {/* Warning anti-doppione: evita che lo stesso utente crei due account
+          (uno con Google su gmail, uno con Apple su iCloud). */}
+      <div style={{
+        marginTop: 14, padding: '10px 14px', borderRadius: 12,
+        background: 'var(--amB)', border: '1px solid var(--am)',
+        display: 'flex', alignItems: 'flex-start', gap: 8,
+      }}>
+        <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
+        <span style={{ fontSize: 12, color: 'var(--k)', lineHeight: 1.4 }}>
+          {t('login_warn_dup')}
+        </span>
       </div>
 
       {errorMsg && <div className="login-msg error" style={{ marginTop: 12 }}>{errorMsg}</div>}

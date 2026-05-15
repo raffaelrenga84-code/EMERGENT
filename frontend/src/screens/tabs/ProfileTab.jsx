@@ -267,6 +267,12 @@ export default function ProfileTab({ session, profile, families = [], onChanged,
             />
           )}
 
+          {/* Test push notification (utile per verificare che le push ad app
+              chiusa siano configurate correttamente). */}
+          {notificationControl.notificationPermission === 'granted' && (
+            <TestPushButton session={session} />
+          )}
+
           {/* Info */}
           <p
             style={{ fontSize: 12, color: 'var(--km)', lineHeight: 1.5 }}
@@ -349,6 +355,64 @@ function NotificationToggle({ enabled, onChange }) {
       >
         {enabled ? t('notif_deactivate') : t('notif_activate')}
       </button>
+    </div>
+  );
+}
+
+
+function TestPushButton({ session }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const sendTest = async () => {
+    if (!session?.user?.id) return;
+    setBusy(true); setMsg('');
+    try {
+      // Recupera il token utente per autenticare la chiamata
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const token = s?.access_token;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-push`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          user_id: session.user.id,
+          title: '🎉 Test FAMMY',
+          body: 'Le push notifications funzionano correttamente!',
+          tag: 'test-push',
+        }),
+      });
+      const data = await res.json();
+      if (data.sent && data.sent > 0) {
+        setMsg(`✅ Inviata a ${data.sent} dispositiv${data.sent === 1 ? 'o' : 'i'}.`);
+      } else if (data.reason === 'no_subscriptions') {
+        setMsg('⚠️ Nessuna subscription registrata. Ricarica la pagina dopo aver concesso il permesso notifiche.');
+      } else {
+        setMsg(`⚠️ ${data.error || 'Nessuna notifica inviata.'} Verifica che le Edge Function siano deployate.`);
+      }
+    } catch (e) {
+      setMsg(`❌ Errore: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{
+      padding: 12, background: 'var(--ab)', borderRadius: 12,
+      border: '1px solid var(--sd)',
+    }}>
+      <button onClick={sendTest} disabled={busy}
+        data-testid="profile-test-push-btn"
+        className="btn full secondary"
+        style={{ fontSize: 13, padding: '10px 14px' }}>
+        {busy ? <span className="spin dark" /> : '🔔 Invia notifica di test'}
+      </button>
+      {msg && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--km)', lineHeight: 1.4 }}>{msg}</div>}
     </div>
   );
 }

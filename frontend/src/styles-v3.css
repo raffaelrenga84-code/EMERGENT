@@ -1,0 +1,201 @@
+/* =================================================================
+   FAMMY v3 — Polish design pass (Feb 2026)
+   Add this AT THE END of styles.css. Cleaner hierarchy, more breath.
+   ================================================================= */
+
+/* ===== Header hero — più editoriale, più aria sopra ===== */
+.hdr {
+  padding: 28px 24px 12px;
+}
+.hdr h1 {
+  font-family: var(--fs);
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+.hdr .sub {
+  color: var(--km);
+  font-size: 13px;
+  margin-top: 6px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+
+/* Family switcher chip — meno aggressivo, più calligrafico */
+.fam-chip {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  border-radius: 14px;
+  padding: 8px 16px;
+}
+.fam-chip.on {
+  background: var(--k);
+  color: white;
+  border-color: var(--k);
+  letter-spacing: 0;
+}
+
+/* ===== Section headers (collapsible) — più spazio e meno rumore ===== */
+.collapsible-header {
+  margin: 12px 16px 0;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(28,22,17,.04);
+}
+.collapsible-header:hover {
+  background: white;
+  box-shadow: 0 4px 12px rgba(28,22,17,.08);
+}
+.collapsible-label {
+  font-family: var(--fs);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+.collapsible-count {
+  background: var(--sm);
+  color: var(--k);
+  font-weight: 600;
+  border-radius: 100px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+/* ===== Cards — bordo morbido, ombra calda ===== */
+.card {
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(28,22,17,.04);
+}
+.card:hover {
+  box-shadow: 0 6px 18px rgba(193,98,75,.08);
+}
+
+/* ===== Empty state — più decisione visiva ===== */
+.empty {
+  padding: 56px 24px 32px;
+}
+.empty-emoji {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.85;
+}
+.empty h3 {
+  font-size: 22px;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.empty p {
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 300px;
+  margin: 0 auto;
+  opacity: 0.85;
+}
+
+/* ===== PROFILE — Hero treatment ===== */
+.profile-wrap {
+  padding: 32px 20px 32px;
+}
+.profile-h {
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  margin-bottom: 28px;
+}
+.profile-section {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--sd);
+}
+.profile-section:last-child {
+  border-bottom: none;
+}
+.profile-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--km);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.profile-value {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* ===== Member cards (Famiglia) — più tattili ===== */
+.member-card {
+  padding: 16px 18px;
+  border-radius: 16px;
+  margin-bottom: 10px;
+  border: 1px solid var(--sd);
+  background: white;
+  box-shadow: 0 1px 3px rgba(28,22,17,.04);
+  transition: all .15s ease;
+}
+.member-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(28,22,17,.08);
+  border-color: var(--ac);
+}
+
+/* ===== Tab content top breath ===== */
+.tab-content {
+  padding-top: 4px;
+  padding-bottom: 24px;
+}
+
+/* ===== Bigger more friendly FAB ===== */
+.fab {
+  width: 60px;
+  height: 60px;
+  font-size: 26px;
+  background: linear-gradient(135deg, var(--ac), #B5563D);
+  box-shadow: 0 10px 28px rgba(193,98,75,.4);
+}
+.fab:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 14px 32px rgba(193,98,75,.5);
+}
+
+/* ===== Family switcher row — sticky shadow on scroll ===== */
+.fam-switcher-wrap {
+  padding: 6px 16px 14px;
+}
+
+/* ===== Buttons: more breath ===== */
+.btn {
+  padding: 14px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+/* ===== OAuth buttons (login) — un filo più rifinite ===== */
+.oauth-btn {
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  box-shadow: 0 1px 3px rgba(28,22,17,.04);
+}
+.oauth-btn:hover {
+  box-shadow: 0 4px 12px rgba(28,22,17,.08);
+}
+
+/* ===== Bnav (bottom nav) — meno aggressivo, glow su active ===== */
+.bnav button.active {
+  color: var(--ac);
+  position: relative;
+}
+.bnav button.active::before {
+  content: '';
+  position: absolute;
+  top: 4px; left: 50%;
+  width: 24px; height: 3px;
+  background: var(--ac);
+  border-radius: 100px;
+  transform: translateX(-50%);
+}
