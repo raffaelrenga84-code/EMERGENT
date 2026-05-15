@@ -157,6 +157,40 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const filteredEvents = expandedEvents.filter(filterEvent);
   const filteredTasks = dueTasks.filter(filterTask);
 
+  // Occorrenze "sospese" (escluse) — solo per il giorno selezionato.
+  // Mostra una card placeholder "🚫 Sospeso oggi" per dare contesto
+  // ("doveva esserci ma è stato saltato").
+  const skippedForDay = (() => {
+    if (!selectedDay) return [];
+    const dayKey = `${selectedDay.getFullYear()}-${String(selectedDay.getMonth() + 1).padStart(2, '0')}-${String(selectedDay.getDate()).padStart(2, '0')}`;
+    const out = [];
+    const wd = (selectedDay.getDay() + 6) % 7;
+    const dom = selectedDay.getDate();
+
+    // Eventi sospesi: la data è in recurring_exceptions
+    for (const ev of (events || [])) {
+      if (!ev.recurring_days || ev.recurring_days.length === 0) continue;
+      if (!ev.recurring_exceptions?.includes(dayKey)) continue;
+      // Verifica: oggi è effettivamente uno dei giorni della serie?
+      if (!ev.recurring_days.includes(wd)) continue;
+      // entro orizzonte?
+      if (ev.recurring_until && new Date(ev.recurring_until) < selectedDay) continue;
+      if (!filterEvent(ev)) continue;
+      out.push({ kind: 'event', id: `skip-e-${ev.id}-${dayKey}`, title: ev.title });
+    }
+    for (const tk of (tasks || [])) {
+      if (!tk.recurring_days || tk.recurring_days.length === 0) continue;
+      if (!tk.recurring_exceptions?.includes(dayKey)) continue;
+      const weekdays = tk.recurring_days.filter((v) => v <= 6);
+      const monthDays = tk.recurring_days.filter((v) => v > 6).map((v) => v - 6);
+      if (!weekdays.includes(wd) && !monthDays.includes(dom)) continue;
+      if (tk.recurring_until && new Date(tk.recurring_until) < selectedDay) continue;
+      if (!filterTask(tk)) continue;
+      out.push({ kind: 'task', id: `skip-t-${tk.id}-${dayKey}`, title: tk.title });
+    }
+    return out;
+  })();
+
   const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
   const today = new Date();
