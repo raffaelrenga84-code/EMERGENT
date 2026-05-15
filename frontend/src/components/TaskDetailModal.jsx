@@ -278,7 +278,11 @@ export default function TaskDetailModal({
         {task.due_date && (
           <p className="modal-sub">
             📅 {new Date(task.due_date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+            {task.due_time && <span> · 🕐 {task.due_time}</span>}
           </p>
+        )}
+        {task.location && (
+          <p className="modal-sub">📍 {task.location}</p>
         )}
 
         {isDelegateTarget && (

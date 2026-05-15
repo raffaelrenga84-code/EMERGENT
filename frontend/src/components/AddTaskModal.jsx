@@ -10,16 +10,21 @@ function dateOffset(days) {
 }
 
 /**
- * AddTaskModal supporta DUE modi:
+ * AddTaskModal — single-page (no wizard).
+ * Sections: Titolo+AI / Categoria / Quando+Ora / Luogo / Assegnatari /
+ *           Ricorrenza / Nota / Foto.
+ *
+ * Modi:
  *  - Creazione (default): editingTask = null/undefined
  *  - Modifica: editingTask = task object → pre-popola tutti i campi e fa UPDATE
  */
 export default function AddTaskModal({
   familyId, families = [], members,
   authorMemberId,
-  editingTask = null,           // se valorizzato, modifica invece di creare
+  editingTask = null,
   // Prefill iniziale (usato es. dalle azioni dell'AI assistant)
   initialTitle = '', initialCategory = null, initialDueDate = '',
+  initialDueTime = '', initialLocation = '',
   onClose, onCreated, onUpdated,
 }) {
   const { t } = useT();
@@ -34,11 +39,12 @@ export default function AddTaskModal({
     { id: 'other',  emoji: '📌', label: t('cat_other') },
   ];
 
-  const [step, setStep] = useState(1);
   const [title, setTitle] = useState(editingTask?.title || initialTitle || '');
   const [note, setNote] = useState(editingTask?.note || '');
   const [category, setCategory] = useState(editingTask?.category || initialCategory || 'care');
   const [dueDate, setDueDate] = useState(editingTask?.due_date || initialDueDate || '');
+  const [dueTime, setDueTime] = useState(editingTask?.due_time || initialDueTime || '');
+  const [location, setLocation] = useState(editingTask?.location || initialLocation || '');
   const [assignees, setAssignees] = useState([]);
   const [recurringDays, setRecurringDays] = useState(editingTask?.recurring_days || []);
   const [recurringUntil, setRecurringUntil] = useState(editingTask?.recurring_until || '');
@@ -129,13 +135,7 @@ export default function AddTaskModal({
 
     setBusy(true); setErr('');
 
-    // === FIX BUG: deriva family_id dagli assegnatari ===
-    // In vista "Tutte", taskFamily inizia con families[0].id (il primo).
-    // Se l'utente seleziona membri di un'altra famiglia, il task DEVE finire
-    // nella famiglia di quei membri, non nella prima.
-    //   - 0 assegnatari -> usa taskFamily (default current view o families[0])
-    //   - tutti gli assegnatari di UNA stessa famiglia -> usa quella famiglia
-    //   - assegnatari di piu' famiglie -> chiedi conferma, poi usa la prima
+    // Deriva family_id dagli assegnatari
     let finalFamilyId = taskFamily;
     if (assignees.length > 0) {
       const assigneeMembers = members.filter((m) => assignees.includes(m.id));
@@ -157,28 +157,31 @@ export default function AddTaskModal({
       }
     }
 
+    const payloadCommon = {
+      title: title.trim(),
+      note: note.trim() || null,
+      category,
+      due_date: dueDate || null,
+      due_time: dueTime || null,
+      location: location.trim() || null,
+      recurring_days: recurringDays.length > 0 ? recurringDays : null,
+      recurring_until: recurringDays.length > 0 ? computedUntil : null,
+    };
+
     if (isEdit) {
-      // === MODIFICA ===
       const { error: e1 } = await supabase.from('tasks').update({
         family_id: finalFamilyId,
-        title: title.trim(),
-        note: note.trim() || null,
-        category,
-        due_date: dueDate || null,
-        recurring_days: recurringDays.length > 0 ? recurringDays : null,
-        recurring_until: recurringDays.length > 0 ? computedUntil : null,
+        ...payloadCommon,
       }).eq('id', editingTask.id);
 
       if (e1) { setErr(e1.message); setBusy(false); return; }
 
-      // Sostituisci gli assegnatari: cancella tutti e ricrea
       await supabase.from('task_assignees').delete().eq('task_id', editingTask.id);
       if (assignees.length > 0) {
         const rows = assignees.map((memberId) => ({ task_id: editingTask.id, member_id: memberId }));
         await supabase.from('task_assignees').insert(rows);
       }
 
-      // Aggiungi i nuovi allegati (i vecchi non si toccano)
       if (attachments.length > 0) {
         for (const att of attachments) {
           const timestamp = Date.now();
@@ -200,27 +203,18 @@ export default function AddTaskModal({
       return;
     }
 
-    // === CREAZIONE ===
-    // Se l'unico assegnatario sono io stesso (autore), parto già in 'taken' così
-    // appare immediatamente in "Solo le mie da fare" senza dover cliccare "Me ne occupo io".
-    // In tutti gli altri casi (più assegnatari, o nessun assegnatario, o assegnatario diverso)
-    // status parte 'todo' e ognuno può claimarlo.
+    // Creazione: se l'unico assegnatario sono io, parto in 'taken'
     const initialStatus = (assignees.length === 1 && authorMemberId && assignees[0] === authorMemberId)
       ? 'taken'
       : 'todo';
 
     const { data: task, error: e1 } = await supabase.from('tasks').insert({
       family_id: finalFamilyId,
-      title: title.trim(),
-      note: note.trim() || null,
-      category,
+      ...payloadCommon,
       status: initialStatus,
       visibility: 'all',
-      due_date: dueDate || null,
       author_id: authorMemberId || null,
       assigned_to: assignees[0] || null,
-      recurring_days: recurringDays.length > 0 ? recurringDays : null,
-      recurring_until: recurringDays.length > 0 ? computedUntil : null,
     }).select().single();
 
     if (e1) { setErr(e1.message); setBusy(false); return; }
@@ -256,332 +250,330 @@ export default function AddTaskModal({
 
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--sm)' }}>
-          <h2 style={{ flex: 1, margin: 0, fontSize: 16 }}>
-            {isEdit ? 'Modifica incarico' : t('addtask_h')}
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, paddingBottom: 12, borderBottom: '1px solid var(--sm)' }}>
+          <h2 style={{ flex: 1, margin: 0, fontSize: 18 }} data-testid="add-task-modal-title">
+            {isEdit ? t('edit_task_h') || 'Modifica incarico' : t('addtask_h')}
           </h2>
-          <span style={{ fontSize: 12, color: 'var(--km)', fontWeight: 600 }}>{step}/3</span>
         </div>
 
-        <form onSubmit={step === 3 ? submit : (e) => { e.preventDefault(); }} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {step === 1 && (
-            <>
-              <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
-                <label htmlFor="title">{t('addtask_title_label')}</label>
-                <input id="title" className="input" autoFocus
-                  placeholder={t(`addtask_title_ph_${category}`)}
-                  value={title} onChange={(e) => setTitle(e.target.value)} />
+        <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+            {/* === TITOLO + AI HINT === */}
+            <label htmlFor="title">{t('addtask_title_label')}</label>
+            <input id="title" className="input" autoFocus
+              data-testid="add-task-title-input"
+              placeholder={t(`addtask_title_ph_${category}`)}
+              value={title} onChange={(e) => setTitle(e.target.value)} />
 
-                {!isEdit && (
-                  <AISmartTaskHint
-                    title={title}
-                    currentCategory={category}
-                    onApply={({ category: c, dueDate: d }) => {
-                      if (c) setCategory(c);
-                      if (d) setDueDate(d);
-                    }}
-                  />
-                )}
+            {!isEdit && (
+              <AISmartTaskHint
+                title={title}
+                currentCategory={category}
+                onApply={({ category: c, dueDate: d }) => {
+                  if (c) setCategory(c);
+                  if (d) setDueDate(d);
+                }}
+              />
+            )}
 
-                <div style={{ marginTop: 20 }}>
-                  <label>{t('addtask_cat_label')}</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {CATEGORIES.map((c) => (
-                      <button key={c.id} type="button" onClick={() => setCategory(c.id)}
-                        style={chipStyle(category === c.id)}>
-                        {c.emoji} {c.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            {/* === CATEGORIA === */}
+            <div style={{ marginTop: 20 }}>
+              <label>{t('addtask_cat_label')}</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="add-task-category-row">
+                {CATEGORIES.map((c) => (
+                  <button key={c.id} type="button" onClick={() => setCategory(c.id)}
+                    data-testid={`add-task-cat-${c.id}`}
+                    style={chipStyle(category === c.id)}>
+                    {c.emoji} {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                <div style={{ marginTop: 20 }}>
-                  <label>{t('addtask_when')}</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                    <button type="button" onClick={() => setDueDate(dateOffset(0))}
-                      style={chipStyle(isQuickActive(0))}>📍 {t('date_today')}</button>
-                    <button type="button" onClick={() => setDueDate(dateOffset(1))}
-                      style={chipStyle(isQuickActive(1))}>☀️ {t('date_tomorrow')}</button>
-                    <button type="button" onClick={() => setDueDate(dateOffset(7))}
-                      style={chipStyle(isQuickActive(7))}>📅 {t('date_in_a_week')}</button>
-                  </div>
-                  <DateField value={dueDate} onChange={setDueDate} />
-                </div>
+            {/* === QUANDO (data + ora) === */}
+            <div style={{ marginTop: 20 }}>
+              <label>{t('addtask_when')}</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                <button type="button" onClick={() => setDueDate(dateOffset(0))}
+                  data-testid="add-task-date-today"
+                  style={chipStyle(isQuickActive(0))}>📍 {t('date_today')}</button>
+                <button type="button" onClick={() => setDueDate(dateOffset(1))}
+                  data-testid="add-task-date-tomorrow"
+                  style={chipStyle(isQuickActive(1))}>☀️ {t('date_tomorrow')}</button>
+                <button type="button" onClick={() => setDueDate(dateOffset(7))}
+                  data-testid="add-task-date-week"
+                  style={chipStyle(isQuickActive(7))}>📅 {t('date_in_a_week')}</button>
+              </div>
+              <DateField value={dueDate} onChange={setDueDate} />
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <label htmlFor="time">{t('addtask_time_label')}</label>
+              <input id="time" type="time" className="input"
+                data-testid="add-task-time-input"
+                value={dueTime} onChange={(e) => setDueTime(e.target.value)}
+                placeholder="HH:MM" />
+            </div>
+
+            {/* === LUOGO === */}
+            <div style={{ marginTop: 16 }}>
+              <label htmlFor="loc">{t('addtask_loc_label')}</label>
+              <input id="loc" className="input"
+                data-testid="add-task-location-input"
+                placeholder={t('addtask_loc_ph')}
+                value={location} onChange={(e) => setLocation(e.target.value)} />
+            </div>
+
+            {/* === ASSEGNATARI === */}
+            <div style={{ marginTop: 20 }}>
+              <label>{t('assignee_multi_label')}</label>
+              <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 12 }}>
+                {t('assignee_multi_hint')}
               </div>
 
-              <div className="row" style={{ marginTop: 20 }}>
-                <button type="button" className="btn secondary" onClick={onClose}>{t('cancel')}</button>
-                <button type="button" className="btn" onClick={() => setStep(2)} disabled={!title.trim()}>
-                  {t('next_arrow')}
+              <div style={{ marginBottom: 12 }}>
+                <button type="button"
+                  data-testid="add-task-only-for-me"
+                  onClick={() => {
+                    const newOnlyForMe = !onlyForMe;
+                    setOnlyForMe(newOnlyForMe);
+                    if (newOnlyForMe && authorMemberId) {
+                      setAssignees([authorMemberId]);
+                    } else {
+                      setAssignees([]);
+                    }
+                  }}
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 12,
+                    border: `1.5px solid ${onlyForMe ? 'var(--ac)' : 'var(--sm)'}`,
+                    background: onlyForMe ? 'var(--ab)' : 'white',
+                    cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                    color: onlyForMe ? 'var(--ac)' : 'var(--k)',
+                  }}>
+                  {onlyForMe ? '✓ ' : '+ '}{t('only_for_me')}
                 </button>
               </div>
-            </>
-          )}
 
-          {step === 2 && (
-            <>
-              <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4, minHeight: 0 }}>
-                <label style={{ marginTop: 0 }}>{t('assignee_multi_label')}</label>
-                <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 12 }}>
-                  {t('assignee_multi_hint')}
-                </div>
-
-                {/* Solo per me */}
-                <div style={{ marginBottom: 12 }}>
-                  <button type="button"
-                    onClick={() => {
-                      const newOnlyForMe = !onlyForMe;
-                      setOnlyForMe(newOnlyForMe);
-                      if (newOnlyForMe && authorMemberId) {
-                        setAssignees([authorMemberId]);
-                      } else {
-                        setAssignees([]);
-                      }
-                    }}
-                    style={{
-                      width: '100%', padding: '10px 14px', borderRadius: 12,
-                      border: `1.5px solid ${onlyForMe ? 'var(--ac)' : 'var(--sm)'}`,
-                      background: onlyForMe ? 'var(--ab)' : 'white',
-                      cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                      color: onlyForMe ? 'var(--ac)' : 'var(--k)',
-                    }}>
-                    {onlyForMe ? '✓ ' : '+ '}{t('only_for_me')}
-                  </button>
-                </div>
-
-                {byFamily.map((g) => {
-                  const isExpanded = expandedFamilies[g.family.id] !== false;
-                  const allSelected = g.members.length > 0 && g.members.every((m) => assignees.includes(m.id));
-                  const selectedCount = g.members.filter((m) => assignees.includes(m.id)).length;
-                  return (
-                    <div key={g.family.id} style={{ marginBottom: 8, border: '1px solid var(--sm)', borderRadius: 12, overflow: 'hidden' }}>
-                      <button type="button"
-                        onClick={() => setExpandedFamilies((p) => ({ ...p, [g.family.id]: !isExpanded }))}
-                        style={{
-                          width: '100%', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8,
-                          background: 'white', border: 'none', cursor: 'pointer', textAlign: 'left',
-                        }}>
-                        <span style={{ fontSize: 18 }}>{g.family.emoji}</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13 }}>{g.family.name}</div>
-                          <div style={{ fontSize: 11, color: 'var(--km)' }}>
-                            {selectedCount > 0 ? t('n_selected', { n: selectedCount, m: g.members.length }) : t('none_selected')}
-                          </div>
+              {byFamily.map((g) => {
+                const isExpanded = expandedFamilies[g.family.id] !== false;
+                const allSelected = g.members.length > 0 && g.members.every((m) => assignees.includes(m.id));
+                const selectedCount = g.members.filter((m) => assignees.includes(m.id)).length;
+                return (
+                  <div key={g.family.id} style={{ marginBottom: 8, border: '1px solid var(--sm)', borderRadius: 12, overflow: 'hidden' }}>
+                    <button type="button"
+                      data-testid={`add-task-family-toggle-${g.family.id}`}
+                      onClick={() => setExpandedFamilies((p) => ({ ...p, [g.family.id]: !isExpanded }))}
+                      style={{
+                        width: '100%', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8,
+                        background: 'white', border: 'none', cursor: 'pointer', textAlign: 'left',
+                      }}>
+                      <span style={{ fontSize: 18 }}>{g.family.emoji}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{g.family.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--km)' }}>
+                          {selectedCount > 0 ? t('n_selected', { n: selectedCount, m: g.members.length }) : t('none_selected')}
                         </div>
-                        <span style={{ fontSize: 18, color: 'var(--km)', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0)' }}>›</span>
-                      </button>
-                      <button type="button" onClick={() => toggleAllOfFamily(g.members)}
-                        style={{
-                          width: '100%', padding: '8px 12px', borderRadius: 0,
-                          border: 'none', borderTop: '1px solid var(--sm)',
-                          background: allSelected ? 'var(--ac)' : 'var(--ab)',
-                          color: allSelected ? 'white' : 'var(--k)',
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        }}>
-                        {allSelected ? t('deselect_all') : t('select_all')}
-                      </button>
-                      {isExpanded && (
-                        <div style={{ padding: 10, background: 'var(--ab)', borderTop: '1px solid var(--sm)' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                            {g.members.map((m) => {
-                              const selected = assignees.includes(m.id);
-                              return (
-                                <button key={m.id} type="button" onClick={() => toggleAssignee(m.id)}
-                                  style={chipMember(selected)}>
-                                  {selected && <span>✓ </span>}
-                                  <span style={avatarStyle(m)}>
-                                    {m.avatar_letter || m.name.charAt(0).toUpperCase()}
-                                  </span>
-                                  {m.name}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="row" style={{ marginTop: 20 }}>
-                <button type="button" className="btn secondary" onClick={() => setStep(1)}>{t('back_arrow')}</button>
-                <button type="button" className="btn" onClick={() => setStep(3)}>{t('next_arrow')}</button>
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
-                {dueDate && (
-                  <div style={{ marginBottom: 12, padding: 10, background: 'var(--ab)', borderRadius: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ac)', textTransform: 'uppercase' }}>📅 Data</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2, textTransform: 'capitalize' }}>
-                      {new Date(dueDate + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                    </div>
-                  </div>
-                )}
-
-                <label htmlFor="note">{t('note_optional')}</label>
-                <textarea id="note" className="input" rows={3}
-                  placeholder={t('note_placeholder')}
-                  value={note} onChange={(e) => setNote(e.target.value)} />
-
-                <div style={{ marginTop: 16 }}>
-                  <button type="button" onClick={() => setExpandRecurring((v) => !v)}
-                    style={{
-                      width: '100%', padding: '10px 14px', borderRadius: 12,
-                      border: '1.5px solid var(--sm)', background: 'white',
-                      cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    }}>
-                    <span>
-                      {recurringDays.length > 0 ? `🔄 Ricorre ${recurringDays.length}x` : t('add_recurrence')}
-                    </span>
-                    <span style={{ fontSize: 18, color: 'var(--km)', transform: expandRecurring ? 'rotate(90deg)' : 'rotate(0)' }}>›</span>
-                  </button>
-
-                  {expandRecurring && (
-                    <div style={{ marginTop: 12, padding: 14, background: 'var(--ab)', borderRadius: 14, border: '1px solid var(--sm)' }}>
-                      <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 12 }}>
-                        {t('repeat_hint')}
                       </div>
-
-                      <div style={{ marginBottom: 12 }}>
-                        <div style={{ fontSize: 10, color: 'var(--km)', marginBottom: 6, fontWeight: 600 }}>Giorni della settimana</div>
-                        <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between' }}>
-                          {Array.isArray(weekdays) && weekdays.map((w, idx) => {
-                            const selected = recurringDays.includes(idx);
+                      <span style={{ fontSize: 18, color: 'var(--km)', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0)' }}>›</span>
+                    </button>
+                    <button type="button" onClick={() => toggleAllOfFamily(g.members)}
+                      data-testid={`add-task-family-select-all-${g.family.id}`}
+                      style={{
+                        width: '100%', padding: '8px 12px', borderRadius: 0,
+                        border: 'none', borderTop: '1px solid var(--sm)',
+                        background: allSelected ? 'var(--ac)' : 'var(--ab)',
+                        color: allSelected ? 'white' : 'var(--k)',
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      }}>
+                      {allSelected ? t('deselect_all') : t('select_all')}
+                    </button>
+                    {isExpanded && (
+                      <div style={{ padding: 10, background: 'var(--ab)', borderTop: '1px solid var(--sm)' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {g.members.map((m) => {
+                            const selected = assignees.includes(m.id);
                             return (
-                              <button key={idx} type="button" onClick={() => toggleDay(idx)}
-                                title={Array.isArray(fullWeekdays) ? fullWeekdays[idx] : ''}
-                                style={{
-                                  flex: 1, height: 32, borderRadius: 6, border: '1.5px solid',
-                                  borderColor: selected ? 'var(--k)' : 'var(--sm)',
-                                  background: selected ? 'var(--k)' : 'white',
-                                  color: selected ? 'white' : 'var(--k)',
-                                  fontSize: 11, fontWeight: 700,
-                                }}>{w}</button>
+                              <button key={m.id} type="button"
+                                data-testid={`add-task-assignee-${m.id}`}
+                                onClick={() => toggleAssignee(m.id)} style={chipMember(selected)}>
+                                {selected && <span>✓ </span>}
+                                <span style={avatarStyle(m)}>
+                                  {m.avatar_letter || m.name.charAt(0).toUpperCase()}
+                                </span>
+                                {m.name}
+                              </button>
                             );
                           })}
                         </div>
                       </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
-                      <div>
-                        <div style={{ fontSize: 10, color: 'var(--km)', marginBottom: 6, fontWeight: 600 }}>
-                          Oppure seleziona specifici giorni del mese
-                        </div>
-                        <MonthCalendarPicker
-                          anchorDay={dueDate ? new Date(dueDate + 'T00:00:00').getDate() : null}
-                          selectedDays={recurringDays.filter((d) => d > 6)}
-                          onToggleDay={(day) => {
-                            setRecurringDays((prev) =>
-                              prev.includes(day)
-                                ? prev.filter((x) => x !== day)
-                                : [...prev, day].sort((a,b) => a-b)
-                            );
-                          }}
-                        />
-                      </div>
+            {/* === RICORRENZA === */}
+            <div style={{ marginTop: 20 }}>
+              <button type="button" onClick={() => setExpandRecurring((v) => !v)}
+                data-testid="add-task-toggle-recurrence"
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 12,
+                  border: '1.5px solid var(--sm)', background: 'white',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                <span>
+                  {recurringDays.length > 0 ? `🔄 Ricorre ${recurringDays.length}x` : t('add_recurrence')}
+                </span>
+                <span style={{ fontSize: 18, color: 'var(--km)', transform: expandRecurring ? 'rotate(90deg)' : 'rotate(0)' }}>›</span>
+              </button>
 
-                      {recurringDays.length > 0 && (
-                        <div style={{ marginTop: 16, padding: 12, background: 'white', border: '1.5px solid var(--sm)', borderRadius: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', marginBottom: 8, textTransform: 'uppercase' }}>
-                            🔄 Per quanto tempo si ripete?
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <label style={{
-                              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
-                              border: `1.5px solid ${recurrenceScope === 'thisMonth' ? 'var(--ac)' : 'var(--sm)'}`,
-                              borderRadius: 8, cursor: 'pointer',
-                              background: recurrenceScope === 'thisMonth' ? 'var(--ab)' : 'white',
-                            }}>
-                              <input type="radio" name="rscope" value="thisMonth"
-                                checked={recurrenceScope === 'thisMonth'}
-                                onChange={() => setRecurrenceScope('thisMonth')} />
-                              <span style={{ fontSize: 13, fontWeight: 600 }}>
-                                📅 Solo questo mese
-                              </span>
-                            </label>
-                            <label style={{
-                              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
-                              border: `1.5px solid ${recurrenceScope === 'forever' ? 'var(--ac)' : 'var(--sm)'}`,
-                              borderRadius: 8, cursor: 'pointer',
-                              background: recurrenceScope === 'forever' ? 'var(--ab)' : 'white',
-                            }}>
-                              <input type="radio" name="rscope" value="forever"
-                                checked={recurrenceScope === 'forever'}
-                                onChange={() => setRecurrenceScope('forever')} />
-                              <span style={{ fontSize: 13, fontWeight: 600 }}>
-                                🔄 Tutti i mesi futuri
-                                <span style={{ fontSize: 11, color: 'var(--km)', fontWeight: 500, marginLeft: 6 }}>
-                                  (ti chiederemo conferma)
-                                </span>
-                              </span>
-                            </label>
-                            <details style={{ marginTop: 4 }}>
-                              <summary style={{ fontSize: 12, color: 'var(--km)', cursor: 'pointer', padding: '4px 8px' }}>
-                                … oppure imposta una data finale specifica
-                              </summary>
-                              <div style={{ marginTop: 8 }}>
-                                <input id="until" type="date" className="input"
-                                  value={recurringUntil} onChange={(e) => setRecurringUntil(e.target.value)} />
-                                <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
-                                  Se imposti questa data, sostituisce la scelta sopra.
-                                </p>
-                              </div>
-                            </details>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+              {expandRecurring && (
+                <div style={{ marginTop: 12, padding: 14, background: 'var(--ab)', borderRadius: 14, border: '1px solid var(--sm)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 12 }}>{t('repeat_hint')}</div>
 
-                <div style={{ marginTop: 20 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                    <span>📸 {t('attach_photo')} <span style={{ color: 'var(--km)', fontSize: 11 }}>({t('optional_label')})</span></span>
-                  </label>
-                  <input type="file" id="file-input" multiple accept="image/*" capture
-                    onChange={handleFileSelect} style={{ display: 'none' }} />
-                  <button type="button" onClick={() => document.getElementById('file-input').click()}
-                    style={{
-                      width: '100%', padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
-                      background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
-                      color: 'var(--ac)', transition: 'all 0.2s ease',
-                    }}>
-                    {t('take_or_attach_photo')}
-                  </button>
-                  {attachments.length > 0 && (
-                    <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8 }}>
-                      {attachments.map((att, idx) => (
-                        <div key={idx} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--sm)' }}>
-                          <img src={att.preview} style={{ width: '100%', height: '100%', objectFit: 'cover', aspectRatio: '1' }} alt="" />
-                          <button type="button" onClick={() => removeAttachment(idx)}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, color: 'var(--km)', marginBottom: 6, fontWeight: 600 }}>Giorni della settimana</div>
+                    <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between' }}>
+                      {Array.isArray(weekdays) && weekdays.map((w, idx) => {
+                        const selected = recurringDays.includes(idx);
+                        return (
+                          <button key={idx} type="button" onClick={() => toggleDay(idx)}
+                            title={Array.isArray(fullWeekdays) ? fullWeekdays[idx] : ''}
                             style={{
-                              position: 'absolute', top: 2, right: 2, width: 20, height: 20,
-                              borderRadius: '50%', background: 'var(--rd)', color: 'white',
-                              border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                            }}>✕</button>
-                        </div>
-                      ))}
+                              flex: 1, height: 32, borderRadius: 6, border: '1.5px solid',
+                              borderColor: selected ? 'var(--k)' : 'var(--sm)',
+                              background: selected ? 'var(--k)' : 'white',
+                              color: selected ? 'white' : 'var(--k)',
+                              fontSize: 11, fontWeight: 700,
+                            }}>{w}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--km)', marginBottom: 6, fontWeight: 600 }}>
+                      Oppure seleziona specifici giorni del mese
+                    </div>
+                    <MonthCalendarPicker
+                      anchorDay={dueDate ? new Date(dueDate + 'T00:00:00').getDate() : null}
+                      selectedDays={recurringDays.filter((d) => d > 6)}
+                      onToggleDay={(day) => {
+                        setRecurringDays((prev) =>
+                          prev.includes(day)
+                            ? prev.filter((x) => x !== day)
+                            : [...prev, day].sort((a,b) => a-b)
+                        );
+                      }}
+                    />
+                  </div>
+
+                  {recurringDays.length > 0 && (
+                    <div style={{ marginTop: 16, padding: 12, background: 'white', border: '1.5px solid var(--sm)', borderRadius: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', marginBottom: 8, textTransform: 'uppercase' }}>
+                        🔄 Per quanto tempo si ripete?
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+                          border: `1.5px solid ${recurrenceScope === 'thisMonth' ? 'var(--ac)' : 'var(--sm)'}`,
+                          borderRadius: 8, cursor: 'pointer',
+                          background: recurrenceScope === 'thisMonth' ? 'var(--ab)' : 'white',
+                        }}>
+                          <input type="radio" name="rscope" value="thisMonth"
+                            checked={recurrenceScope === 'thisMonth'}
+                            onChange={() => setRecurrenceScope('thisMonth')} />
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>📅 Solo questo mese</span>
+                        </label>
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+                          border: `1.5px solid ${recurrenceScope === 'forever' ? 'var(--ac)' : 'var(--sm)'}`,
+                          borderRadius: 8, cursor: 'pointer',
+                          background: recurrenceScope === 'forever' ? 'var(--ab)' : 'white',
+                        }}>
+                          <input type="radio" name="rscope" value="forever"
+                            checked={recurrenceScope === 'forever'}
+                            onChange={() => setRecurrenceScope('forever')} />
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>
+                            🔄 Tutti i mesi futuri
+                            <span style={{ fontSize: 11, color: 'var(--km)', fontWeight: 500, marginLeft: 6 }}>
+                              (ti chiederemo conferma)
+                            </span>
+                          </span>
+                        </label>
+                        <details style={{ marginTop: 4 }}>
+                          <summary style={{ fontSize: 12, color: 'var(--km)', cursor: 'pointer', padding: '4px 8px' }}>
+                            … oppure imposta una data finale specifica
+                          </summary>
+                          <div style={{ marginTop: 8 }}>
+                            <input id="until" type="date" className="input"
+                              value={recurringUntil} onChange={(e) => setRecurringUntil(e.target.value)} />
+                            <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+                              Se imposti questa data, sostituisce la scelta sopra.
+                            </p>
+                          </div>
+                        </details>
+                      </div>
                     </div>
                   )}
                 </div>
+              )}
+            </div>
 
-                {err && <div className="login-msg error" style={{ marginTop: 12 }}>{err}</div>}
-              </div>
+            {/* === NOTA === */}
+            <div style={{ marginTop: 20 }}>
+              <label htmlFor="note">{t('note_optional')}</label>
+              <textarea id="note" className="input" rows={3}
+                data-testid="add-task-note-input"
+                placeholder={t('note_placeholder')}
+                value={note} onChange={(e) => setNote(e.target.value)} />
+            </div>
 
-              <div className="row" style={{ marginTop: 20 }}>
-                <button type="button" className="btn secondary" onClick={() => setStep(2)}>{t('back_arrow')}</button>
-                <button type="submit" className="btn" disabled={busy}>
-                  {busy ? <span className="spin" /> : (isEdit ? 'Salva modifiche' : t('add'))}
-                </button>
-              </div>
-            </>
-          )}
+            {/* === FOTO === */}
+            <div style={{ marginTop: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                <span>📸 {t('attach_photo')} <span style={{ color: 'var(--km)', fontSize: 11 }}>({t('optional_label')})</span></span>
+              </label>
+              <input type="file" id="file-input" multiple accept="image/*" capture
+                data-testid="add-task-file-input"
+                onChange={handleFileSelect} style={{ display: 'none' }} />
+              <button type="button" onClick={() => document.getElementById('file-input').click()}
+                data-testid="add-task-attach-photo-btn"
+                style={{
+                  width: '100%', padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                  background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                  color: 'var(--ac)', transition: 'all 0.2s ease',
+                }}>
+                {t('take_or_attach_photo')}
+              </button>
+              {attachments.length > 0 && (
+                <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8 }}>
+                  {attachments.map((att, idx) => (
+                    <div key={idx} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--sm)' }}>
+                      <img src={att.preview} style={{ width: '100%', height: '100%', objectFit: 'cover', aspectRatio: '1' }} alt="" />
+                      <button type="button" onClick={() => removeAttachment(idx)}
+                        style={{
+                          position: 'absolute', top: 2, right: 2, width: 20, height: 20,
+                          borderRadius: '50%', background: 'var(--rd)', color: 'white',
+                          border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                        }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {err && <div className="login-msg error" style={{ marginTop: 12 }}>{err}</div>}
+          </div>
+
+          <div className="row" style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--sm)' }}>
+            <button type="button" className="btn secondary" onClick={onClose} data-testid="add-task-cancel-btn">{t('cancel')}</button>
+            <button type="submit" className="btn" disabled={busy || !title.trim()} data-testid="add-task-submit-btn">
+              {busy ? <span className="spin" /> : (isEdit ? (t('save_changes') || 'Salva modifiche') : t('add'))}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -709,6 +701,7 @@ function DateField({ value, onChange }) {
   return (
     <div style={{ position: 'relative' }}>
       <button type="button" onClick={open}
+        data-testid="add-task-date-picker-btn"
         style={{
           width: '100%', padding: '14px 16px',
           border: value ? '1.5px solid var(--ac)' : '1.5px solid var(--sm)',

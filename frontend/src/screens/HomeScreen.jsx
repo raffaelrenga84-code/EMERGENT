@@ -237,6 +237,8 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
           initialTitle={aiTaskPrefill.title}
           initialCategory={aiTaskPrefill.category}
           initialDueDate={aiTaskPrefill.due_date}
+          initialDueTime={aiTaskPrefill.due_time || ''}
+          initialLocation={aiTaskPrefill.location || ''}
           onClose={() => setAiTaskPrefill(null)}
           onCreated={() => { setAiTaskPrefill(null); setRefreshKey((k) => k + 1); }}
         />
@@ -245,6 +247,8 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
       {aiEventPrefill && targetFamilyForAI() && (
         <AddEventModal
           familyId={targetFamilyForAI()}
+          families={families}
+          members={members}
           authorMemberId={me?.id}
           initialTitle={aiEventPrefill.title}
           initialStartsAt={aiEventPrefill.starts_at}

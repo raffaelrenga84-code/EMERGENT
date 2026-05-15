@@ -82,6 +82,29 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 6 (15 maggio 2026 sera++) — Unificazione modali Task/Event + nuovi campi
+
+### Refactor frontend
+- **AddTaskModal**: da wizard 3-step → **single-page scrollabile** (stesso layout di AddEventModal). 741 → ~610 righe, tutta la logica preservata (assegnatari multi-famiglia, "Solo per me", ricorrenza con scope thisMonth/forever, calendario mensile, AI hint, foto multiple).
+- **AddTaskModal**: aggiunti i campi **ORA** (`due_time` HH:MM) e **LUOGO** (`location`).
+- **AddEventModal**: aggiunti **ASSEGNATARI** (accordion per famiglia con "Solo per me" e "Seleziona tutti") e **FOTO** (allega/scatta multipla con preview).
+- Entrambe le modali ora hanno data-testid uniformi su tutti gli elementi interattivi.
+- Aggiornati i call site di AddEventModal (HomeScreen.jsx, AgendaTab.jsx) per passare `families` + `members`.
+- Display dei nuovi campi: TaskDetailModal (`📅 data · 🕐 ora` + `📍 luogo`), BachecaTab card (idem inline).
+- AI tool-calling esteso: `[[ACTION:create_task|...]]` ora accetta anche `due_time` e `location`. Il parser frontend (HomeScreen) passa i nuovi prefill al modale.
+- Edge function `ai-chat.ts` (sorgente `_dashboard_standalone/`) aggiornata con istruzioni per estrarre ora/luogo dal messaggio utente (estrazione "alle 16:30", "dal panificio", "all'ospedale").
+
+### DB Migration (`fammy-unify-task-event-schema.sql`)
+File SQL idempotente che aggiunge:
+- `tasks.due_time text` + `tasks.location text`
+- Tabella `event_assignees(event_id, member_id)` + RLS + indici
+- Tabella `event_attachments(id, event_id, file_path, file_name, created_at)` + RLS
+- Storage bucket `event-attachments` + policy
+- Add to realtime publication
+
+### i18n
+4 nuove key tradotte in IT/EN/FR/DE: `addtask_time_label`, `addtask_loc_label`, `addtask_loc_ph`.
+
 ## Iterazione 5 (15 maggio 2026 notte+) — Daily Digest 21:00 + Realtime commenti
 
 ### Cosa è stato aggiunto

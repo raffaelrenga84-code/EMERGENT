@@ -293,6 +293,8 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
       {showAdd && (
         <AddEventModal
           familyId={targetFamilyId}
+          families={families}
+          members={members}
           authorMemberId={me?.id}
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); onChanged(); }}

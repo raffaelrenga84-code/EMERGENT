@@ -313,7 +313,12 @@ function TaskCard({ task, family, assignees, statusLabel, onClick, onCheck, prio
               }}>{family.emoji} {family.name}</span>
             )}
             {task.note && <span className="tc-meta" style={{ marginTop: 0 }}>{task.note}</span>}
-            {task.due_date && <span className="tc-meta" style={{ marginTop: 0 }}>📅 {fmtDate(task.due_date)}</span>}
+            {task.due_date && (
+              <span className="tc-meta" style={{ marginTop: 0 }}>
+                📅 {fmtDate(task.due_date)}{task.due_time ? ` · 🕐 ${task.due_time}` : ''}
+              </span>
+            )}
+            {task.location && <span className="tc-meta" style={{ marginTop: 0 }}>📍 {task.location}</span>}
           </div>
         </div>
         <span className={`sp ${task.status}`}>{statusLabel}</span>
