@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import AddEventModal from './AddEventModal.jsx';
 
 /**
  * EventDetailModal — mostra dettagli completi di un evento:
@@ -14,6 +15,7 @@ export default function EventDetailModal({ event, families = [], members = [], m
   const [loading, setLoading] = useState(true);
   const [photoUrls, setPhotoUrls] = useState({});
   const [lightbox, setLightbox] = useState(null);
+  const [editing, setEditing] = useState(false);
 
   const origId = event._origId || event.id;
   const family = families.find((f) => f.id === event.family_id);
@@ -47,6 +49,7 @@ export default function EventDetailModal({ event, families = [], members = [], m
 
   const start = new Date(event.starts_at);
   const canDelete = !event.created_by || event.created_by === me?.id;
+  const canEdit = canDelete; // stessa logica
   const assigneeMembers = members.filter((m) => assignees.includes(m.id));
 
   const handleDelete = async () => {
@@ -189,10 +192,20 @@ export default function EventDetailModal({ event, families = [], members = [], m
           <button type="button" className="btn secondary" onClick={onClose} data-testid="event-detail-close">
             {t('close') || 'Chiudi'}
           </button>
+          {canEdit && (
+            <button type="button" className="btn" onClick={() => setEditing(true)}
+              data-testid="event-detail-edit"
+              style={{
+                background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
+                color: 'white', border: 'none',
+              }}>
+              ✏️ Modifica
+            </button>
+          )}
           {canDelete && (
             <button type="button" className="btn" onClick={handleDelete} data-testid="event-detail-delete"
               style={{ background: 'var(--rd)' }}>
-              🗑 Elimina
+              🗑
             </button>
           )}
         </div>
@@ -207,6 +220,23 @@ export default function EventDetailModal({ event, families = [], members = [], m
         }}>
           <img src={lightbox} style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8 }} alt="" />
         </div>
+      )}
+
+      {/* Modale di modifica evento */}
+      {editing && (
+        <AddEventModal
+          editingEvent={{ ...event, id: origId }}
+          familyId={event.family_id}
+          families={families}
+          members={members}
+          authorMemberId={me?.id}
+          onClose={() => setEditing(false)}
+          onUpdated={() => {
+            setEditing(false);
+            onChanged && onChanged();
+            onClose();
+          }}
+        />
       )}
     </div>
   );

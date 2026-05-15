@@ -75,6 +75,7 @@ export const T = {
     // Add task modal
     addtask_h: 'Nuovo incarico', addtask_sub: "Cosa c'è da fare in famiglia?",
     edit_task_h: 'Modifica incarico', save_changes: 'Salva modifiche',
+    edit_event_h: 'Modifica evento',
     addtask_title_label: 'Titolo', addtask_title_ph: 'es. Portare nonno dal medico',
     addtask_title_ph_care: 'es. Portare nonno dal medico',
     addtask_title_ph_home: 'es. Comprare il pane',
@@ -486,6 +487,7 @@ export const T = {
 
     addtask_h: 'New task', addtask_sub: 'What needs to be done?',
     edit_task_h: 'Edit task', save_changes: 'Save changes',
+    edit_event_h: 'Edit event',
     addtask_title_label: 'Title', addtask_title_ph: 'e.g. Take grandpa to the doctor',
     addtask_title_ph_care: 'e.g. Take grandpa to the doctor',
     addtask_title_ph_home: 'e.g. Buy bread',
@@ -877,6 +879,7 @@ export const T = {
 
     addtask_h: 'Nouvelle tâche', addtask_sub: 'Quoi faire en famille ?',
     edit_task_h: 'Modifier la tâche', save_changes: 'Enregistrer',
+    edit_event_h: 'Modifier l\'événement',
     addtask_title_label: 'Titre', addtask_title_ph: 'ex. Emmener papy chez le médecin',
     addtask_title_ph_care: 'ex. Emmener papy chez le médecin',
     addtask_title_ph_home: 'ex. Acheter le pain',
@@ -1305,6 +1308,7 @@ export const T = {
 
     addtask_h: 'Neue Aufgabe', addtask_sub: 'Was muss gemacht werden?',
     edit_task_h: 'Aufgabe bearbeiten', save_changes: 'Speichern',
+    edit_event_h: 'Ereignis bearbeiten',
     addtask_title_label: 'Titel', addtask_title_ph: 'z.B. Opa zum Arzt bringen',
     addtask_title_ph_care: 'z.B. Opa zum Arzt bringen',
     addtask_title_ph_home: 'z.B. Brot kaufen',

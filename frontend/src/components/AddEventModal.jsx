@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
@@ -12,23 +12,33 @@ function dateOffset(days) {
 /**
  * AddEventModal — single-page con: titolo, data+ora, luogo, assegnatari,
  * ricorrenza, note, foto.
+ *
+ * Modi:
+ *  - Creazione (default): editingEvent = null
+ *  - Modifica: editingEvent = event object → pre-popola e fa UPDATE
  */
 export default function AddEventModal({
   familyId, families = [], members = [], authorMemberId,
-  onClose, onCreated,
+  editingEvent = null,
+  onClose, onCreated, onUpdated,
   // Prefill (es. dal tool calling dell'AI assistant)
   initialTitle = '', initialStartsAt = '', initialLocation = '',
 }) {
   const { t } = useT();
-  const _initialDate = initialStartsAt ? initialStartsAt.slice(0, 10) : '';
-  const _initialTime = (initialStartsAt && initialStartsAt.length >= 16) ? initialStartsAt.slice(11, 16) : '';
-  const [title, setTitle] = useState(initialTitle || '');
+  const isEdit = !!editingEvent;
+  // Sorgente prefill: se editing, prendiamo da editingEvent; altrimenti dai initial*
+  const sourceStartsAt = editingEvent?.starts_at || initialStartsAt || '';
+  const _initialDate = sourceStartsAt ? sourceStartsAt.slice(0, 10) : '';
+  const _initialTime = sourceStartsAt && sourceStartsAt.length >= 16
+    ? new Date(sourceStartsAt).toTimeString().slice(0, 5)
+    : '';
+  const [title, setTitle] = useState(editingEvent?.title || initialTitle || '');
   const [date, setDate] = useState(_initialDate);
   const [time, setTime] = useState(_initialTime);
-  const [location, setLocation] = useState(initialLocation || '');
-  const [description, setDescription] = useState('');
-  const [recurringDays, setRecurringDays] = useState([]);
-  const [recurringUntil, setRecurringUntil] = useState('');
+  const [location, setLocation] = useState(editingEvent?.location || initialLocation || '');
+  const [description, setDescription] = useState(editingEvent?.description || '');
+  const [recurringDays, setRecurringDays] = useState(editingEvent?.recurring_days || []);
+  const [recurringUntil, setRecurringUntil] = useState(editingEvent?.recurring_until || '');
   const [assignees, setAssignees] = useState([]);
   const [attachments, setAttachments] = useState([]);
   // Tendine famiglia chiuse di default (più pulito e meno spazio)
@@ -39,6 +49,18 @@ export default function AddEventModal({
 
   const scrollableRef = useRef(null);
   useKeyboardSafeModal(scrollableRef);
+
+  // Carica gli assegnatari attuali se in modalità modifica
+  useEffect(() => {
+    if (!editingEvent) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('event_assignees').select('member_id').eq('event_id', editingEvent.id);
+      if (!cancelled && data) setAssignees(data.map((a) => a.member_id));
+    })();
+    return () => { cancelled = true; };
+  }, [editingEvent?.id]);
 
   const familiesArr = Array.isArray(families) ? families : [];
   const byFamily = familiesArr.map((f) => ({
@@ -102,15 +124,51 @@ export default function AddEventModal({
       }
     }
 
-    const { data: ev, error } = await supabase.from('events').insert({
+    const payloadCommon = {
       family_id: finalFamilyId,
       title: title.trim(),
       starts_at: startsAt,
       location: location.trim() || null,
       description: description.trim() || null,
-      created_by: authorMemberId || null,
       recurring_days: recurringDays.length > 0 ? recurringDays : null,
       recurring_until: recurringDays.length > 0 && recurringUntil ? recurringUntil : null,
+    };
+
+    if (isEdit) {
+      const { error: e1 } = await supabase.from('events')
+        .update(payloadCommon).eq('id', editingEvent.id);
+      if (e1) { setErr(e1.message); setBusy(false); return; }
+
+      // Replace assegnatari
+      await supabase.from('event_assignees').delete().eq('event_id', editingEvent.id);
+      if (assignees.length > 0) {
+        const rows = assignees.map((memberId) => ({ event_id: editingEvent.id, member_id: memberId }));
+        await supabase.from('event_assignees').insert(rows);
+      }
+      // Aggiungi nuove foto (le esistenti restano)
+      if (attachments.length > 0) {
+        for (const att of attachments) {
+          const timestamp = Date.now();
+          const fileName = `${timestamp}-${att.file.name}`;
+          const filePath = `events/${editingEvent.id}/${fileName}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('event-attachments').upload(filePath, att.file);
+          if (!uploadErr) {
+            try {
+              await supabase.from('event_attachments').insert({
+                event_id: editingEvent.id, file_path: filePath, file_name: att.file.name,
+              });
+            } catch (dbErr) { console.warn(dbErr); }
+          }
+        }
+      }
+      onUpdated && onUpdated();
+      return;
+    }
+
+    const { data: ev, error } = await supabase.from('events').insert({
+      ...payloadCommon,
+      created_by: authorMemberId || null,
     }).select().single();
 
     if (error) { setErr(error.message); setBusy(false); return; }
@@ -368,7 +426,7 @@ export default function AddEventModal({
           <div className="row" style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--sm)' }}>
             <button type="button" className="btn secondary" onClick={onClose} data-testid="add-event-cancel-btn">{t('cancel')}</button>
             <button type="submit" className="btn" disabled={busy || !title.trim() || !date} data-testid="add-event-submit-btn">
-              {busy ? <span className="spin" /> : t('add')}
+              {busy ? <span className="spin" /> : (isEdit ? t('save_changes') : t('add'))}
             </button>
           </div>
         </form>
