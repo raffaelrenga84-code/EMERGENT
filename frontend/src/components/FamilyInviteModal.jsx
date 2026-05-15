@@ -90,7 +90,14 @@ export default function FamilyInviteModal({ family, session, onClose }) {
   }, [family.id, session.user.id]);
 
   const inviteUrl = buildUrl(inviteToken);
-  const shareMessage = `Ti invito a unirti alla famiglia "${family.name}" su FAMMY! 🏡\n\nApri questo link:\n${inviteUrl}`;
+  const codeUpper = (family.invite_code || '').toUpperCase();
+  // Messaggio share: codice prominent + link come fallback
+  const shareMessage = codeUpper
+    ? `Ti aggiungo alla famiglia "${family.name}" su FAMMY 🏡\n\n` +
+      `Codice invito: ${codeUpper}\n\n` +
+      `Apri FAMMY, fai login con Google/Apple e inserisci il codice.\n` +
+      `Oppure usa il link: ${inviteUrl}`
+    : `Ti invito a unirti alla famiglia "${family.name}" su FAMMY! 🏡\n\nApri questo link:\n${inviteUrl}`;
 
   const copyToClipboard = async () => {
     try {
@@ -103,9 +110,14 @@ export default function FamilyInviteModal({ family, session, onClose }) {
   const shareViaWeb = async () => {
     if (navigator.share) {
       try {
+        // Stesso fix del bug URL doppio: passiamo il messaggio SENZA url nel
+        // text (l'OS appende l'url separatamente)
+        const textWithoutUrl = shareMessage
+          .replace(/\s*Oppure usa il link:\s*[^\s]+/g, '')
+          .replace(/Apri questo link:\s*[^\s]+/g, '');
         await navigator.share({
           title: `Invito a ${family.name}`,
-          text: shareMessage,
+          text: textWithoutUrl,
           url: inviteUrl,
         });
       } catch {}
@@ -184,8 +196,16 @@ export default function FamilyInviteModal({ family, session, onClose }) {
     setGenBusyId(null);
   };
 
-  const copyDedicated = async (memberId) => {
-    const entry = dedicatedLinks[memberId];
+  const copyCodeToClipboard = async () => {
+    if (!family.invite_code) return;
+    try {
+      await navigator.clipboard.writeText(family.invite_code.toUpperCase());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+
+  const copyDedicated = async (memberId) => {    const entry = dedicatedLinks[memberId];
     if (!entry) return;
     try {
       await navigator.clipboard.writeText(buildUrl(entry.token));
@@ -240,36 +260,87 @@ export default function FamilyInviteModal({ family, session, onClose }) {
           </div>
         ) : (
           <>
-            {/* ============ LINK GENERICO ============ */}
+            {/* ============ CODICE INVITO + LINK (hero block) ============ */}
             {inviteUrl && (
-              <div style={{ marginBottom: 16, padding: 12, background: 'var(--s)', borderRadius: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--k)', marginBottom: 8 }}>
-                  {t('invite_link_label')}
+              <div style={{
+                marginBottom: 16,
+                padding: '20px 16px',
+                background: 'linear-gradient(135deg, #fff 0%, var(--ab) 100%)',
+                border: '1.5px solid var(--sm)',
+                borderRadius: 18,
+                boxShadow: '0 4px 14px rgba(28,22,17,.06)',
+              }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 800, letterSpacing: '0.18em',
+                  color: 'var(--ac)', textTransform: 'uppercase',
+                  textAlign: 'center', marginBottom: 8,
+                }}>
+                  Codice invito
                 </div>
                 <div
+                  data-testid="invite-code-display"
+                  onClick={copyCodeToClipboard}
                   style={{
-                    padding: 10, background: 'white', border: '1px solid var(--sm)',
-                    borderRadius: 8, fontSize: 11, fontFamily: 'monospace',
-                    wordBreak: 'break-all', color: 'var(--km)', marginBottom: 8, lineHeight: 1.4,
+                    fontFamily: 'var(--fs)',
+                    fontSize: 42, fontWeight: 600, letterSpacing: '0.2em',
+                    color: 'var(--ac)', textAlign: 'center',
+                    marginBottom: 6, cursor: 'pointer',
+                    padding: '4px 0',
                   }}
+                  title="Tocca per copiare"
                 >
-                  {inviteUrl}
+                  {(family.invite_code || '------').toUpperCase()}
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  <button className="btn full secondary" onClick={copyToClipboard} style={{ flex: 1 }}>
-                    {copied ? '✓' : '📋'} {t('copy_btn')}
-                  </button>
-                  <button className="btn full secondary" onClick={shareViaWeb} style={{ flex: 1 }}>
-                    📤 Condividi
-                  </button>
+                <div style={{
+                  fontSize: 11, color: 'var(--km)', textAlign: 'center',
+                  marginBottom: 14, lineHeight: 1.45,
+                }}>
+                  Chi lo riceve apre FAMMY, fa login con Google/Apple<br />
+                  e inserisce questo codice per unirsi alla famiglia.
                 </div>
-                <button
-                  className="btn full secondary"
-                  onClick={shareViaWhatsApp}
-                  style={{ background: '#25D366', color: 'white', border: 'none' }}
-                >
-                  💬 WhatsApp
-                </button>
+
+                {/* Link (più piccolo, secondario) */}
+                <details style={{ marginBottom: 10 }}>
+                  <summary style={{
+                    fontSize: 11, color: 'var(--km)', cursor: 'pointer',
+                    textAlign: 'center', listStyle: 'none', padding: '6px 0',
+                  }}>
+                    🔗 oppure usa il link diretto
+                  </summary>
+                  <div style={{
+                    marginTop: 8, padding: 8, background: 'white',
+                    border: '1px solid var(--sm)', borderRadius: 8,
+                    fontSize: 10, fontFamily: 'monospace',
+                    wordBreak: 'break-all', color: 'var(--km)', lineHeight: 1.4,
+                  }}>
+                    {inviteUrl}
+                  </div>
+                </details>
+
+                {/* Action buttons grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  <ActionBtn
+                    testid="invite-share-btn"
+                    onClick={shareViaWeb}
+                    icon="📤"
+                    label="Condividi"
+                    color="var(--ac)"
+                  />
+                  <ActionBtn
+                    testid="invite-whatsapp-btn"
+                    onClick={shareViaWhatsApp}
+                    icon="💬"
+                    label="WhatsApp"
+                    color="#25D366"
+                  />
+                  <ActionBtn
+                    testid="invite-copy-btn"
+                    onClick={copyToClipboard}
+                    icon={copied ? '✓' : '📋'}
+                    label={copied ? 'Copiato!' : 'Copia link'}
+                    color="var(--km)"
+                  />
+                </div>
               </div>
             )}
 
@@ -429,5 +500,41 @@ export default function FamilyInviteModal({ family, session, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+
+function ActionBtn({ icon, label, onClick, color, testid }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testid}
+      style={{
+        padding: '12px 6px',
+        borderRadius: 14,
+        border: '1.5px solid var(--sm)',
+        background: 'white',
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
+        transition: 'all 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = color;
+        e.currentTarget.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--sm)';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+    >
+      <span style={{ fontSize: 22 }}>{icon}</span>
+      <span style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        {label}
+      </span>
+    </button>
   );
 }
