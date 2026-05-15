@@ -39,6 +39,22 @@ Supabase Dashboard → **Project Settings → Edge Functions → Secrets** →
 
 Ripeti per tutti e 4.
 
+### 3-bis. ⚠️ CRITICO — Disattiva "Verify JWT" per OGNI funzione
+
+Le 4 funzioni gestiscono internamente l'auth (via `supabaseUser.auth.getUser()`).
+Il toggle automatico di Supabase NON è compatibile con la nuova `sb_publishable_*`
+key + JWT ES256 e restituisce **401 "Invalid credentials"**.
+
+Per OGNI funzione (`ai-chat`, `ai-weekly-summary`, `ai-suggest-task`,
+`ai-gift-ideas`):
+
+1. Supabase Dashboard → **Edge Functions** → click sul nome della funzione
+2. Tab **Settings** (in alto, accanto a Overview / Invocations / Logs / Code)
+3. Trova il toggle **"Enforce JWT verification"** (o "Verify JWT") → **SPEGNILO**
+4. Click **Save**
+
+Senza questo step, le funzioni rispondono sempre 401 al frontend.
+
 ### 4. Test
 
 Apri la funzione → tab **Logs** per vedere eventuali errori in real-time.
