@@ -39,21 +39,35 @@ Supabase Dashboard → **Project Settings → Edge Functions → Secrets** →
 
 Ripeti per tutti e 4.
 
-### 3-bis. ⚠️ CRITICO — Disattiva "Verify JWT" per OGNI funzione
+### 3-bis. ⚠️ CRITICO — `verify_jwt = false` al MOMENTO del deploy
 
-Le 4 funzioni gestiscono internamente l'auth (via `supabaseUser.auth.getUser()`).
-Il toggle automatico di Supabase NON è compatibile con la nuova `sb_publishable_*`
-key + JWT ES256 e restituisce **401 "Invalid credentials"**.
+Il Dashboard Supabase deploya le Edge Functions con `verify_jwt = true` di
+default e l'opzione **non si vede più nella UI** (mostra solo il toggle
+legacy). Il gateway risponde sempre **401 `INVALID_CREDENTIALS`** finché
+`verify_jwt` non è disabilitato AL MOMENTO del deploy (non basta cambiarlo
+dopo via API).
 
-Per OGNI funzione (`ai-chat`, `ai-weekly-summary`, `ai-suggest-task`,
-`ai-gift-ideas`):
+**Workaround**: deploy via **Management API** con `verify_jwt:false` esplicito.
+Funziona da bash, da Postman, ovunque — richiede solo un Personal Access Token
+generato su https://supabase.com/dashboard/account/tokens.
 
-1. Supabase Dashboard → **Edge Functions** → click sul nome della funzione
-2. Tab **Settings** (in alto, accanto a Overview / Invocations / Logs / Code)
-3. Trova il toggle **"Enforce JWT verification"** (o "Verify JWT") → **SPEGNILO**
-4. Click **Save**
+```bash
+PAT="sbp_xxx"
+PROJECT="jwzoymvtxjzpymaywjtw"
+SLUG="ai-chat"   # ripeti per ai-weekly-summary, ai-suggest-task, ai-gift-ideas
 
-Senza questo step, le funzioni rispondono sempre 401 al frontend.
+cp ./ai-chat.ts /tmp/index.ts
+curl -X POST "https://api.supabase.com/v1/projects/${PROJECT}/functions/deploy?slug=${SLUG}" \
+  -H "Authorization: Bearer ${PAT}" \
+  -F "metadata={\"name\":\"${SLUG}\",\"entrypoint_path\":\"index.ts\",\"verify_jwt\":false}" \
+  -F "file=@/tmp/index.ts"
+```
+
+In alternativa via Supabase CLI: `supabase functions deploy ai-chat --no-verify-jwt`.
+
+**Non re-deployare le 4 funzioni AI dal Dashboard** (anche solo "Edit code" +
+"Save"): il deploy via UI re-imposta `verify_jwt=true` silenziosamente
+ignorando il setting precedente, e l'AI smette di funzionare con 401.
 
 ### 4. Test
 

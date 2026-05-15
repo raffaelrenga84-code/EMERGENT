@@ -82,6 +82,40 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 4 (15 maggio 2026 notte) — Fix 401 INVALID_CREDENTIALS Edge Functions
+
+### Problema riscontrato
+Dopo migrazione a Supabase Edge Functions (iter 3), le 4 funzioni AI rispondevano
+sempre **401 `{"message":"Invalid credentials","code":"INVALID_CREDENTIALS"}`**
+sul frontend (utente loggato con JWT ES256 valido).
+
+### Root cause
+Il Dashboard Supabase deploya le funzioni con `verify_jwt = true` di default e
+l'opzione **non è esposta nella UI** (mostra solo il toggle "Verify JWT with
+legacy secret"). Anche dopo aver disabilitato il legacy toggle, il gateway
+Supabase continuava a rifiutare con 401. La metadata `verify_jwt=false` via
+Management API non veniva applicata al runtime: solo un NUOVO DEPLOY con il
+flag esplicito risolve.
+
+### Fix applicato
+Re-deploy delle 4 funzioni AI via Supabase Management API con
+`verify_jwt: false` esplicito nel multipart metadata, usando un PAT temporaneo
+dell'utente (poi revocato).
+
+Stato finale:
+- `ai-chat`            v2  verify_jwt=false  ACTIVE ✅
+- `ai-weekly-summary`  v2  verify_jwt=false  ACTIVE ✅
+- `ai-suggest-task`    v2  verify_jwt=false  ACTIVE ✅
+- `ai-gift-ideas`      v2  verify_jwt=false  ACTIVE ✅
+
+Smoke test eseguito da curl: tutte le funzioni rispondono con output JSON
+strutturato da Gemini 2.5 Flash. Frontend pronto al test utente.
+
+### Documentazione aggiornata
+`/app/frontend/supabase/_dashboard_standalone/README.md` ora include la procedura
+Management API per i futuri redeploy + warning sul fatto di NON ri-deployare
+dal Dashboard UI (resetterebbe `verify_jwt` a true).
+
 ## Iterazione 3 (15 maggio 2026 sera) — GDPR / Compliance UE
 
 1. **Cookie consent banner** (`CookieConsentBanner.jsx`) — primo accesso, persiste in localStorage `fammy_consent` ("all" | "essential"), riapribile via custom event. Blocca `<Analytics />` finché l'utente non clicca "Accetta tutto".
