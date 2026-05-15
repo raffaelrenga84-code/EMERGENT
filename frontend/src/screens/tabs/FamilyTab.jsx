@@ -196,8 +196,21 @@ export default function FamilyTab({ family, members, session, families, activeFa
                     <button className="btn full secondary" onClick={() => setAddMemberToFamily(f)}>
                       {t('add_member')}
                     </button>
-                    <button className="btn full" onClick={() => setShowFamilyInvite(f)}>
-                      {t('invite_with_link')}
+                    <button
+                      className="btn full"
+                      onClick={() => setShowFamilyInvite(f)}
+                      data-testid={`family-invite-cta-${f.id}`}
+                      style={{
+                        background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
+                        color: 'white', border: 'none',
+                        padding: '12px 16px', borderRadius: 14,
+                        fontSize: 14, fontWeight: 700,
+                        boxShadow: '0 6px 18px rgba(193,98,75,0.28)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>💌</span>
+                      <span>{t('invite_with_link')}</span>
                     </button>
                   </div>
                 </>
@@ -292,8 +305,30 @@ export default function FamilyTab({ family, members, session, families, activeFa
         <button className="btn full secondary" onClick={() => setShowAdd(true)}>
           + {t('addmember_h')}
         </button>
-        <button className="btn full" onClick={() => setShowFamilyInvite(family)}>
-          {t('family_invite_link')}
+        <button
+          className="btn full"
+          onClick={() => setShowFamilyInvite(family)}
+          data-testid="family-invite-cta"
+          style={{
+            background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
+            color: 'white', border: 'none',
+            padding: '14px 18px', borderRadius: 16,
+            fontSize: 15, fontWeight: 700, letterSpacing: '0.01em',
+            boxShadow: '0 8px 22px rgba(193,98,75,0.32)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            cursor: 'pointer', transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 12px 28px rgba(193,98,75,0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 8px 22px rgba(193,98,75,0.32)';
+          }}
+        >
+          <span style={{ fontSize: 20 }}>💌</span>
+          <span>{t('family_invite_link')}</span>
         </button>
       </div>
 
@@ -404,12 +439,29 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], onEdit, onRemov
       {canInvite && (
         <button
           onClick={(e) => { e.stopPropagation(); onInvite(); }}
+          data-testid={`member-invite-btn-${member.id}`}
           style={{
-            background: 'var(--ab)', border: 'none', color: 'var(--ac)', fontSize: 12,
-            fontWeight: 600, padding: '6px 10px', borderRadius: 100,
+            background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
+            border: 'none', color: 'white',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.05em',
+            padding: '7px 14px', borderRadius: 100,
+            cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            boxShadow: '0 4px 12px rgba(193,98,75,0.32)',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(193,98,75,0.42)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(193,98,75,0.32)';
           }}
           title={t('invite_with_link')}>
-          💌
+          <span style={{ fontSize: 13 }}>💌</span>
+          <span>{t('invite_btn')}</span>
         </button>
       )}
       {!isMe && (
