@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
 import AISmartTaskHint from './AISmartTaskHint.jsx';
 
 function dateOffset(days) {
@@ -52,10 +53,19 @@ export default function AddTaskModal({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [attachments, setAttachments] = useState([]);
-  const [expandedFamilies, setExpandedFamilies] = useState({});
+  const [expandedFamilies, setExpandedFamilies] = useState(() => {
+    // In editing mode (modifica): tutte le tendine CHIUSE di default
+    // (l'utente vuole spazio per modificare, non scegliere assegnatari).
+    // In creazione: aperte (l'utente sta scegliendo a chi assegnare).
+    if (editingTask) return {};
+    return null; // null = auto-aperto (logica esistente: `!== false`)
+  });
   const [expandRecurring, setExpandRecurring] = useState(!!(editingTask?.recurring_days && editingTask.recurring_days.length > 0));
   const [onlyForMe, setOnlyForMe] = useState(false);
   const [recurrenceScope, setRecurrenceScope] = useState(editingTask?.recurring_until ? 'thisMonth' : 'forever');
+
+  const scrollableRef = useRef(null);
+  useKeyboardSafeModal(scrollableRef);
 
   // Carica gli assegnatari attuali in modo edit
   useEffect(() => {
@@ -258,7 +268,7 @@ export default function AddTaskModal({
         </div>
 
         <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+          <div ref={scrollableRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
             {/* === TITOLO + AI HINT === */}
             <label htmlFor="title">{t('addtask_title_label')}</label>
             <input id="title" className="input" autoFocus
@@ -356,14 +366,23 @@ export default function AddTaskModal({
               </div>
 
               {byFamily.map((g) => {
-                const isExpanded = expandedFamilies[g.family.id] !== false;
+                // expandedFamilies è:
+                //   null (creazione) → tutte aperte di default
+                //   {} (editing) → tutte chiuse di default
+                //   { [familyId]: bool } → override esplicito
+                const isExpanded = expandedFamilies === null
+                  ? true
+                  : expandedFamilies[g.family.id] === true;
                 const allSelected = g.members.length > 0 && g.members.every((m) => assignees.includes(m.id));
                 const selectedCount = g.members.filter((m) => assignees.includes(m.id)).length;
                 return (
                   <div key={g.family.id} style={{ marginBottom: 8, border: '1px solid var(--sm)', borderRadius: 12, overflow: 'hidden' }}>
                     <button type="button"
                       data-testid={`add-task-family-toggle-${g.family.id}`}
-                      onClick={() => setExpandedFamilies((p) => ({ ...p, [g.family.id]: !isExpanded }))}
+                      onClick={() => setExpandedFamilies((p) => ({
+                        ...(p || {}),
+                        [g.family.id]: !isExpanded,
+                      }))}
                       style={{
                         width: '100%', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8,
                         background: 'white', border: 'none', cursor: 'pointer', textAlign: 'left',

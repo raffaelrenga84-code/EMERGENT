@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
 
 function dateOffset(days) {
   const d = new Date();
@@ -30,10 +31,14 @@ export default function AddEventModal({
   const [recurringUntil, setRecurringUntil] = useState('');
   const [assignees, setAssignees] = useState([]);
   const [attachments, setAttachments] = useState([]);
+  // Tendine famiglia chiuse di default (più pulito e meno spazio)
   const [expandedFamilies, setExpandedFamilies] = useState({});
   const [onlyForMe, setOnlyForMe] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  const scrollableRef = useRef(null);
+  useKeyboardSafeModal(scrollableRef);
 
   const familiesArr = Array.isArray(families) ? families : [];
   const byFamily = familiesArr.map((f) => ({
@@ -153,7 +158,7 @@ export default function AddEventModal({
         </div>
 
         <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+          <div ref={scrollableRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
             {/* === TITOLO === */}
             <label htmlFor="ev-title">{t('addtask_title_label')}</label>
             <input id="ev-title" className="input" autoFocus
@@ -227,7 +232,7 @@ export default function AddEventModal({
                 </div>
 
                 {byFamily.map((g) => {
-                  const isExpanded = expandedFamilies[g.family.id] !== false;
+                  const isExpanded = expandedFamilies[g.family.id] === true;
                   const allSelected = g.members.every((m) => assignees.includes(m.id));
                   const selectedCount = g.members.filter((m) => assignees.includes(m.id)).length;
                   return (
