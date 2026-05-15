@@ -488,6 +488,8 @@ html[data-theme="dark"] .ai-pill-btn { background: rgba(255,255,255,.05); color:
   width: 44px; height: 44px; border-radius: 50%;
   background: linear-gradient(135deg, var(--gn), var(--ac));
   display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 22px;
+}
 
 /* AI action button (appears below an assistant message when the AI proposes
    to create a task / event). Visually distinct (sage-tinted) and warm. */
@@ -502,8 +504,41 @@ html[data-theme="dark"] .ai-pill-btn { background: rgba(255,255,255,.05); color:
 }
 .ai-action-btn:hover { background: var(--gn); color: white; transform: translateY(-1px); }
 
-  color: white; font-size: 22px;
+/* === GDPR Cookie Consent Banner === */
+.cookie-banner {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
+  padding: 16px max(16px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-right));
+  background: var(--s);
+  border-top: 1px solid var(--sd);
+  box-shadow: 0 -12px 30px rgba(28,22,17,.14);
+  animation: cookie-slide-up .35s ease-out;
 }
+@keyframes cookie-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.cookie-banner-inner {
+  max-width: 700px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.cookie-h { font-family: var(--fs); font-size: 19px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 4px; color: var(--k); }
+.cookie-p { font-size: 13px; color: var(--km); line-height: 1.5; margin: 0; }
+.cookie-link { background: none; border: none; padding: 0; font: inherit; color: var(--ac); text-decoration: underline; cursor: pointer; }
+.cookie-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cookie-btn { flex: 1 1 140px; min-height: 42px; }
+@media (min-width: 600px) {
+  .cookie-banner-inner { flex-direction: row; align-items: flex-end; }
+  .cookie-banner-inner > div:first-child { flex: 1; }
+  .cookie-actions { flex-shrink: 0; }
+  .cookie-btn { flex: 0 1 auto; }
+}
+
+/* Privacy policy body — typography for long-form legal text */
+.privacy-body { font-size: 14px; color: var(--k); line-height: 1.6; }
+.privacy-body h3 { font-family: var(--fs); font-weight: 500; font-size: 18px; margin: 20px 0 8px; letter-spacing: -0.01em; }
+.privacy-body p { margin: 0 0 12px; color: var(--km); }
+.privacy-body ul { margin: 0 0 12px 20px; color: var(--km); }
+.privacy-body li { margin-bottom: 4px; }
+.privacy-body a { color: var(--ac); }
+.privacy-body strong { color: var(--k); }
+
 .ai-drawer-title { font-family: var(--fs); font-size: 22px; font-weight: 500; line-height: 1; letter-spacing: -0.01em; }
 .ai-drawer-sub { font-size: 12px; color: var(--km); margin-top: 3px; }
 .ai-drawer-close { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--sm); color: var(--km); font-size: 18px; cursor: pointer; }

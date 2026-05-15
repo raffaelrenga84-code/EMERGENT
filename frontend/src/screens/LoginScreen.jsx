@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT, LANGS } from '../lib/i18n.jsx';
+import PrivacyPolicyModal from '../components/PrivacyPolicyModal.jsx';
 
 export default function LoginScreen() {
   const { t, lang, setLang } = useT();
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   const loginWithProvider = async (provider) => {
     setErrorMsg('');
@@ -70,6 +72,27 @@ export default function LoginScreen() {
       </div>
 
       {errorMsg && <div className="login-msg error" style={{ marginTop: 12 }}>{errorMsg}</div>}
+
+      <p style={{
+        position: 'absolute', bottom: 20, left: 0, right: 0, textAlign: 'center',
+        fontSize: 12, color: 'var(--km)', padding: '0 24px', lineHeight: 1.5,
+      }}>
+        {t('login_legal_pre')}{' '}
+        <button
+          type="button"
+          onClick={() => setShowPrivacy(true)}
+          data-testid="login-open-privacy"
+          style={{
+            background: 'none', border: 'none', padding: 0, font: 'inherit',
+            color: 'var(--ac)', textDecoration: 'underline', cursor: 'pointer',
+          }}
+        >
+          {t('privacy_h')}
+        </button>
+        .
+      </p>
+
+      {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
     </div>
   );
 }

@@ -82,12 +82,27 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 3 (15 maggio 2026 sera) — GDPR / Compliance UE
+
+1. **Cookie consent banner** (`CookieConsentBanner.jsx`) — primo accesso, persiste in localStorage `fammy_consent` ("all" | "essential"), riapribile via custom event. Blocca `<Analytics />` finché l'utente non clicca "Accetta tutto".
+2. **Privacy Policy modal** completa in IT/EN/FR/DE (chi siamo, dati raccolti, base giuridica, sub-processori Supabase/Vercel/Anthropic/Google, retention, diritti GDPR Art. 15-21, cookie, minori).
+3. **DataPrivacyScreen** dentro Profilo: 📦 esporta JSON, 🗑️ cancella account, 🍪 rivedi consenso cookie.
+4. **SQL RPC `delete_my_account()`** (`frontend/fammy-gdpr-delete.sql`) — `SECURITY DEFINER`, cancella in una transazione famiglie create + propri membri da famiglie altrui + push subs + profile + auth.users.
+5. **Bug CSS**: fixate 2 incongruenze di parsing in `styles.css` (regola `.ai-drawer-avatar` non chiusa + `}` orfana) che impedivano al banner di posizionarsi fixed.
+
+### 🎯 Risultati verificati con Playwright
+- ✅ Banner cookie compare al primo accesso (no consenso) — position fixed bottom, lingua browser
+- ✅ "Accept all" → consent="all" → banner sparisce → Analytics si attiva
+- ✅ "Essential only" → consent="essential" → Analytics NON caricato
+- ✅ Privacy Policy modal apre dal footer Login con tipografia editorial
+
 ## ⚠️ Azione richiesta dall'utente su Supabase
 Prima di testare i fix sopra, esegui sul tuo Supabase queste 2 cose:
 1. **Authentication → URL Configuration**
    - Site URL: `https://e1a8db2a-a625-4bd8-ad0d-2f9110b01597.preview.emergentagent.com`
    - Redirect URL: la stessa
 2. **SQL Editor**: incolla il contenuto di `frontend/fammy-add-birthdate.sql` e clicca Run. Questo aggiunge la colonna `birth_date` ai membri. Senza questa migration, i compleanni non funzionano (ma adesso almeno non rompe più la modifica del membro grazie al fallback).
+3. **SQL Editor (GDPR)**: incolla `frontend/fammy-gdpr-delete.sql` e premi Run. Installa la function `delete_my_account()` necessaria per la cancellazione GDPR Art. 17.
 
 ## Backlog Prioritizzato
 

@@ -10,6 +10,8 @@ import LoginScreen from './screens/LoginScreen.jsx';
 import WelcomeScreen from './screens/WelcomeScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import InviteAcceptScreen from './screens/InviteAcceptScreen.jsx';
+import CookieConsentBanner, { getConsent } from './components/CookieConsentBanner.jsx';
+import PrivacyPolicyModal from './components/PrivacyPolicyModal.jsx';
 
 // Applica preferenze utente (tema + accessibilità) al primo render
 applyTheme(getCurrentTheme());
@@ -27,6 +29,9 @@ export default function App() {
   const [families, setFamilies] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [inviteToken, setInviteToken] = useState(getInviteToken());
+  // GDPR: consenso cookie e modal privacy (entrambi accessibili anche da loggati e non).
+  const [consent, setConsent] = useState(() => getConsent());
+  const [showPrivacy, setShowPrivacy] = useState(false);
   // dataLoaded: true quando abbiamo gia' fatto almeno una fetch di profile+families
   // dopo aver ricevuto la session. Evita il "flash" di WelcomeScreen per utenti
   // esistenti mentre families e' ancora in caricamento.
@@ -125,7 +130,12 @@ export default function App() {
   return (
     <I18nProvider initialLang={lang}>
       {content}
-      <Analytics />
+      <CookieConsentBanner
+        onChange={(v) => setConsent(v)}
+        onOpenPrivacy={() => setShowPrivacy(true)}
+      />
+      {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
+      {consent === 'all' && <Analytics />}
     </I18nProvider>
   );
 }

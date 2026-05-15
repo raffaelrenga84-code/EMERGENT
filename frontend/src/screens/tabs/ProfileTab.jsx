@@ -5,12 +5,13 @@ import Avatar from '../../components/Avatar.jsx';
 import PricingScreen from '../sub/PricingScreen.jsx';
 import ThemeScreen from '../sub/ThemeScreen.jsx';
 import AccessibilityScreen from '../sub/AccessibilityScreen.jsx';
+import DataPrivacyScreen from '../sub/DataPrivacyScreen.jsx';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
 export default function ProfileTab({ session, profile, onChanged, notificationControl = {} }) {
   const { t, lang, setLang } = useT();
-  const [view, setView] = useState('main'); // main | plans | theme | a11y
+  const [view, setView] = useState('main'); // main | plans | theme | a11y | privacy
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(profile?.display_name || '');
   const [editingBirthday, setEditingBirthday] = useState(false);
@@ -22,6 +23,7 @@ export default function ProfileTab({ session, profile, onChanged, notificationCo
   if (view === 'plans') return <PricingScreen onBack={() => setView('main')} />;
   if (view === 'theme') return <ThemeScreen onBack={() => setView('main')} />;
   if (view === 'a11y') return <AccessibilityScreen onBack={() => setView('main')} />;
+  if (view === 'privacy') return <DataPrivacyScreen session={session} onBack={() => setView('main')} />;
 
   const saveName = async () => {
     if (!name.trim() || name === profile?.display_name) {
@@ -272,6 +274,7 @@ export default function ProfileTab({ session, profile, onChanged, notificationCo
           <SettingRow label={t('profile_plans')} onClick={() => setView('plans')} accent />
           <SettingRow label={t('profile_theme')} onClick={() => setView('theme')} />
           <SettingRow label={t('profile_accessibility')} onClick={() => setView('a11y')} />
+          <SettingRow label={t('profile_privacy')} onClick={() => setView('privacy')} />
         </div>
       </div>
 

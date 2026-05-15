@@ -291,6 +291,76 @@ export const T = {
     edit_member_h: 'Modifica membro', member_has_account_p: 'Questo membro ha un account.',
     member_no_account_p: 'Membro senza account.',
     open_prefilled_task: 'Crea questo incarico', open_prefilled_event: 'Crea questo evento',
+    // GDPR — cookie consent
+    cookie_h: 'Rispettiamo la tua privacy',
+    cookie_body: 'Usiamo Vercel Web Analytics per capire come viene usata l\'app e migliorarla. Puoi accettare tutto o solo l\'essenziale (autenticazione). La tua scelta è modificabile in qualsiasi momento dal Profilo.',
+    cookie_read_more: 'Leggi la Privacy Policy',
+    cookie_essential_only: 'Solo essenziali',
+    cookie_accept_all: 'Accetta tutto',
+    // GDPR — privacy modal
+    privacy_h: 'Privacy & Termini',
+    privacy_lastupdate: 'Ultimo aggiornamento:',
+    privacy_body_html: `
+      <h3>1. Chi siamo</h3>
+      <p>FAMMY è un'app di organizzazione familiare gestita da <strong>Raffael Renga</strong>. Per richieste sulla privacy puoi contattarci all'indirizzo che troverai nel footer del sito o nei tuoi documenti contrattuali.</p>
+      <h3>2. Quali dati raccogliamo</h3>
+      <ul>
+        <li><strong>Account</strong>: email, nome, foto profilo (forniti da Google in fase di login).</li>
+        <li><strong>Contenuti familiari</strong>: famiglie, membri, ruoli, date di nascita (facoltative), incarichi, eventi, spese che inserisci tu o gli altri membri.</li>
+        <li><strong>Tecnici</strong>: token di autenticazione, lingua, tema, preferenze accessibilità (salvati nel tuo dispositivo).</li>
+        <li><strong>Analytics</strong> (solo con consenso): pagine visitate, tempi di caricamento — anonimi, via Vercel Web Analytics.</li>
+        <li><strong>Cronologia chat AI</strong>: conservata sul nostro backend per mantenere il filo della conversazione.</li>
+      </ul>
+      <h3>3. Su che base giuridica</h3>
+      <p>Art. 6(1)(b) GDPR (esecuzione del contratto) per i dati strettamente necessari al servizio; Art. 6(1)(a) (consenso) per gli analytics e per le notifiche push.</p>
+      <h3>4. Con chi condividiamo i tuoi dati (sub-processori)</h3>
+      <ul>
+        <li><strong>Supabase Inc.</strong> (USA) — database e autenticazione. Trasferimento extra-UE coperto da Standard Contractual Clauses.</li>
+        <li><strong>Vercel Inc.</strong> (USA) — hosting frontend e analytics.</li>
+        <li><strong>Anthropic Inc.</strong> (USA) — modello AI Claude per le funzionalità di assistente (i prompt non vengono usati per addestrare il modello).</li>
+        <li><strong>Google LLC</strong> (USA) — autenticazione OAuth e avatar profilo.</li>
+      </ul>
+      <h3>5. Per quanto tempo conserviamo i tuoi dati</h3>
+      <p>I tuoi dati restano per tutto il tempo che mantieni l'account attivo. La cronologia chat AI viene conservata per 90 giorni. Quando elimini l'account dal Profilo, i dati vengono rimossi entro 24 ore.</p>
+      <h3>6. I tuoi diritti GDPR</h3>
+      <ul>
+        <li><strong>Art. 15 — Accesso</strong>: puoi scaricare tutti i tuoi dati in JSON dal tab Profilo → Privacy & dati.</li>
+        <li><strong>Art. 16 — Rettifica</strong>: puoi modificare nome, foto, compleanno, membri famiglia dall'app.</li>
+        <li><strong>Art. 17 — Cancellazione</strong>: pulsante "Cancella il mio account" nel tab Profilo → Privacy & dati.</li>
+        <li><strong>Art. 18 — Limitazione</strong>: contattaci per limitare il trattamento.</li>
+        <li><strong>Art. 20 — Portabilità</strong>: l'export JSON è anche portabile su altri sistemi.</li>
+        <li><strong>Art. 21 — Opposizione</strong>: revoca il consenso analytics dal Profilo → Privacy & dati → "Rivedi consenso cookie".</li>
+        <li><strong>Reclamo</strong>: puoi sempre reclamare al Garante per la Protezione dei Dati Personali (www.garanteprivacy.it).</li>
+      </ul>
+      <h3>7. Cookie e tecnologie simili</h3>
+      <p>Usiamo solo cookie/storage <strong>strettamente necessari</strong> (token di sessione Supabase, preferenze tema/lingua). Gli analytics di Vercel sono attivi solo se hai cliccato "Accetta tutto" nel banner.</p>
+      <h3>8. Minori</h3>
+      <p>L'app è per uso familiare. Non raccogliamo intenzionalmente dati di minori di 16 anni senza il consenso del genitore titolare dell'account.</p>
+    `,
+    // GDPR — screen
+    profile_privacy: '🔒 Privacy & dati',
+    gdpr_h: 'Privacy & dati',
+    gdpr_intro: 'I tuoi dati appartengono a te. Da qui puoi esercitare tutti i diritti GDPR previsti dalla legge.',
+    gdpr_policy_label: 'INFORMATIVA',
+    gdpr_policy_sub: 'Leggi quali dati raccogliamo, dove li trattiamo e quali sono i tuoi diritti.',
+    gdpr_policy_btn: 'Leggi Privacy & Termini',
+    gdpr_consent_label: 'CONSENSO COOKIE',
+    gdpr_consent_sub: 'Vuoi modificare la tua scelta sui cookie analitici? Riapri il banner.',
+    gdpr_consent_btn: 'Rivedi consenso cookie',
+    gdpr_export_label: 'ESPORTA I MIEI DATI',
+    gdpr_export_sub: 'Scarica un file JSON con tutti i dati delle tue famiglie (Art. 15 + 20 GDPR).',
+    gdpr_export_btn: 'Scarica i miei dati',
+    gdpr_export_done: '✅ Esportazione completata. Controlla la cartella Download.',
+    gdpr_delete_label: 'CANCELLA ACCOUNT',
+    gdpr_delete_sub: 'Elimina definitivamente account, famiglie create da te e tutti i dati associati. Le famiglie a cui ti hanno invitato resteranno (ma tu non ne farai più parte). Operazione irreversibile.',
+    gdpr_delete_btn: 'Cancella il mio account',
+    gdpr_delete_confirm_p: 'Per confermare scrivi DELETE in maiuscolo qui sotto.',
+    gdpr_delete_type_ph: 'Scrivi DELETE',
+    gdpr_delete_final_btn: 'Cancella per sempre',
+    gdpr_delete_rpc_missing: 'Funzione non installata sul database. Vai su Supabase → SQL Editor e incolla il contenuto di fammy-gdpr-delete.sql, poi riprova.',
+    // Login footer
+    login_legal_pre: 'Accedendo accetti i termini descritti nella nostra',
+    back: '‹ Indietro',
     invite_people_to: 'Invita persone a {name}',
     invite_share_hint: 'Condividi questo link con chi vuoi aggiungere alla famiglia. Quando lo apriranno, entreranno automaticamente.',
     invite_link_label: '🔗 Link di invito:',
@@ -608,6 +678,72 @@ export const T = {
     edit_member_h: 'Edit member', member_has_account_p: 'This member has an account.',
     member_no_account_p: 'Member without an account.',
     open_prefilled_task: 'Create this task', open_prefilled_event: 'Create this event',
+    cookie_h: 'We respect your privacy',
+    cookie_body: 'We use Vercel Web Analytics to understand how the app is used and improve it. You can accept all or stick to the essential ones (authentication). You can change your choice anytime from your Profile.',
+    cookie_read_more: 'Read the Privacy Policy',
+    cookie_essential_only: 'Essential only',
+    cookie_accept_all: 'Accept all',
+    privacy_h: 'Privacy & Terms',
+    privacy_lastupdate: 'Last updated:',
+    privacy_body_html: `
+      <h3>1. Who we are</h3>
+      <p>FAMMY is a family-organization app operated by <strong>Raffael Renga</strong>. For privacy requests, contact us at the address listed in the site footer or in your contract documents.</p>
+      <h3>2. Data we collect</h3>
+      <ul>
+        <li><strong>Account</strong>: email, name, profile picture (provided by Google when you sign in).</li>
+        <li><strong>Family content</strong>: families, members, roles, birth dates (optional), tasks, events, expenses you or other members enter.</li>
+        <li><strong>Technical</strong>: auth token, language, theme, accessibility preferences (stored on your device).</li>
+        <li><strong>Analytics</strong> (only with consent): pages visited, load times — anonymized, via Vercel Web Analytics.</li>
+        <li><strong>AI chat history</strong>: stored on our backend to keep the conversation context.</li>
+      </ul>
+      <h3>3. Legal basis</h3>
+      <p>GDPR Art. 6(1)(b) (performance of contract) for data strictly required to deliver the service; Art. 6(1)(a) (consent) for analytics and push notifications.</p>
+      <h3>4. Who we share data with (sub-processors)</h3>
+      <ul>
+        <li><strong>Supabase Inc.</strong> (USA) — database and authentication. Extra-EU transfer covered by Standard Contractual Clauses.</li>
+        <li><strong>Vercel Inc.</strong> (USA) — frontend hosting and analytics.</li>
+        <li><strong>Anthropic Inc.</strong> (USA) — Claude AI model for assistant features (prompts are not used to train the model).</li>
+        <li><strong>Google LLC</strong> (USA) — OAuth authentication and profile avatar.</li>
+      </ul>
+      <h3>5. How long we keep your data</h3>
+      <p>Your data stays as long as your account is active. AI chat history is kept for 90 days. When you delete your account from Profile, data is removed within 24 hours.</p>
+      <h3>6. Your GDPR rights</h3>
+      <ul>
+        <li><strong>Art. 15 — Access</strong>: download all your data as JSON from Profile → Privacy & data.</li>
+        <li><strong>Art. 16 — Rectification</strong>: edit name, photo, birthday, family members in the app.</li>
+        <li><strong>Art. 17 — Erasure</strong>: "Delete my account" button under Profile → Privacy & data.</li>
+        <li><strong>Art. 18 — Restriction</strong>: contact us to restrict processing.</li>
+        <li><strong>Art. 20 — Portability</strong>: the JSON export is portable to other systems.</li>
+        <li><strong>Art. 21 — Objection</strong>: withdraw analytics consent from Profile → Privacy & data → "Review cookie consent".</li>
+        <li><strong>Complaint</strong>: you can always file a complaint with your national data protection authority.</li>
+      </ul>
+      <h3>7. Cookies and similar technologies</h3>
+      <p>We only use <strong>strictly-necessary</strong> cookies/storage (Supabase session token, theme/language preferences). Vercel Analytics runs only if you clicked "Accept all" in the banner.</p>
+      <h3>8. Minors</h3>
+      <p>The app is for family use. We don't knowingly collect data about minors under 16 without the consent of the parent who owns the account.</p>
+    `,
+    profile_privacy: '🔒 Privacy & data',
+    gdpr_h: 'Privacy & data',
+    gdpr_intro: 'Your data belongs to you. From here you can exercise all GDPR rights granted by EU law.',
+    gdpr_policy_label: 'POLICY',
+    gdpr_policy_sub: 'Read what data we collect, where we process it, and your rights.',
+    gdpr_policy_btn: 'Read Privacy & Terms',
+    gdpr_consent_label: 'COOKIE CONSENT',
+    gdpr_consent_sub: 'Want to change your choice on analytics cookies? Re-open the banner.',
+    gdpr_consent_btn: 'Review cookie consent',
+    gdpr_export_label: 'EXPORT MY DATA',
+    gdpr_export_sub: 'Download a JSON file with all your families\' data (GDPR Art. 15 + 20).',
+    gdpr_export_btn: 'Download my data',
+    gdpr_export_done: '✅ Export complete. Check your Downloads folder.',
+    gdpr_delete_label: 'DELETE ACCOUNT',
+    gdpr_delete_sub: 'Permanently delete your account, families you created and all associated data. Families you were invited to will remain (but you\'ll no longer be part of them). This cannot be undone.',
+    gdpr_delete_btn: 'Delete my account',
+    gdpr_delete_confirm_p: 'To confirm, type DELETE in uppercase below.',
+    gdpr_delete_type_ph: 'Type DELETE',
+    gdpr_delete_final_btn: 'Delete forever',
+    gdpr_delete_rpc_missing: 'Function not installed in the database. Go to Supabase → SQL Editor and paste the contents of fammy-gdpr-delete.sql, then try again.',
+    login_legal_pre: 'By signing in you accept the terms described in our',
+    back: '‹ Back',
     invite_people_to: 'Invite people to {name}',
     invite_share_hint: 'Share this link with anyone you want to add to the family. When they open it, they will join automatically.',
     invite_link_label: '🔗 Invite link:',
@@ -968,6 +1104,71 @@ export const T = {
     edit_member_h: 'Modifier le membre', member_has_account_p: 'Ce membre a un compte.',
     member_no_account_p: 'Membre sans compte.',
     open_prefilled_task: 'Créer cette tâche', open_prefilled_event: 'Créer cet événement',
+    cookie_h: 'Nous respectons ta vie privée',
+    cookie_body: 'Nous utilisons Vercel Web Analytics pour comprendre comment l\'app est utilisée et l\'améliorer. Tu peux tout accepter ou ne garder que l\'essentiel (authentification). Tu peux changer d\'avis à tout moment depuis Profil.',
+    cookie_read_more: 'Lire la Politique de confidentialité',
+    cookie_essential_only: 'Essentiel uniquement',
+    cookie_accept_all: 'Tout accepter',
+    privacy_h: 'Confidentialité & Conditions',
+    privacy_lastupdate: 'Dernière mise à jour :',
+    privacy_body_html: `
+      <h3>1. Qui sommes-nous</h3>
+      <p>FAMMY est une app d\'organisation familiale exploitée par <strong>Raffael Renga</strong>. Pour les demandes de confidentialité, contacte-nous via le pied de page du site ou tes documents contractuels.</p>
+      <h3>2. Données collectées</h3>
+      <ul>
+        <li><strong>Compte</strong> : email, nom, photo de profil (fournis par Google).</li>
+        <li><strong>Contenu familial</strong> : familles, membres, rôles, dates de naissance (optionnelles), tâches, événements, dépenses.</li>
+        <li><strong>Technique</strong> : token d\'auth, langue, thème, accessibilité (stockés sur ton appareil).</li>
+        <li><strong>Analytics</strong> (avec consentement uniquement) : pages visitées, temps de chargement — anonymes via Vercel Web Analytics.</li>
+        <li><strong>Historique chat IA</strong> : conservé sur notre backend pour maintenir le contexte.</li>
+      </ul>
+      <h3>3. Base juridique</h3>
+      <p>Art. 6(1)(b) RGPD (exécution du contrat) pour les données strictement nécessaires ; Art. 6(1)(a) (consentement) pour les analytics et notifications push.</p>
+      <h3>4. Sous-traitants</h3>
+      <ul>
+        <li><strong>Supabase Inc.</strong> (USA) — base de données et authentification (clauses contractuelles types).</li>
+        <li><strong>Vercel Inc.</strong> (USA) — hébergement et analytics.</li>
+        <li><strong>Anthropic Inc.</strong> (USA) — Claude IA pour l\'assistant (les prompts ne servent pas à entraîner le modèle).</li>
+        <li><strong>Google LLC</strong> (USA) — OAuth et avatar.</li>
+      </ul>
+      <h3>5. Durée de conservation</h3>
+      <p>Tes données restent tant que ton compte est actif. L\'historique chat IA : 90 jours. Suppression du compte → effacement sous 24 h.</p>
+      <h3>6. Tes droits RGPD</h3>
+      <ul>
+        <li>Art. 15 — Accès : télécharge tes données en JSON depuis Profil.</li>
+        <li>Art. 16 — Rectification : modifie dans l\'app.</li>
+        <li>Art. 17 — Effacement : bouton "Supprimer mon compte".</li>
+        <li>Art. 20 — Portabilité : l\'export JSON est portable.</li>
+        <li>Art. 21 — Opposition : retire le consentement analytics.</li>
+        <li>Réclamation : auprès de la CNIL.</li>
+      </ul>
+      <h3>7. Cookies</h3>
+      <p>Uniquement des cookies <strong>strictement nécessaires</strong> (session Supabase, préférences). Analytics Vercel actif uniquement si tu as cliqué "Tout accepter".</p>
+      <h3>8. Mineurs</h3>
+      <p>L\'app est à usage familial. Pas de collecte intentionnelle de données pour les mineurs de moins de 16 ans sans le consentement du parent titulaire du compte.</p>
+    `,
+    profile_privacy: '🔒 Confidentialité & données',
+    gdpr_h: 'Confidentialité & données',
+    gdpr_intro: 'Tes données t\'appartiennent. Tu peux exercer ici tous les droits RGPD.',
+    gdpr_policy_label: 'POLITIQUE',
+    gdpr_policy_sub: 'Lis quelles données nous collectons et tes droits.',
+    gdpr_policy_btn: 'Lire la politique',
+    gdpr_consent_label: 'CONSENTEMENT COOKIES',
+    gdpr_consent_sub: 'Changer ton choix sur les cookies analytiques ? Réouvre la bannière.',
+    gdpr_consent_btn: 'Revoir le consentement',
+    gdpr_export_label: 'EXPORTER MES DONNÉES',
+    gdpr_export_sub: 'Télécharge un fichier JSON avec toutes les données de tes familles (Art. 15 + 20).',
+    gdpr_export_btn: 'Télécharger mes données',
+    gdpr_export_done: '✅ Export terminé. Vérifie ton dossier Téléchargements.',
+    gdpr_delete_label: 'SUPPRIMER LE COMPTE',
+    gdpr_delete_sub: 'Supprime définitivement ton compte, les familles que tu as créées et toutes les données associées. Action irréversible.',
+    gdpr_delete_btn: 'Supprimer mon compte',
+    gdpr_delete_confirm_p: 'Pour confirmer, écris DELETE en majuscules ci-dessous.',
+    gdpr_delete_type_ph: 'Écris DELETE',
+    gdpr_delete_final_btn: 'Supprimer pour toujours',
+    gdpr_delete_rpc_missing: 'Fonction non installée. Va sur Supabase → SQL Editor et colle le contenu de fammy-gdpr-delete.sql.',
+    login_legal_pre: 'En te connectant, tu acceptes les conditions de notre',
+    back: '‹ Retour',
     invite_people_to: 'Inviter des personnes à {name}',
     invite_share_hint: 'Partage ce lien avec les personnes que tu veux ajouter à la famille. Quand elles l\'ouvriront, elles rejoindront automatiquement.',
     invite_link_label: '🔗 Lien d\'invitation:',
@@ -1319,6 +1520,71 @@ export const T = {
     edit_member_h: 'Mitglied bearbeiten', member_has_account_p: 'Dieses Mitglied hat ein Konto.',
     member_no_account_p: 'Mitglied ohne Konto.',
     open_prefilled_task: 'Diese Aufgabe erstellen', open_prefilled_event: 'Dieses Ereignis erstellen',
+    cookie_h: 'Wir respektieren deine Privatsphäre',
+    cookie_body: 'Wir verwenden Vercel Web Analytics, um die App zu verbessern. Du kannst alles akzeptieren oder nur das Notwendige (Authentifizierung). Deine Wahl kannst du jederzeit im Profil ändern.',
+    cookie_read_more: 'Datenschutzerklärung lesen',
+    cookie_essential_only: 'Nur notwendige',
+    cookie_accept_all: 'Alle akzeptieren',
+    privacy_h: 'Datenschutz & AGB',
+    privacy_lastupdate: 'Zuletzt aktualisiert:',
+    privacy_body_html: `
+      <h3>1. Wer wir sind</h3>
+      <p>FAMMY ist eine Familienorganisations-App, betrieben von <strong>Raffael Renga</strong>. Für Datenschutzanfragen kontaktiere uns über den Footer der Website oder deine Vertragsdokumente.</p>
+      <h3>2. Erhobene Daten</h3>
+      <ul>
+        <li><strong>Konto</strong>: E-Mail, Name, Profilbild (von Google bereitgestellt).</li>
+        <li><strong>Familieninhalte</strong>: Familien, Mitglieder, Rollen, Geburtsdaten (optional), Aufgaben, Ereignisse, Ausgaben.</li>
+        <li><strong>Technisch</strong>: Auth-Token, Sprache, Theme, Barrierefreiheit (auf deinem Gerät gespeichert).</li>
+        <li><strong>Analytics</strong> (nur mit Einwilligung): besuchte Seiten, Ladezeiten — anonym via Vercel.</li>
+        <li><strong>KI-Chatverlauf</strong>: auf unserem Backend gespeichert, um den Kontext zu erhalten.</li>
+      </ul>
+      <h3>3. Rechtsgrundlage</h3>
+      <p>Art. 6(1)(b) DSGVO (Vertragserfüllung) für notwendige Daten; Art. 6(1)(a) (Einwilligung) für Analytics und Push-Benachrichtigungen.</p>
+      <h3>4. Auftragsverarbeiter</h3>
+      <ul>
+        <li><strong>Supabase Inc.</strong> (USA) — Datenbank und Auth (Standardvertragsklauseln).</li>
+        <li><strong>Vercel Inc.</strong> (USA) — Hosting & Analytics.</li>
+        <li><strong>Anthropic Inc.</strong> (USA) — Claude KI (Prompts werden nicht zum Training verwendet).</li>
+        <li><strong>Google LLC</strong> (USA) — OAuth & Avatar.</li>
+      </ul>
+      <h3>5. Speicherdauer</h3>
+      <p>Deine Daten bleiben, solange dein Konto aktiv ist. KI-Chatverlauf: 90 Tage. Bei Kontolöschung → Entfernung innerhalb von 24 h.</p>
+      <h3>6. Deine DSGVO-Rechte</h3>
+      <ul>
+        <li>Art. 15 — Auskunft: lade deine Daten als JSON aus dem Profil herunter.</li>
+        <li>Art. 16 — Berichtigung: ändere in der App.</li>
+        <li>Art. 17 — Löschung: Button "Mein Konto löschen".</li>
+        <li>Art. 20 — Datenübertragbarkeit: JSON-Export.</li>
+        <li>Art. 21 — Widerspruch: ziehe die Analytics-Einwilligung zurück.</li>
+        <li>Beschwerde: beim zuständigen Datenschutzbeauftragten.</li>
+      </ul>
+      <h3>7. Cookies</h3>
+      <p>Nur <strong>notwendige</strong> Cookies/Storage (Supabase-Session, Einstellungen). Vercel Analytics nur bei "Alle akzeptieren".</p>
+      <h3>8. Minderjährige</h3>
+      <p>App zur familiären Nutzung. Keine bewusste Erhebung von Daten unter 16-Jähriger ohne Einwilligung der Eltern.</p>
+    `,
+    profile_privacy: '🔒 Datenschutz & Daten',
+    gdpr_h: 'Datenschutz & Daten',
+    gdpr_intro: 'Deine Daten gehören dir. Hier kannst du alle DSGVO-Rechte ausüben.',
+    gdpr_policy_label: 'RICHTLINIE',
+    gdpr_policy_sub: 'Lies, welche Daten wir sammeln und deine Rechte.',
+    gdpr_policy_btn: 'Datenschutz lesen',
+    gdpr_consent_label: 'COOKIE-ZUSTIMMUNG',
+    gdpr_consent_sub: 'Möchtest du deine Wahl bei Analytics-Cookies ändern? Banner erneut öffnen.',
+    gdpr_consent_btn: 'Zustimmung überprüfen',
+    gdpr_export_label: 'MEINE DATEN EXPORTIEREN',
+    gdpr_export_sub: 'Lade eine JSON-Datei mit allen Familiendaten herunter (Art. 15 + 20).',
+    gdpr_export_btn: 'Meine Daten herunterladen',
+    gdpr_export_done: '✅ Export abgeschlossen. Sieh im Downloads-Ordner nach.',
+    gdpr_delete_label: 'KONTO LÖSCHEN',
+    gdpr_delete_sub: 'Lösche Konto, erstellte Familien und alle Daten dauerhaft. Nicht rückgängig.',
+    gdpr_delete_btn: 'Mein Konto löschen',
+    gdpr_delete_confirm_p: 'Zur Bestätigung schreibe unten DELETE in Großbuchstaben.',
+    gdpr_delete_type_ph: 'DELETE schreiben',
+    gdpr_delete_final_btn: 'Für immer löschen',
+    gdpr_delete_rpc_missing: 'Funktion nicht installiert. Gehe zu Supabase → SQL Editor und füge den Inhalt von fammy-gdpr-delete.sql ein.',
+    login_legal_pre: 'Mit der Anmeldung akzeptierst du die Bedingungen unserer',
+    back: '‹ Zurück',
     invite_people_to: 'Personen zu {name} einladen',
     invite_share_hint: 'Teile diesen Link mit jedem, den du zur Familie hinzufügen möchtest. Beim Öffnen tritt er automatisch bei.',
     invite_link_label: '🔗 Einladungslink:',
