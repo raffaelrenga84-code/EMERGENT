@@ -120,6 +120,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
       <BirthdayReminder members={members} session={session} familyId={familyId} families={families} />
 
       <WeeklySummaryCard
+        familyId={isAll ? null : familyId}
         familyName={
           isAll
             ? `${families?.length || 1} famiglie`

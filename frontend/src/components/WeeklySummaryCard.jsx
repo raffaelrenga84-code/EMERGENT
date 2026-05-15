@@ -19,20 +19,34 @@ function isoWeekKey(d = new Date()) {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
-export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [], events = [], expenses = [], members = [] }) {
+export default function WeeklySummaryCard({ familyId = null, familyName = 'Famiglia', tasks = [], events = [], expenses = [], members = [] }) {
   const { t, lang } = useT();
   const [data, setData] = useState(null); // { summary, highlights }
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
-  const cacheKey = `fammy_weekly_summary_${familyName}_${isoWeekKey()}_${lang}`;
+  // Difesa contro race condition: se è selezionata una singola famiglia,
+  // filtriamo i task/eventi/spese/membri per family_id qui DENTRO il componente.
+  // Così se il padre passa ancora la lista "All" mentre Supabase fetch è in volo,
+  // il riepilogo include solo quello della famiglia attiva.
+  const fTasks = familyId ? (tasks || []).filter((x) => x.family_id === familyId) : (tasks || []);
+  const fEvents = familyId ? (events || []).filter((x) => x.family_id === familyId) : (events || []);
+  const fExpenses = familyId ? (expenses || []).filter((x) => x.family_id === familyId) : (expenses || []);
+  const fMembers = familyId ? (members || []).filter((x) => x.family_id === familyId) : (members || []);
+
+  // "Firma" dei dati: cambia quando il numero di task o il primo id cambia.
+  // Inclusa nelle dipendenze dell'effect così, dopo che Supabase finisce di
+  // caricare i nuovi dati, il riepilogo si rigenera correttamente.
+  const tasksSig = `${fTasks.length}:${fTasks[0]?.id || ''}`;
+
+  const cacheKey = `fammy_weekly_summary_${familyId || 'all'}_${isoWeekKey()}_${lang}_${tasksSig}`;
 
   const buildPayload = () => {
     const now = new Date();
     const oneWeekAgo = new Date(now); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     const oneWeekAhead = new Date(now); oneWeekAhead.setDate(oneWeekAhead.getDate() + 7);
 
-    const completed = (tasks || [])
+    const completed = fTasks
       .filter((t) => t.status === 'done')
       .filter((t) => {
         if (!t.updated_at && !t.created_at) return true;
@@ -42,12 +56,12 @@ export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [],
       .slice(0, 20)
       .map((t) => t.title);
 
-    const pending = (tasks || [])
+    const pending = fTasks
       .filter((t) => t.status !== 'done')
       .slice(0, 15)
       .map((t) => t.title);
 
-    const upcomingEvents = (events || [])
+    const upcomingEvents = fEvents
       .filter((ev) => {
         const d = new Date(ev.starts_at);
         return d >= now && d <= oneWeekAhead;
@@ -55,21 +69,21 @@ export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [],
       .slice(0, 10)
       .map((ev) => {
         const d = new Date(ev.starts_at);
-        return `${ev.title} — ${d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}`;
+        return `${ev.title} — ${d.toLocaleDateString(lang, { day: 'numeric', month: 'short' })}`;
       });
 
-    const totalExpenses = (expenses || [])
+    const totalExpenses = fExpenses
       .filter((e) => {
         if (!e.created_at) return false;
         return new Date(e.created_at) >= oneWeekAgo;
       })
       .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    const upcomingBirthdays = (members || [])
-      .filter((m) => m.birthdate)
+    const upcomingBirthdays = fMembers
+      .filter((m) => m.birth_date)
       .map((m) => {
         const today = new Date();
-        const b = new Date(m.birthdate);
+        const b = new Date(m.birth_date);
         const next = new Date(today.getFullYear(), b.getMonth(), b.getDate());
         if (next < today) next.setFullYear(today.getFullYear() + 1);
         const days = Math.round((next - today) / 86400000);
@@ -114,17 +128,19 @@ export default function WeeklySummaryCard({ familyName = 'Famiglia', tasks = [],
     }
   };
 
-  // Show the card only if there's enough material to summarise.
-  const hasMaterial = (tasks?.length || 0) > 0 || (events?.length || 0) > 0;
+  // Show the card only if there's enough material to summarise (FILTERED data).
+  const hasMaterial = fTasks.length > 0 || fEvents.length > 0;
 
   useEffect(() => {
     if (hasMaterial) {
-      // Reset and refetch whenever language or family changes
+      // Reset and refetch whenever language, family or task signature changes.
+      // tasksSig change handles the race where tasks load asynchronously
+      // after the user switches family.
       setData(null);
       fetchSummary(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMaterial, familyName, lang]);
+  }, [hasMaterial, familyId, familyName, lang, tasksSig]);
 
   if (!hasMaterial) return null;
 
