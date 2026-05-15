@@ -82,6 +82,43 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 12 (15 maggio 2026, mattina prestissimo) — Codice invito famiglia
+
+### Anti-doppione robusto via codice invito (no email)
+L'utente ha fatto notare che basarsi sull'email per dedupare gli account è
+fragile (una persona può avere Google→gmail + Apple→icloud + Magic→hotmail =
+3 utenti distinti). Soluzione: codice invito di 6 caratteri (alfanumerico,
+no caratteri ambigui 0/O/1/I/L), come Splitwise/WhatsApp.
+
+### Nuovi file
+1. **`fammy-invite-code.sql`** — colonna `families.invite_code text unique`,
+   trigger auto-generate per nuove famiglie, backfill per famiglie esistenti,
+   RPC SECURITY DEFINER `accept_family_by_code(p_code, p_name)` che:
+   - Trova la famiglia case-insensitive
+   - Se l'utente è GIÀ membro → ritorna `already_member: true` senza creare duplicato
+   - Altrimenti crea il `members` row con `user_id = auth.uid()`
+2. **`JoinFamilyByCodeModal.jsx`** — input visuale 6 char (auto-uppercase,
+   filtra non-alfanum, formatta in stile keypad). Stato success/error friendly.
+   Già pronto per i18n se serve in futuro.
+
+### Wire-up
+3. **`FamilyInviteModal.jsx`** rifatto: hero block con codice grande
+   (Cormorant 42px, letter-spacing 0.2em, tap-to-copy), link in `<details>`
+   collapsabile, 3 action button compatti (Condividi/WhatsApp/Copia).
+   Bug fix shareViaWeb: stesso bug URL doppio risolto (text senza url, OS
+   appende url separatamente).
+4. **WelcomeScreen.jsx**: nuova HubCard "🎟️ Ho un codice invito" subito
+   sotto "Crea famiglia".
+5. **FamilyTab.jsx**: bottone tratteggiato "🎟️ Ho un codice invito" affianco
+   al "Nuova famiglia" (vista Tutte) — anche per chi è già loggato.
+
+### Flusso end-to-end
+- A (owner) crea famiglia → trigger genera codice MX68YV
+- A apre Famiglia → "Invita" → vede il codice grande, lo manda via WhatsApp
+- B riceve "Codice: MX68YV", apre FAMMY, login Google
+- B atterra in WelcomeScreen → tap "Ho un codice invito" → digita MX68YV → unito
+- Se B aveva già un altro account (Apple) e tenta di rifare il join → `already_member: true`, no doppione
+
 ## Iterazione 11 (15 maggio 2026, dopo mezzanotte) — Bug-fix share + onboarding
 
 ### Bug fix: URL doppio nel messaggio "Invita amici"

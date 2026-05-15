@@ -6,6 +6,7 @@ import AddMemberModal from '../../components/AddMemberModal.jsx';
 import EditMemberModal from '../../components/EditMemberModal.jsx';
 import EditFamilyModal from '../../components/EditFamilyModal.jsx';
 import FamilyInviteModal from '../../components/FamilyInviteModal.jsx';
+import JoinFamilyByCodeModal from '../../components/JoinFamilyByCodeModal.jsx';
 
 // Mostra il ruolo nella lingua corrente. Preset → traduzione `role_<id>`.
 // I ruoli "custom" inseriti dall'utente vengono mostrati così come sono.
@@ -26,6 +27,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
   const [inviteMenuOpen, setInviteMenuOpen] = useState(null);
   const [editingFamilyAll, setEditingFamilyAll] = useState(null);
   const [addMemberToFamily, setAddMemberToFamily] = useState(null); // family object da vista Tutte
+  const [showJoinCode, setShowJoinCode] = useState(false);
 
   const toggleFamilyExpanded = (familyId) => {
     setExpandedFamilies((prev) => ({ ...prev, [familyId]: !prev[familyId] }));
@@ -204,9 +206,15 @@ export default function FamilyTab({ family, members, session, families, activeFa
           );
         })}
 
-        <div style={{ padding: '8px 16px 16px' }}>
-          <button className="btn full secondary" onClick={onNewFamily} style={{ borderStyle: 'dashed' }}>
+        <div style={{ padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button className="btn full secondary" onClick={onNewFamily} style={{ borderStyle: 'dashed' }}
+            data-testid="family-tab-new-family-btn">
             {t('new_family_btn')}
+          </button>
+          <button className="btn full secondary" onClick={() => setShowJoinCode(true)}
+            data-testid="family-tab-join-code-btn"
+            style={{ borderStyle: 'dashed' }}>
+            🎟️ Ho un codice invito
           </button>
         </div>
 
@@ -240,6 +248,14 @@ export default function FamilyTab({ family, members, session, families, activeFa
             family={showFamilyInvite}
             session={session}
             onClose={() => setShowFamilyInvite(null)}
+          />
+        )}
+
+        {showJoinCode && (
+          <JoinFamilyByCodeModal
+            profile={null}
+            onClose={() => setShowJoinCode(false)}
+            onJoined={() => { setShowJoinCode(false); onChanged && onChanged(); }}
           />
         )}
       </>
@@ -311,6 +327,14 @@ export default function FamilyTab({ family, members, session, families, activeFa
           family={showFamilyInvite}
           session={session}
           onClose={() => setShowFamilyInvite(null)}
+        />
+      )}
+
+      {showJoinCode && (
+        <JoinFamilyByCodeModal
+          profile={null}
+          onClose={() => setShowJoinCode(false)}
+          onJoined={() => { setShowJoinCode(false); onChanged && onChanged(); }}
         />
       )}
     </>

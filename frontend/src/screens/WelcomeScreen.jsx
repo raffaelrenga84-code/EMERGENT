@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
+import JoinFamilyByCodeModal from '../components/JoinFamilyByCodeModal.jsx';
 
 const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '❤️', '🌟', '🍝'];
 
@@ -16,6 +17,7 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem('fammy_onboarding_done'); } catch (e) { return false; }
   });
+  const [showJoinCode, setShowJoinCode] = useState(false);
 
   const initial = (profile?.avatar_letter || (profile?.display_name || 'U').charAt(0)).toUpperCase();
 
@@ -71,6 +73,7 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
 
       <div className="hub-cards">
         <HubCard emoji="👨‍👩‍👧‍👦" title={t('hub_card_family_t')} subtitle={t('hub_card_family_s')} onClick={() => setView('family')} />
+        <HubCard emoji="🎟️" title="Ho un codice invito" subtitle="Unisciti a una famiglia esistente" onClick={() => setShowJoinCode(true)} />
         <HubCard emoji="✅" title={t('hub_card_task_t')} subtitle={t('hub_card_task_s')} onClick={() => setView('task')} />
         <HubCard emoji="📅" title={t('hub_card_event_t')} subtitle={t('hub_card_event_s')} onClick={() => setView('event')} />
         <HubCard emoji="👀" title={t('hub_card_demo_t')} subtitle={t('hub_card_demo_s')} onClick={() => setView('demo')} />
@@ -85,6 +88,14 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
         onClick={() => supabase.auth.signOut()}>
         {t('logout')}
       </button>
+
+      {showJoinCode && (
+        <JoinFamilyByCodeModal
+          profile={profile}
+          onClose={() => setShowJoinCode(false)}
+          onJoined={() => { setShowJoinCode(false); onCreated && onCreated(); }}
+        />
+      )}
     </div>
   );
 }
