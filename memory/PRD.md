@@ -82,6 +82,30 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 7 (15 maggio 2026, fine giornata) — Polish UX + Event detail + filtri Agenda
+
+### Polish UX
+1. **Errore AI 503/429/network friendly** in `WeeklySummaryCard.jsx`:
+   detect raw error, mostra messaggio user-friendly (no più JSON crudo) + bottone "Riprova".
+   Nuove i18n keys: `ai_err_generic`, `ai_err_busy`, `ai_err_quota`, `ai_err_network`, `retry` (IT/EN).
+2. **Pull-to-refresh** via nuovo hook `usePullToRefresh.jsx`: tira giù in cima a
+   qualunque tab → re-fetch completo. Spinner animato 36px in cima. Su mobile
+   touch-only, soglia 70px, dedupe con lock di 600ms post-refresh.
+3. **UpdateBanner** ora è un **toast compatto in basso** (era un mega blocco
+   in cima che mangiava lo schermo). Auto-dismiss e tap per ricaricare.
+
+### Agenda — filtri + dettaglio eventi
+4. **Toggle "👤 Solo a me"** sopra al calendario: filtra eventi (via
+   `event_assignees` o `created_by == me`) e task (via `assigned_to` o
+   `author_id == me`). Mostra il count dei risultati quando attivo.
+5. **EventDetailModal** nuovo componente: click su una event card → apre
+   modale con data+ora, luogo, descrizione, **lista assegnatari** con avatar +
+   **galleria foto** con signed URL (bucket privato `event-attachments`) +
+   lightbox click-to-zoom. Eliminazione solo per il creator.
+6. **Notifica push "Sei stato assegnato a un evento"**: listener realtime su
+   INSERT in `event_assignees`, risolve `member_id → user_id`, notifica se
+   è me e l'autore dell'evento è diverso (no auto-notifica).
+
 ## Iterazione 6 (15 maggio 2026 sera++) — Unificazione modali Task/Event + nuovi campi
 
 ### Refactor frontend

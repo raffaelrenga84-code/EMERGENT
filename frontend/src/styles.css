@@ -388,6 +388,7 @@ html[data-reduced-motion="true"] *::after {
   border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; vertical-align: middle; }
 .spin.dark { border-color: rgba(28,22,17,.2); border-top-color: var(--k); }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fammy-spin { to { transform: rotate(360deg); } }
 
 
 /* =================================================================

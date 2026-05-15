@@ -203,12 +203,36 @@ export function useEventNotifications(session, profile, families, events, taskAs
       })
       .subscribe();
 
+    // EVENT ASSIGNEES — quando qualcuno mi assegna a un evento, notifico
+    const eventAssigneesChannel = supabase
+      .channel('rt-event-assignees')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'event_assignees',
+      }, async (payload) => {
+        const row = payload.new;
+        // Risolvi member -> user_id per capire se l'INSERT riguarda l'utente corrente
+        const { data: m } = await supabase
+          .from('members').select('user_id, name').eq('id', row.member_id).maybeSingle();
+        if (!m || m.user_id !== session.user.id) return;
+        // Recupera dettagli evento
+        const { data: ev } = await supabase
+          .from('events').select('title, starts_at, created_by').eq('id', row.event_id).maybeSingle();
+        if (!ev) return;
+        // Non notificare se sono io ad assegnarmi (creatore == me)
+        const myMember = (members || []).find((mm) => mm.user_id === session.user.id);
+        if (myMember && ev.created_by === myMember.id) return;
+        showEventAssigneeNotification(ev);
+        if (typeof onDataChange === 'function') onDataChange();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(tasksChannel);
       supabase.removeChannel(eventsChannel);
       supabase.removeChannel(expensesChannel);
       supabase.removeChannel(assigneesChannel);
       supabase.removeChannel(responsesChannel);
+      supabase.removeChannel(eventAssigneesChannel);
     };
   }, [families, members, session?.user?.id, notificationPermission, notificationsEnabled, onDataChange]);
 
@@ -476,8 +500,22 @@ function showWeeklyAISummaryNotification() {
   notification.addEventListener('click', () => { window.focus(); notification.close(); });
 }
 
-function showDailyDigestNotification(taskCount, eventCount) {
+function showEventAssigneeNotification(ev) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  const when = ev.starts_at ? new Date(ev.starts_at) : null;
+  const whenStr = when
+    ? when.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) +
+      ' alle ' + when.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+    : '';
+  const n = new Notification('📅 Sei stato assegnato a un evento', {
+    body: whenStr ? `${ev.title} · ${whenStr}` : ev.title,
+    icon: '/icon.png', badge: '/icon.png',
+    tag: `event-assignee-${ev.title}`, requireInteraction: false,
+  });
+  n.addEventListener('click', () => { window.focus(); n.close(); });
+}
+
+function showDailyDigestNotification(taskCount, eventCount) {  if (typeof Notification === 'undefined' || !('Notification' in window)) return;
   // Italiano colloquiale, plurale corretto
   const parts = [];
   if (taskCount > 0) parts.push(taskCount === 1 ? '1 incarico' : `${taskCount} incarichi`);

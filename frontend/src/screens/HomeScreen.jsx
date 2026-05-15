@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useEventNotifications } from '../lib/useEventNotifications.jsx';
+import { usePullToRefresh } from '../lib/usePullToRefresh.jsx';
 import BachecaTab from './tabs/BachecaTab.jsx';
 import AgendaTab from './tabs/AgendaTab.jsx';
 import SpeseTab from './tabs/SpeseTab.jsx';
@@ -109,6 +110,9 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
   const refresh = () => setRefreshKey((k) => k + 1);
   const refreshAll = () => { refresh(); onRefresh && onRefresh(); };
 
+  // Pull-to-refresh: tira giù il dito in cima a qualsiasi tab → re-fetch
+  const { indicator: pullIndicator } = usePullToRefresh(refreshAll);
+
   const isAll = activeFamily === 'all';
   const family = isAll ? null : families.find((f) => f.id === activeFamily);
   const me = isAll
@@ -122,6 +126,7 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
 
   return (
     <div className="scr">
+      {pullIndicator}
       {showUpdateBanner && <UpdateBanner onDismiss={() => setShowUpdateBanner(false)} />}
 
       {showOnboarding && (

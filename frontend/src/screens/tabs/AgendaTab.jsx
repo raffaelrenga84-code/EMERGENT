@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
 import AddEventModal from '../../components/AddEventModal.jsx';
+import EventDetailModal from '../../components/EventDetailModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import CalendarShareModal from '../../components/CalendarShareModal.jsx';
 import ExportAllCalendarsModal from '../../components/ExportAllCalendarsModal.jsx';
@@ -99,6 +100,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
   const [selTask, setSelTask] = useState(null);
+  const [selEvent, setSelEvent] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showExportAll, setShowExportAll] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => {
@@ -106,12 +108,41 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   });
   const [selectedDay, setSelectedDay] = useState(null);
   const [openSections, setOpenSections] = useState({ today: true, future: true, past: false });
+  const [onlyMine, setOnlyMine] = useState(false);
+  const [eventAssignees, setEventAssignees] = useState([]);
+
+  // Carica gli assegnatari di eventi per il filtro "Solo a me"
+  useEffect(() => {
+    let cancelled = false;
+    const evIds = (events || []).map((e) => e.id);
+    if (evIds.length === 0) { setEventAssignees([]); return; }
+    supabase.from('event_assignees').select('event_id, member_id').in('event_id', evIds)
+      .then(({ data }) => { if (!cancelled) setEventAssignees(data || []); });
+    return () => { cancelled = true; };
+  }, [events]);
 
   const expandedEvents = expandEvents(events);
   // Task con due_date che non sono done, da mostrare in calendario/agenda.
   // Espandi le ricorrenze (settimanali + giorni del mese).
   const baseDueTasks = (tasks || []).filter((tk) => tk.due_date && tk.status !== 'done');
   const dueTasks = expandTasks(baseDueTasks);
+
+  // Filtro "Solo a me": eventi dove ci sono assegnato (event_assignees) o ne sono autore,
+  // task dove sono assigned_to o author_id
+  const myEventIds = new Set(eventAssignees.filter((a) => a.member_id === me?.id).map((a) => a.event_id));
+  const filterEvent = (ev) => {
+    if (!onlyMine) return true;
+    if (!me?.id) return false;
+    const origId = ev._origId || ev.id;
+    return myEventIds.has(origId) || ev.created_by === me.id;
+  };
+  const filterTask = (tk) => {
+    if (!onlyMine) return true;
+    if (!me?.id) return false;
+    return tk.assigned_to === me.id || tk.author_id === me.id;
+  };
+  const filteredEvents = expandedEvents.filter(filterEvent);
+  const filteredTasks = dueTasks.filter(filterTask);
 
   const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
@@ -121,21 +152,21 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const endOfToday = new Date(referenceDay.getFullYear(), referenceDay.getMonth(), referenceDay.getDate() + 1);
 
   // Eventi suddivisi per data
-  const todayEvents = expandedEvents.filter((e) => {
+  const todayEvents = filteredEvents.filter((e) => {
     const d = new Date(e.starts_at);
     return d >= startOfToday && d < endOfToday;
   });
-  const futureEvents = expandedEvents.filter((e) => new Date(e.starts_at) >= endOfToday);
-  const pastEvents = expandedEvents.filter((e) => new Date(e.starts_at) < startOfToday);
+  const futureEvents = filteredEvents.filter((e) => new Date(e.starts_at) >= endOfToday);
+  const pastEvents = filteredEvents.filter((e) => new Date(e.starts_at) < startOfToday);
 
   // Task suddivisi per data
   const taskDate = (tk) => new Date(tk.due_date + 'T09:00:00');
-  const todayTasks = dueTasks.filter((tk) => {
+  const todayTasks = filteredTasks.filter((tk) => {
     const d = taskDate(tk);
     return d >= startOfToday && d < endOfToday;
   });
-  const futureTasks = dueTasks.filter((tk) => taskDate(tk) >= endOfToday);
-  const pastTasks = dueTasks.filter((tk) => taskDate(tk) < startOfToday);
+  const futureTasks = filteredTasks.filter((tk) => taskDate(tk) >= endOfToday);
+  const pastTasks = filteredTasks.filter((tk) => taskDate(tk) < startOfToday);
 
   // Conteggi totali (eventi + task)
   const todayCount = todayEvents.length + todayTasks.length;
@@ -162,7 +193,9 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
     ].sort((a, b) => a.date - b.date);
 
     return items.slice(0, 80).map((it) => it.kind === 'event' ? (
-      <EventCard key={`e-${it.data.id}`} event={it.data} me={me} family={isAll ? getFamily(it.data) : null} past={past} onRemove={() => removeEvent(it.data)} />
+      <EventCard key={`e-${it.data.id}`} event={it.data} me={me} family={isAll ? getFamily(it.data) : null} past={past}
+        onRemove={() => removeEvent(it.data)}
+        onClick={() => setSelEvent(it.data)} />
     ) : (
       <TaskAsEventCard key={`t-${it.data.id}`} task={it.data} family={isAll ? getFamily(it.data) : null} past={past} onClick={() => {
         // Se è un'istanza ricorrente, apri il task originale dal DB
@@ -224,13 +257,37 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
 
       <MonthGrid
         month={viewMonth}
-        events={expandedEvents}
-        tasks={dueTasks}
+        events={filteredEvents}
+        tasks={filteredTasks}
         selectedDay={selectedDay}
         onSelectDay={(d) => setSelectedDay(selectedDay && sameDay(selectedDay, d) ? null : d)}
         onPrev={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
         onNext={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
       />
+
+      {me?.id && (
+        <div style={{ padding: '0 16px 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            data-testid="agenda-only-mine-toggle"
+            onClick={() => setOnlyMine((v) => !v)}
+            style={{
+              padding: '6px 12px', borderRadius: 100, border: '1.5px solid',
+              borderColor: onlyMine ? 'var(--k)' : 'var(--sm)',
+              background: onlyMine ? 'var(--k)' : 'white',
+              color: onlyMine ? 'white' : 'var(--km)',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+            {onlyMine ? '✓ Solo a me' : '👤 Solo a me'}
+          </button>
+          {onlyMine && (
+            <span style={{ fontSize: 11, color: 'var(--km)' }}>
+              {filteredEvents.length + filteredTasks.length} risultat{(filteredEvents.length + filteredTasks.length) === 1 ? 'o' : 'i'}
+            </span>
+          )}
+        </div>
+      )}
 
       {targetFamily && (
         <div style={{ padding: '4px 16px 12px', display: 'flex', gap: 8, flexDirection: 'column' }}>
@@ -298,6 +355,17 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
           authorMemberId={me?.id}
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); onChanged(); }}
+        />
+      )}
+
+      {selEvent && (
+        <EventDetailModal
+          event={selEvent}
+          families={families}
+          members={members}
+          me={me}
+          onClose={() => setSelEvent(null)}
+          onChanged={onChanged}
         />
       )}
 
@@ -480,11 +548,18 @@ function CollapsibleSection({ label, count, open, onToggle, children, accent }) 
   );
 }
 
-function EventCard({ event, me, family, past, onRemove }) {
+function EventCard({ event, me, family, past, onRemove, onClick }) {
   const start = new Date(event.starts_at);
   const canDelete = !event.created_by || event.created_by === me?.id;
+  const handleCardClick = (e) => {
+    // Non scattare onClick se l'utente ha cliccato il bottone elimina
+    if (e.target.closest('button')) return;
+    onClick && onClick();
+  };
   return (
-    <div className="card" style={{ opacity: past ? 0.6 : 1 }}>
+    <div className="card" data-testid={`event-card-${event.id}`}
+      onClick={handleCardClick}
+      style={{ opacity: past ? 0.6 : 1, cursor: onClick ? 'pointer' : 'default' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <div className="event-date">
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase' }}>

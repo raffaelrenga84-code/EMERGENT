@@ -122,7 +122,17 @@ export default function WeeklySummaryCard({ familyId = null, familyName = 'Famig
       setData(res);
       try { localStorage.setItem(cacheKey, JSON.stringify(res)); } catch (e) {}
     } catch (e) {
-      setErr(e.message || 'Errore');
+      // Mappa errori comuni in messaggi friendly (no raw JSON all'utente)
+      const raw = (e?.message || '').toLowerCase();
+      let friendly = t('ai_err_generic') || 'Non sono riuscito a generare il riepilogo. Riprova tra poco.';
+      if (raw.includes('503') || raw.includes('unavailable') || raw.includes('overloaded') || raw.includes('high demand')) {
+        friendly = t('ai_err_busy') || 'L\'AI è sovraccarica in questo momento. Riprova tra qualche istante.';
+      } else if (raw.includes('429') || raw.includes('rate') || raw.includes('quota')) {
+        friendly = t('ai_err_quota') || 'Hai raggiunto il limite gratuito di richieste AI. Riprova più tardi.';
+      } else if (raw.includes('network') || raw.includes('fetch') || raw.includes('failed to')) {
+        friendly = t('ai_err_network') || 'Sembra che la connessione sia instabile. Controlla internet e riprova.';
+      }
+      setErr(friendly);
     } finally {
       setLoading(false);
     }
@@ -160,7 +170,17 @@ export default function WeeklySummaryCard({ familyId = null, familyName = 'Famig
       )}
 
       {err && !data && (
-        <div style={{ fontSize: 13, color: 'var(--rd)' }}>⚠️ {err}</div>
+        <div data-testid="weekly-summary-error">
+          <div style={{ fontSize: 13, color: 'var(--rd)', marginBottom: 10, lineHeight: 1.45 }}>⚠️ {err}</div>
+          <button
+            className="ai-pill-btn"
+            onClick={() => fetchSummary(true)}
+            disabled={loading}
+            data-testid="weekly-summary-retry"
+          >
+            <RefreshCw size={12} /> {loading ? t('regenerating') : (t('retry') || 'Riprova')}
+          </button>
+        </div>
       )}
 
       {data && (
