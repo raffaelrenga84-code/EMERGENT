@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase.js';
 import { useT, LANGS } from '../../lib/i18n.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import FamilyMemoriesCard from '../../components/FamilyMemoriesCard.jsx';
+import OnboardingTour from '../../components/OnboardingTour.jsx';
 import PricingScreen from '../sub/PricingScreen.jsx';
 import ThemeScreen from '../sub/ThemeScreen.jsx';
 import AccessibilityScreen from '../sub/AccessibilityScreen.jsx';
@@ -20,6 +21,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [editingColor, setEditingColor] = useState(false);
   const [color, setColor] = useState(profile?.avatar_color || '#1C1611');
   const [busy, setBusy] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   if (view === 'plans') return <PricingScreen onBack={() => setView('main')} />;
   if (view === 'theme') return <ThemeScreen onBack={() => setView('main')} />;
@@ -77,11 +79,17 @@ export default function ProfileTab({ session, profile, families = [], members = 
 
   const shareApp = async () => {
     const url = window.location.origin;
-    const message = t('profile_referral_msg', { url });
+    // Bug fix: prima il `text` conteneva {url} interpolato, e poi `navigator.share`
+    // aggiungeva ANCHE `url` come campo separato → su WhatsApp appariva 2 volte.
+    // Soluzione: 2 versioni del messaggio, una "stand-alone" per clipboard
+    // (con url inline), l'altra per navigator.share (senza url nel text, perché
+    // il sistema operativo appende url).
+    const messageWithUrl = t('profile_referral_msg', { url });
+    const messageBare = t('profile_referral_msg', { url: '' }).replace(/[\s:]*$/, '');
     if (navigator.share) {
-      try { await navigator.share({ title: 'FAMMY', text: message, url }); } catch {}
+      try { await navigator.share({ title: 'FAMMY', text: messageBare, url }); } catch {}
     } else {
-      try { await navigator.clipboard.writeText(message); alert(t('share_copied')); } catch {}
+      try { await navigator.clipboard.writeText(messageWithUrl); alert(t('share_copied')); } catch {}
     }
   };
 
@@ -298,7 +306,23 @@ export default function ProfileTab({ session, profile, families = [], members = 
         <p style={{ fontSize: 13, color: 'var(--km)', margin: '0 0 12px', lineHeight: 1.4 }}>
           {t('profile_referral_sub')}
         </p>
-        <button className="btn full" onClick={shareApp}>{t('profile_referral_btn')}</button>
+        <button className="btn full" onClick={shareApp} data-testid="profile-referral-btn">{t('profile_referral_btn')}</button>
+        <p style={{ fontSize: 11, color: 'var(--km)', margin: '10px 4px 0', lineHeight: 1.45, textAlign: 'center' }}>
+          💡 Per inviti dentro una famiglia, usa la sezione <strong>Famiglia → Invita</strong>.
+        </p>
+      </div>
+
+      {/* Riguarda il tour */}
+      <div className="profile-section">
+        <div className="profile-label" style={{ marginBottom: 8 }}>🎓 Tour & aiuto</div>
+        <button
+          type="button"
+          className="btn full secondary"
+          onClick={() => setShowTour(true)}
+          data-testid="profile-show-tour-btn"
+        >
+          ✨ Rivedi il tour di benvenuto
+        </button>
       </div>
 
       <div className="profile-section" style={{ borderBottom: 'none' }}>
@@ -307,6 +331,10 @@ export default function ProfileTab({ session, profile, families = [], members = 
           {t('profile_app_info')}
         </p>
       </div>
+
+      {showTour && (
+        <OnboardingTour onClose={() => setShowTour(false)} />
+      )}
     </div>
   );
 }

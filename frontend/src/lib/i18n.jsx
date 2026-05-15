@@ -128,9 +128,9 @@ export const T = {
 
     // ProfileTab — referral
     profile_referral_h: 'Condividi FAMMY',
-    profile_referral_sub: 'Manda l\'app a un amico. Se gli piace, useremo entrambi un\'app più viva.',
-    profile_referral_btn: '💝 Invita amici a usare FAMMY',
-    profile_referral_msg: 'Ti consiglio FAMMY, l\'app per coordinare la famiglia senza chat infinite. Provalo: {url}',
+    profile_referral_sub: 'Manda l\'app a un amico nuovo che ancora non usa FAMMY. Se gli piace, useremo entrambi un\'app più viva.',
+    profile_referral_btn: '💝 Invita un amico nuovo',
+    profile_referral_msg: 'Ti consiglio FAMMY, l\'app per coordinare la famiglia senza chat infinite. Provala qui: {url}',
 
     // Profile sub-screens
     profile_back: '← Indietro',
@@ -534,9 +534,9 @@ export const T = {
     family_export_calendar: '📅 Export to phone calendar',
 
     profile_referral_h: 'Share FAMMY',
-    profile_referral_sub: 'Send the app to a friend. The more we are, the better it gets.',
-    profile_referral_btn: '💝 Invite friends to use FAMMY',
-    profile_referral_msg: 'I recommend FAMMY, the app to coordinate family without endless chats. Try it: {url}',
+    profile_referral_sub: 'Send the app to a new friend who doesn\'t use FAMMY yet. The more we are, the better it gets.',
+    profile_referral_btn: '💝 Invite a new friend',
+    profile_referral_msg: 'I recommend FAMMY, the app to coordinate family without endless chats. Try it here: {url}',
 
     profile_back: '← Back',
     profile_plans: '👑 Plans & pricing',

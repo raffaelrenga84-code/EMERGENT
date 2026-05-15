@@ -82,6 +82,31 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 11 (15 maggio 2026, dopo mezzanotte) — Bug-fix share + onboarding
+
+### Bug fix: URL doppio nel messaggio "Invita amici"
+Quando `ProfileTab.shareApp()` chiamava `navigator.share({ text, url })`:
+- il `text` conteneva già `{url}` interpolato → `"... Provalo: https://farxer.com"`
+- e `navigator.share` aggiungeva di nuovo `url` come campo separato
+- risultato su WhatsApp: l'URL appariva DUE volte di seguito
+
+Fix: usiamo 2 versioni del messaggio:
+- `messageBare` (senza url) per `navigator.share` → l'OS appende l'url
+- `messageWithUrl` (con url inline) per il fallback clipboard
+
+### Migliorie testo referral
+- Pulsante: **"💝 Invita un amico nuovo"** (era "Invita amici a usare FAMMY", troppo vago)
+- Sub: chiarito che è per chi *ancora non usa* FAMMY
+- Hint sotto: "Per inviti dentro una famiglia, usa Famiglia → Invita"
+- Tradotto in IT/EN (FR/DE invariati per ora)
+
+### Onboarding mostrato anche su WelcomeScreen
+- `OnboardingTour` (componente esistente, 4 slide: benvenuto / 3 tab / multi-famiglia / aggiungi a Home) era montato solo in `HomeScreen.jsx`. Ma i nuovi utenti senza famiglia atterrano su `WelcomeScreen.jsx`, dove non lo vedevano.
+- Aggiunto import + mount con stesso check `localStorage('fammy_onboarding_done')` → tour visibile in tutti i casi.
+
+### Bottone "Rivedi il tour" nel Profilo
+Nuova sezione "🎓 Tour & aiuto" in `ProfileTab` con bottone full-width "✨ Rivedi il tour di benvenuto" — utile per chi vuole rivedere/spiegare ad altri.
+
 ## Iterazione 10 (15 maggio 2026, mezzanotte) — Memorie filtrate + AI auto-collapse + anti-doppione invito
 
 ### Family Memories — upgrade

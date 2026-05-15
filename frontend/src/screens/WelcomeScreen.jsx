@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import OnboardingTour from '../components/OnboardingTour.jsx';
 
 const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '❤️', '🌟', '🍝'];
 
@@ -8,6 +9,13 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
   const { t } = useT();
   const [view, setView] = useState('hub'); // 'hub' | 'family' | 'task' | 'event' | 'demo'
   const [busy, setBusy] = useState(false);
+  // Mostra il tour onboarding la prima volta (anche prima di creare famiglia).
+  // HomeScreen ha la stessa logica → se l'utente atterra qui per la prima
+  // volta vede il tour qui; se atterra direttamente in Home (es. via invito)
+  // lo vede lì.
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return !localStorage.getItem('fammy_onboarding_done'); } catch (e) { return false; }
+  });
 
   const initial = (profile?.avatar_letter || (profile?.display_name || 'U').charAt(0)).toUpperCase();
 
@@ -48,6 +56,9 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
 
   return (
     <div className="hub-wrap">
+      {showOnboarding && (
+        <OnboardingTour onClose={() => setShowOnboarding(false)} />
+      )}
       <div className="hub-greeting">
         <div className="av" style={{ width: 36, height: 36, fontSize: 14, borderRadius: 12, background: profile?.avatar_color || '#1C1611' }}>
           {initial}
