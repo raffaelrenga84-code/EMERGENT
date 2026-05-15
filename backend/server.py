@@ -213,19 +213,17 @@ async def ai_chat(req: ChatRequest):
     )
 
     try:
-        # Replay last 10 turns of this session for true multi-turn behaviour
-        history = await db.chat_messages.find(
-            {"session_id": session_id}, {"_id": 0}
-        ).sort("created_at", 1).to_list(20)
+        # Replay last 10 user turns of this session for true multi-turn behaviour.
+        # We fetch the *latest* user messages (sort desc, then reverse to chronological order).
+        history_desc = await db.chat_messages.find(
+            {"session_id": session_id, "role": "user"}, {"_id": 0}
+        ).sort("created_at", -1).to_list(10)
+        history = list(reversed(history_desc))
 
         chat = new_chat(session_id, system_message)
-        # Replay prior turns so model has context (LlmChat is stateless per instance)
+        # Replay prior user turns so model has context (LlmChat is stateless per instance).
         for h in history:
-            if h.get("role") == "user":
-                await chat.send_message(UserMessage(text=h["content"]))
-                # Note: we intentionally don't replay assistant responses;
-                # LlmChat keeps its own internal turns once user msgs are sent.
-                # To keep latency reasonable we cap history at last 10 user turns.
+            await chat.send_message(UserMessage(text=h["content"]))
 
         reply = await chat.send_message(UserMessage(text=req.message))
 
