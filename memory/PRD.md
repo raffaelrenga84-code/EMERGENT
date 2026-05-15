@@ -82,6 +82,43 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 8 (15 maggio 2026, sera tardi) — Push ad app chiusa + Family Memories
+
+### Push notifications ad app chiusa (Web Push)
+1. **VAPID keys** generate per FAMMY:
+   - Public:  `BAzrdbzuKWMEgL4t32QPuGQ6CeNyS8wEFZwNjaHAJQ4iNMtAMi7D-wOLgi3-aIfl__xgF0cEjp62up74MXf7WW8`
+   - Private: `hUbqJkSVAbCapkzkAPeUYQnjIjkgInpyMnkmAW3c3ok` (mai esporre al frontend)
+2. **`fammy-push-notifications.sql`** (NUOVO):
+   - Tabella `push_subscriptions(user_id, endpoint, p256dh, auth, …)` + RLS
+   - Estensioni `pg_cron` + `pg_net`
+   - Schema `fammy_private` con tabella `config` (per service_role_key)
+   - Helper SECURITY DEFINER `trigger_daily_digest()` e `trigger_weekly_summary()`
+   - 2 job pg_cron: daily 19:00 UTC (≈21:00 IT) + weekly Sunday 20:00 UTC
+3. **Edge Function `send-push.ts`** (NUOVO): Web Push singolo invio.
+   Riceve `{user_id|user_ids, title, body}`, invia a tutte le subs dell'utente
+   via libreria `web-push` su Deno, auto-pulisce le subs 404/410 scadute.
+4. **Edge Function `cron-digest.ts`** (NUOVO): chiamata da pg_cron via pg_net.
+   `kind=daily` → per ogni utente subscritto, conta tasks/eventi domani
+   e invia "🌙 Pronto per domani?" (skip se totale 0 → no spam).
+   `kind=weekly` → conta tasks done settimana + eventi prossima settimana
+   e invia "✨ Riepilogo della settimana".
+5. **Frontend `.env`**: aggiunto `VITE_VAPID_PUBLIC_KEY`. Hook
+   `usePushSubscription.js` (già esistente) ora funziona end-to-end.
+6. **Service Worker push handler** già presente in `public/sw.js`.
+
+### Family Memories
+- **`FamilyMemoriesCard.jsx`** (NUOVO): galleria mensile auto-aggregata.
+  Query: `task_attachments` + `event_attachments` JOIN su family_id,
+  filtro per mese (created_at). Lightbox con navigazione ← →,
+  emoji stagionale per ogni mese (❄️💝🌷🌸🌺☀️🏖️🌻🍂🎃🍁🎄),
+  signed URLs su bucket privati, supporto navigazione mese precedente/futuro.
+- Integrata in **ProfileTab** come prima sezione dopo profile info.
+
+### Documentazione (`_dashboard_standalone/README.md`)
+Aggiornato con sezione completa "Push notifications ad app chiusa — setup":
+step A (VAPID), B (Vercel env), C (Supabase Secrets), D (deploy via Management
+API), E (SQL), F (config insert), G (test curl).
+
 ## Iterazione 7 (15 maggio 2026, fine giornata) — Polish UX + Event detail + filtri Agenda
 
 ### Polish UX

@@ -202,7 +202,7 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
           />
         )}
         {activeTab === 'profile' && (
-          <ProfileTab session={session} profile={profile} onChanged={refreshAll} notificationControl={notificationControl} />
+          <ProfileTab session={session} profile={profile} families={families} onChanged={refreshAll} notificationControl={notificationControl} />
         )}
       </div>
 
