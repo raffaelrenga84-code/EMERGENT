@@ -23,7 +23,12 @@ function expandEvents(events) {
     }
     const start = new Date(ev.starts_at);
     const until = ev.recurring_until ? new Date(ev.recurring_until) : horizonEnd;
-    expanded.push(ev);
+    const exceptions = new Set(ev.recurring_exceptions || []);
+    // L'occorrenza "originale" (start) la mostriamo SOLO se non è in eccezioni
+    const startDateKey = start.toISOString().slice(0, 10);
+    if (!exceptions.has(startDateKey)) {
+      expanded.push(ev);
+    }
 
     const cursor = new Date(start);
     cursor.setDate(cursor.getDate() + 1);
@@ -32,13 +37,17 @@ function expandEvents(events) {
       if (ev.recurring_days.includes(wd)) {
         const occ = new Date(cursor);
         occ.setHours(start.getHours(), start.getMinutes(), start.getSeconds());
-        expanded.push({
-          ...ev,
-          id: `${ev.id}__${occ.toISOString().slice(0, 10)}`,
-          _origId: ev.id,
-          starts_at: occ.toISOString(),
-          _isRecurringInstance: true,
-        });
+        const occDateKey = occ.toISOString().slice(0, 10);
+        if (!exceptions.has(occDateKey)) {
+          expanded.push({
+            ...ev,
+            id: `${ev.id}__${occDateKey}`,
+            _origId: ev.id,
+            starts_at: occ.toISOString(),
+            _isRecurringInstance: true,
+            _occurrenceDate: occDateKey,
+          });
+        }
       }
       cursor.setDate(cursor.getDate() + 1);
     }
@@ -66,28 +75,32 @@ function expandTasks(tasks) {
 
     const start = new Date(tk.due_date + 'T00:00:00');
     const until = tk.recurring_until ? new Date(tk.recurring_until + 'T23:59:59') : horizonEnd;
-    expanded.push(tk);
+    const exceptions = new Set(tk.recurring_exceptions || []);
+    if (!exceptions.has(tk.due_date)) {
+      expanded.push(tk);
+    }
 
     const weekdays = tk.recurring_days.filter((v) => v <= 6);
-    // I giorni del mese sono salvati come (giorno + 6) per distinguerli dai weekdays.
-    // Es. il giorno 10 è memorizzato come 16. Decodifichiamo per il confronto con dom.
     const monthDays = tk.recurring_days.filter((v) => v > 6).map((v) => v - 6);
 
     const cursor = new Date(start);
     cursor.setDate(cursor.getDate() + 1);
     while (cursor <= until) {
-      const wd = (cursor.getDay() + 6) % 7; // 0=Lun..6=Dom
+      const wd = (cursor.getDay() + 6) % 7;
       const dom = cursor.getDate();
       const matches = weekdays.includes(wd) || monthDays.includes(dom);
       if (matches) {
         const occDate = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
-        expanded.push({
-          ...tk,
-          id: `${tk.id}__${occDate}`,
-          _origId: tk.id,
-          due_date: occDate,
-          _isRecurringInstance: true,
-        });
+        if (!exceptions.has(occDate)) {
+          expanded.push({
+            ...tk,
+            id: `${tk.id}__${occDate}`,
+            _origId: tk.id,
+            due_date: occDate,
+            _isRecurringInstance: true,
+            _occurrenceDate: occDate,
+          });
+        }
       }
       cursor.setDate(cursor.getDate() + 1);
     }

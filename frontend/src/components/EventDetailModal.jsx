@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import AddEventModal from './AddEventModal.jsx';
+import RecurringActionChoice from './RecurringActionChoice.jsx';
 
 /**
  * EventDetailModal — mostra dettagli completi di un evento:
@@ -16,8 +17,11 @@ export default function EventDetailModal({ event, families = [], members = [], m
   const [photoUrls, setPhotoUrls] = useState({});
   const [lightbox, setLightbox] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [recurringChoice, setRecurringChoice] = useState(null); // 'edit' | 'delete'
 
   const origId = event._origId || event.id;
+  const occDate = event._occurrenceDate || (event._isRecurringInstance ? new Date(event.starts_at).toISOString().slice(0, 10) : null);
+  const isRecurringInstance = !!event._isRecurringInstance;
   const family = families.find((f) => f.id === event.family_id);
 
   useEffect(() => {
@@ -53,10 +57,65 @@ export default function EventDetailModal({ event, families = [], members = [], m
   const assigneeMembers = members.filter((m) => assignees.includes(m.id));
 
   const handleDelete = async () => {
+    // Se è un'istanza ricorrente, chiedi: solo questa o tutta la serie?
+    if (isRecurringInstance && occDate) {
+      setRecurringChoice('delete');
+      return;
+    }
     if (!confirm(t('agenda_delete_confirm') || 'Eliminare definitivamente questo evento?')) return;
     await supabase.from('events').delete().eq('id', origId);
     onChanged && onChanged();
     onClose();
+  };
+
+  const handleEditClick = () => {
+    if (isRecurringInstance && occDate) {
+      setRecurringChoice('edit');
+      return;
+    }
+    setEditing(true);
+  };
+
+  // Esclude SOLO questa occorrenza aggiungendo la data a recurring_exceptions
+  const excludeSingleOccurrence = async () => {
+    if (!occDate) return;
+    // Leggi exceptions correnti per fare push idempotente
+    const { data: cur } = await supabase
+      .from('events').select('recurring_exceptions').eq('id', origId).maybeSingle();
+    const next = [...(cur?.recurring_exceptions || [])];
+    if (!next.includes(occDate)) next.push(occDate);
+    await supabase.from('events').update({ recurring_exceptions: next }).eq('id', origId);
+  };
+
+  const onSingle = async () => {
+    if (recurringChoice === 'delete') {
+      await excludeSingleOccurrence();
+      onChanged && onChanged();
+      setRecurringChoice(null);
+      onClose();
+    } else if (recurringChoice === 'edit') {
+      // 1) Escludi questa data dalla serie
+      await excludeSingleOccurrence();
+      // 2) Apri AddEventModal in modalità CREAZIONE con i dati prefilled
+      //    (un nuovo evento standalone, non più parte della serie)
+      setRecurringChoice(null);
+      setEditing(true);
+    }
+  };
+
+  const onSeries = async () => {
+    if (recurringChoice === 'delete') {
+      if (!confirm('Sei sicuro di voler eliminare TUTTA la serie ricorrente?')) {
+        setRecurringChoice(null); return;
+      }
+      await supabase.from('events').delete().eq('id', origId);
+      onChanged && onChanged();
+      setRecurringChoice(null);
+      onClose();
+    } else if (recurringChoice === 'edit') {
+      setRecurringChoice(null);
+      setEditing(true);
+    }
   };
 
   return (
@@ -225,17 +284,38 @@ export default function EventDetailModal({ event, families = [], members = [], m
       {/* Modale di modifica evento */}
       {editing && (
         <AddEventModal
-          editingEvent={{ ...event, id: origId }}
+          editingEvent={isRecurringInstance ? null : { ...event, id: origId }}
+          // Se è un'istanza ricorrente isolata, creiamo un NUOVO evento
+          // (l'istanza è gia' stata "scissa" dalla serie via recurring_exceptions).
+          // Quindi prefill con i dati dell'occorrenza ma senza editingEvent.
           familyId={event.family_id}
           families={families}
           members={members}
           authorMemberId={me?.id}
+          initialTitle={isRecurringInstance ? event.title : ''}
+          initialStartsAt={isRecurringInstance ? event.starts_at : ''}
+          initialLocation={isRecurringInstance ? (event.location || '') : ''}
           onClose={() => setEditing(false)}
+          onCreated={() => {
+            setEditing(false);
+            onChanged && onChanged();
+            onClose();
+          }}
           onUpdated={() => {
             setEditing(false);
             onChanged && onChanged();
             onClose();
           }}
+        />
+      )}
+
+      {/* Modale scelta ricorrenza */}
+      {recurringChoice && (
+        <RecurringActionChoice
+          action={recurringChoice}
+          onSingle={onSingle}
+          onSeries={onSeries}
+          onClose={() => setRecurringChoice(null)}
         />
       )}
     </div>

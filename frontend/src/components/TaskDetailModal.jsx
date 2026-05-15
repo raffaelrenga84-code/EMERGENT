@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import RecurringActionChoice from './RecurringActionChoice.jsx';
 
 const CAT_EMOJI = {
   care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌',
@@ -21,23 +22,29 @@ export default function TaskDetailModal({
     { id: 'to_pay', label: t('td_status_to_pay'), color: 'var(--rd)' },
   ];
   const [title] = useState(task.title);
+  // Per le istanze di ricorrenze l'id è "<orig>__<date>": le mutazioni DEVONO
+  // andare sull'orig id, non sul finto id.
+  const realTaskId = task._origId || task.id;
+  const isRecurringInstance = !!task._isRecurringInstance;
+  const occurrenceDate = task._occurrenceDate || null;
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [assignees, setAssignees] = useState([]);
   const [busy, setBusy] = useState(false);
   const [showDelegate, setShowDelegate] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRecurringChoice, setShowRecurringChoice] = useState(null); // 'edit' | 'delete'
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const { data: commentsData } = await supabase
         .from('task_responses').select('*')
-        .eq('task_id', task.id).order('created_at');
+        .eq('task_id', realTaskId).order('created_at');
       if (!cancelled) setComments(commentsData || []);
 
       const { data: assigneeData } = await supabase
-        .from('task_assignees').select('member_id').eq('task_id', task.id);
+        .from('task_assignees').select('member_id').eq('task_id', realTaskId);
       if (!cancelled) {
         const memberIds = (assigneeData || []).map((a) => a.member_id);
         setAssignees(members.filter((m) => memberIds.includes(m.id)));
@@ -49,7 +56,7 @@ export default function TaskDetailModal({
   // Cambio stato: chiude il modale automaticamente
   const updateStatus = async (s) => {
     setBusy(true);
-    await supabase.from('tasks').update({ status: s }).eq('id', task.id);
+    await supabase.from('tasks').update({ status: s }).eq('id', realTaskId);
     setBusy(false);
     onChanged();
     if (s === 'to_pay' && typeof onOpenExpense === 'function') {
@@ -62,14 +69,58 @@ export default function TaskDetailModal({
   const isRecurring = !!(task.recurring_days && task.recurring_days.length > 0);
 
   const requestRemove = () => {
+    // Istanza ricorrente: chiedi singola o serie
+    if (isRecurringInstance && occurrenceDate) {
+      setShowRecurringChoice('delete');
+      return;
+    }
     if (isRecurring) { setShowDeleteConfirm(true); return; }
     if (!confirm(t('td_delete_confirm'))) return;
     doDeleteAll();
   };
 
+  const excludeSingleOccurrence = async () => {
+    if (!occurrenceDate) return;
+    const { data: cur } = await supabase
+      .from('tasks').select('recurring_exceptions').eq('id', realTaskId).maybeSingle();
+    const next = [...(cur?.recurring_exceptions || [])];
+    if (!next.includes(occurrenceDate)) next.push(occurrenceDate);
+    await supabase.from('tasks').update({ recurring_exceptions: next }).eq('id', realTaskId);
+  };
+
+  const onRecurringSingle = async () => {
+    if (showRecurringChoice === 'delete') {
+      setBusy(true);
+      await excludeSingleOccurrence();
+      setBusy(false);
+      setShowRecurringChoice(null);
+      onChanged(); onClosed();
+    } else if (showRecurringChoice === 'edit') {
+      setBusy(true);
+      await excludeSingleOccurrence();
+      setBusy(false);
+      setShowRecurringChoice(null);
+      // Apri editing del task (in modalità nuova istanza standalone via prefill)
+      if (onEdit) onEdit({ ...task, _editAsNew: true });
+    }
+  };
+
+  const onRecurringSeries = async () => {
+    if (showRecurringChoice === 'delete') {
+      if (!confirm('Sei sicuro di voler eliminare TUTTA la serie ricorrente?')) {
+        setShowRecurringChoice(null); return;
+      }
+      setShowRecurringChoice(null);
+      doDeleteAll();
+    } else if (showRecurringChoice === 'edit') {
+      setShowRecurringChoice(null);
+      if (onEdit) onEdit({ ...task, id: realTaskId });
+    }
+  };
+
   const doDeleteAll = async () => {
     setBusy(true);
-    await supabase.from('tasks').delete().eq('id', task.id);
+    await supabase.from('tasks').delete().eq('id', realTaskId);
     setBusy(false); setShowDeleteConfirm(false);
     onChanged(); onClosed();
   };
@@ -78,9 +129,9 @@ export default function TaskDetailModal({
     setBusy(true);
     await supabase.from('tasks').update({
       recurring_days: null, recurring_until: null,
-    }).eq('id', task.id);
+    }).eq('id', realTaskId);
     await supabase.from('task_responses').insert({
-      task_id: task.id, author_id: me?.id || null,
+      task_id: realTaskId, author_id: me?.id || null,
       text: t('td_sys_recurrence_end'),
       type: 'system',
     });
@@ -100,14 +151,14 @@ export default function TaskDetailModal({
       ? task.delegated_from
       : assignees.map((a) => a.id);
 
-    await supabase.from('task_assignees').delete().eq('task_id', task.id);
-    await supabase.from('task_assignees').insert({ task_id: task.id, member_id: me.id });
+    await supabase.from('task_assignees').delete().eq('task_id', realTaskId);
+    await supabase.from('task_assignees').insert({ task_id: realTaskId, member_id: me.id });
     await supabase.from('tasks').update({
       status: 'taken', urgent: false, priority: 'normal',
       delegated_from: snapshot, delegated_to: null,
-    }).eq('id', task.id);
+    }).eq('id', realTaskId);
     await supabase.from('task_responses').insert({
-      task_id: task.id, author_id: me.id,
+      task_id: realTaskId, author_id: me.id,
       text: t('td_sys_claim'), type: 'system',
     });
     setBusy(false); onChanged(); onClosed();
@@ -122,21 +173,21 @@ export default function TaskDetailModal({
     const restoreIds = baseGroup.filter((id) => id !== me.id);
     if (memberId && !restoreIds.includes(memberId)) restoreIds.push(memberId);
 
-    await supabase.from('task_assignees').delete().eq('task_id', task.id);
+    await supabase.from('task_assignees').delete().eq('task_id', realTaskId);
     if (restoreIds.length > 0) {
       await supabase.from('task_assignees').insert(
-        restoreIds.map((mid) => ({ task_id: task.id, member_id: mid }))
+        restoreIds.map((mid) => ({ task_id: realTaskId, member_id: mid }))
       );
     }
     await supabase.from('tasks').update({
       status: restoreIds.length === 0 ? 'todo' : 'taken',
       urgent: false, priority: 'medium',
       delegated_to: memberId, delegated_from: baseGroup,
-    }).eq('id', task.id);
+    }).eq('id', realTaskId);
 
     const member = members.find((m) => m.id === memberId);
     await supabase.from('task_responses').insert({
-      task_id: task.id, author_id: me.id,
+      task_id: realTaskId, author_id: me.id,
       text: t('td_sys_delegated', { name: member?.name || t('td_someone') }),
       type: 'system',
     });
@@ -149,9 +200,9 @@ export default function TaskDetailModal({
     setBusy(true);
     await supabase.from('tasks').update({
       delegated_to: null, priority: 'normal',
-    }).eq('id', task.id);
+    }).eq('id', realTaskId);
     await supabase.from('task_responses').insert({
-      task_id: task.id, author_id: me.id,
+      task_id: realTaskId, author_id: me.id,
       text: t('td_sys_refused'), type: 'system',
     });
     setBusy(false); onChanged(); onClosed();
@@ -160,7 +211,7 @@ export default function TaskDetailModal({
   const unassignMe = async () => {
     if (!me) return;
     setBusy(true);
-    await supabase.from('task_assignees').delete().eq('task_id', task.id);
+    await supabase.from('task_assignees').delete().eq('task_id', realTaskId);
 
     let restoreIds = [];
     if (task.delegated_from && task.delegated_from.length > 0) {
@@ -171,12 +222,12 @@ export default function TaskDetailModal({
 
     if (restoreIds.length > 0) {
       await supabase.from('task_assignees').insert(
-        restoreIds.map((mid) => ({ task_id: task.id, member_id: mid }))
+        restoreIds.map((mid) => ({ task_id: realTaskId, member_id: mid }))
       );
     }
 
     await supabase.from('task_responses').insert({
-      task_id: task.id, author_id: me.id,
+      task_id: realTaskId, author_id: me.id,
       text: t('td_sys_unexpected'), type: 'system',
     });
 
@@ -184,7 +235,7 @@ export default function TaskDetailModal({
       status: restoreIds.length === 0 ? 'todo' : 'taken',
       urgent: true, priority: 'high',
       delegated_from: null, delegated_to: null,
-    }).eq('id', task.id);
+    }).eq('id', realTaskId);
 
     setBusy(false); onChanged(); onClosed();
   };
@@ -193,11 +244,11 @@ export default function TaskDetailModal({
     if (!newComment.trim()) return;
     setBusy(true);
     await supabase.from('task_responses').insert({
-      task_id: task.id, author_id: me?.id || null,
+      task_id: realTaskId, author_id: me?.id || null,
       text: newComment.trim(), type: 'comment',
     });
     setNewComment('');
-    const { data } = await supabase.from('task_responses').select('*').eq('task_id', task.id).order('created_at');
+    const { data } = await supabase.from('task_responses').select('*').eq('task_id', realTaskId).order('created_at');
     setComments(data || []);
     setBusy(false);
   };
@@ -213,6 +264,15 @@ export default function TaskDetailModal({
 
   return (
     <div className="modal-bg" onClick={onClose}>
+      {showRecurringChoice && (
+        <RecurringActionChoice
+          action={showRecurringChoice}
+          onSingle={onRecurringSingle}
+          onSeries={onRecurringSeries}
+          onClose={() => setShowRecurringChoice(null)}
+        />
+      )}
+
       {showDeleteConfirm && (
         <div onClick={(e) => e.stopPropagation()}
           style={{
@@ -452,7 +512,14 @@ export default function TaskDetailModal({
 
         <div className="row" style={{ marginTop: 24 }}>
           <button className="btn secondary" onClick={onClose}>{t('td_close')}</button>
-          <button className="btn secondary" onClick={() => { onClosed(); if (typeof onEdit === 'function') onEdit(task); }}>
+          <button className="btn secondary" onClick={() => {
+            if (isRecurringInstance && occurrenceDate) {
+              setShowRecurringChoice('edit');
+              return;
+            }
+            onClosed();
+            if (typeof onEdit === 'function') onEdit(task);
+          }}>
             {t('td_edit')}
           </button>
           {canDelete && (
