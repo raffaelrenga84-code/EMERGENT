@@ -1,0 +1,184 @@
+{
+  "theme_and_archetype": {
+    "archetype": "1 (Organic & Earthy)",
+    "theme": "Light Theme",
+    "reasoning": "Families need a warm, inviting, and calm environment. A purely functional 'tech/SaaS' design feels too clinical for managing home life. The Organic & Earthy archetype, using terracotta and sage, makes the app feel like a beautifully curated home rather than a corporate task manager.",
+    "aesthetic_mix": "Editorial Magazine (typography, high-end feel) + Handmade Pottery (colors, warmth, tactile softness) + Architectural Drafting (clarity in task organization)."
+  },
+  "typography": {
+    "font_family_headings": "Cormorant Garamond",
+    "font_family_body": "Outfit",
+    "font_rules": [
+      "No Inter or generic sans for headings.",
+      "Headings (Cormorant Garamond) must use tracking-tight or tracking-tighter.",
+      "Overlines and tags must be uppercase, tiny, wide spacing (tracking-[0.2em]).",
+      "Line height: leading-none for headers, leading-relaxed for body."
+    ],
+    "scale": {
+      "h1": "text-4xl sm:text-5xl font-light",
+      "h2": "text-2xl sm:text-3xl font-medium",
+      "h3": "text-xl sm:text-2xl font-medium",
+      "h4": "text-lg font-medium",
+      "body": "text-base font-light",
+      "caption": "text-sm text-muted-foreground"
+    }
+  },
+  "color_system": {
+    "light": {
+      "background": "#F7F5F0",
+      "surface": "#FFFFFF",
+      "surface_muted": "#EFECE5",
+      "primary": "#C1624B",
+      "primary_hover": "#A9523D",
+      "secondary": "#8C9D86",
+      "text_primary": "#2C302A",
+      "text_secondary": "#757A72",
+      "border": "#E5E1D8",
+      "accent_terracotta": "#C1624B",
+      "accent_sage": "#8C9D86",
+      "accent_ochre": "#D4A35B",
+      "error": "#B84A4A"
+    },
+    "dark": {
+      "background": "#1C1C1A",
+      "surface": "#262624",
+      "surface_muted": "#333330",
+      "primary": "#D4775F",
+      "primary_hover": "#E68D76",
+      "secondary": "#9EAF97",
+      "text_primary": "#F7F5F0",
+      "text_secondary": "#A3A79E",
+      "border": "#3D3D3A",
+      "accent_terracotta": "#D4775F",
+      "accent_sage": "#9EAF97",
+      "accent_ochre": "#E8BA74",
+      "error": "#CF6363"
+    },
+    "rules": [
+      "Never use pure black or pure white outside of defined surfaces.",
+      "Use #F7F5F0 (Warm Sand) as the primary base background for light mode.",
+      "Do not use generic blue or teal.",
+      "Category colors: Care (Ochre), Home (Terracotta), Health (Sage), Admin (Muted Brown/Gray), Spese (Soft Blue-Gray)."
+    ]
+  },
+  "layout_and_spacing": {
+    "spacing_scale": "Tailwind standard p-1 to p-32. Use generous spacing (p-6, p-8) for cards to provide breathing room.",
+    "container_rules": "Max-width wrapper for desktop, but primarily designed as mobile PWA (100w for mobile).",
+    "border_radius": "Use rounded-2xl or rounded-3xl for cards. Buttons use rounded-full for a friendly, approachable tactile feel.",
+    "shadows": "Very soft ambient shadows. shadow-[0_8px_30px_rgba(44,48,42,0.04)]",
+    "navigation": "Fixed bottom tab bar for mobile PWA with glassmorphism (backdrop-blur-xl bg-[#F7F5F0]/80)."
+  },
+  "component_specs": {
+    "buttons": {
+      "primary": "bg-primary text-white rounded-full px-6 py-3 font-medium transition-transform hover:-translate-y-0.5 shadow-sm",
+      "secondary": "bg-surface_muted text-text_primary rounded-full px-6 py-3 font-medium hover:bg-border transition-colors",
+      "ghost": "bg-transparent text-text_secondary hover:text-primary rounded-full px-4 py-2"
+    },
+    "cards": {
+      "default": "bg-surface border border-border rounded-3xl p-6 shadow-sm",
+      "interactive": "bg-surface border border-border rounded-3xl p-6 shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
+    },
+    "bottom_navigation": {
+      "container": "fixed bottom-0 left-0 right-0 h-20 bg-background/80 backdrop-blur-xl border-t border-border flex justify-around items-center px-4 pb-safe z-50",
+      "item": "flex flex-col items-center justify-center w-16 gap-1 text-text_secondary",
+      "item_active": "text-primary font-medium"
+    },
+    "inputs": {
+      "default": "bg-surface border border-border rounded-2xl px-4 py-3 text-base text-text_primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary placeholder:text-text_secondary/50"
+    }
+  },
+  "pwa_pages": {
+    "login": {
+      "layout": "Hero image background overlaid with solid content container at the bottom.",
+      "features": ["Google OAuth", "Magic Link input"],
+      "background_image": "login_bg"
+    },
+    "onboarding_hub": {
+      "layout": "Warm welcome sequence. Card-based progression.",
+      "content": "Create family, add first task, see demo.",
+      "hero_image": "onboarding_hero"
+    },
+    "home_bacheca": {
+      "description": "Tasks board and daily summary.",
+      "layout": "Top: Weekly Summary Card (AI). Below: List of today's tasks.",
+      "task_card": "Minimalist row: Checkbox circle (left), Title & Category badge (middle), Assignee avatar (right)."
+    },
+    "home_agenda": {
+      "description": "Calendar and events.",
+      "layout": "Horizontal date scroll at top. Vertical timeline below for events."
+    },
+    "home_famiglia": {
+      "description": "Family members and birthdays.",
+      "layout": "Grid of family member cards (rounded-3xl). Each card shows avatar, name, role, and upcoming birthday."
+    },
+    "home_spese": {
+      "description": "Shared expenses.",
+      "layout": "Top summary card (Total Month). Below: list of expenses with progress bar split by user."
+    },
+    "home_profilo": {
+      "description": "Settings and profile.",
+      "layout": "List of settings items: Theme toggle, Language select, Notifications, Family Management."
+    }
+  },
+  "ai_features": {
+    "ai_family_assistant": {
+      "trigger": "Floating Action Button (FAB) positioned bottom-right (above nav bar), featuring the ai_assistant_icon.",
+      "ui": "Bottom sheet modal (Drawer) that slides up. Conversational interface (chat bubbles).",
+      "vibe": "Friendly, casual, using emojis naturally. 'Ciao! Cosa organizziamo oggi?'"
+    },
+    "weekly_summary": {
+      "location": "Top of Bacheca tab.",
+      "ui": "Distinctive card with a soft gradient background (from sage to terracotta, low opacity 10%). Features a small spark/AI icon.",
+      "content": "Auto-generated Sunday evening text e.g., 'Ottimo lavoro! Questa settimana avete completato 14 task. Non dimenticate il compleanno di Marco martedì!'"
+    },
+    "smart_task_input": {
+      "location": "Add Task modal.",
+      "ui": "As user types 'Comprare il latte', a small animated badge pops up inside or below the input: '✨ Suggerimento: Categoria -> Casa | Scadenza -> Oggi'. User taps to accept."
+    },
+    "gift_ideas": {
+      "location": "Famiglia tab -> Click on member -> Birthday section.",
+      "ui": "A button '✨ Idee Regalo AI'. Opens a modal with 3 visually distinct cards showing generated gift ideas based on the member's profile."
+    }
+  },
+  "media_assets": {
+    "images": [
+      {
+        "id": "login_bg",
+        "url": "https://static.prod-images.emergentagent.com/jobs/5fbd7a6f-12a8-4ae5-b8fe-88ce33b87d98/images/dd1e9029e3a601f4184991558d090c842ee1932d5b13d5b76f31a47affcd43b6.png",
+        "description": "Warm tactile abstract background, handmade pottery textures",
+        "usage": "Background for the Login screen. Use object-cover and a dark/light gradient overlay so login forms remain readable."
+      },
+      {
+        "id": "onboarding_hero",
+        "url": "https://static.prod-images.emergentagent.com/jobs/5fbd7a6f-12a8-4ae5-b8fe-88ce33b87d98/images/d7391f8f7508321d57772c9babb3f787054e40d2ac4b8767f26decfa81dddf14.png",
+        "description": "Beautifully organized wooden table top view, eucalyptus, ceramic cup",
+        "usage": "Hero image at the top of the Onboarding Hub screen."
+      },
+      {
+        "id": "ai_assistant_icon",
+        "url": "https://static.prod-images.emergentagent.com/jobs/5fbd7a6f-12a8-4ae5-b8fe-88ce33b87d98/images/adab028a2528ef1bd6fe283dccbe9f8cebb11705787c6d8bc9650da12c4f4ce2.png",
+        "description": "Cute minimalist abstract ceramic sculpture in sage green",
+        "usage": "Use as the avatar/icon for the Floating AI Assistant."
+      }
+    ],
+    "avatars": [
+      "https://images.unsplash.com/photo-1750484132496-8be31a76033e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGNlcmFtaWMlMjBzaGFwZXN8ZW58MHx8fHwxNzc4ODM3ODk4fDA&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1772632696551-3eafa2d76490?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGNlcmFtaWMlMjBzaGFwZXN8ZW58MHx8fHwxNzc4ODM3ODk4fDA&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1706821856764-4e85de5482d3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGNlcmFtaWMlMjBzaGFwZXN8ZW58MHx8fHwxNzc4ODM3ODk4fDA&ixlib=rb-4.1.0&q=85"
+    ]
+  },
+  "icons": {
+    "library": "lucide-react",
+    "usage": "Use solid/filled variants for active tabs, outline variants for inactive tabs."
+  },
+  "instructions_to_main_agent": [
+    "Strictly apply data-testid to ALL interactive elements using kebab-case and role-based naming (e.g., data-testid='login-submit-button', data-testid='tab-bacheca').",
+    "Use Shadcn UI for the complex components (Dialog for Gift Ideas, Drawer for AI Assistant, Tabs for filtering tasks, Calendar for Agenda).",
+    "Configure Tailwind CSS to include the color variables defined in the color_system. Use CSS variables in index.css so light/dark mode toggles easily.",
+    "Do not use generic border styles for cards; ensure border is 1px solid using the specified border colors (#E5E1D8).",
+    "The App must have a mobile-first PWA feel: hide the desktop navigation and strictly use the bottom tab bar. On desktop, constrain the main layout to max-w-md or max-w-lg and center it on the screen to mimic a mobile device context.",
+    "Language is Italian by default. Use Italian copy as specified in the problem statement.",
+    "Apply fonts globally in index.css: body { font-family: 'Outfit', sans-serif; } h1, h2, h3, h4 { font-family: 'Cormorant Garamond', serif; }",
+    "CRITICAL: Create these React .js components inside frontend/src/components/. Ensure you use .js extensions, not .tsx!"
+  ]
+}
