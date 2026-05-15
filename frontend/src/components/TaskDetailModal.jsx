@@ -202,7 +202,13 @@ export default function TaskDetailModal({
     setBusy(false);
   };
 
-  const otherMembers = members.filter((m) => m.id !== me?.id);
+  // BUGFIX: filtra solo i membri della stessa famiglia del task.
+  // Prima `otherMembers = members.filter(m => m.id !== me?.id)` mostrava
+  // anche membri di altre famiglie quando la vista era 'all', portando a
+  // delegare l'incarico a persone fuori dalla famiglia di destinazione.
+  const otherMembers = members.filter(
+    (m) => m.id !== me?.id && m.family_id === task.family_id
+  );
   const hasOriginalGroup = task.delegated_from && task.delegated_from.length > 1;
 
   return (

@@ -7,6 +7,15 @@ import EditMemberModal from '../../components/EditMemberModal.jsx';
 import EditFamilyModal from '../../components/EditFamilyModal.jsx';
 import FamilyInviteModal from '../../components/FamilyInviteModal.jsx';
 
+// Mostra il ruolo nella lingua corrente. Preset → traduzione `role_<id>`.
+// I ruoli "custom" inseriti dall'utente vengono mostrati così come sono.
+function translateRole(role, t) {
+  if (!role) return '';
+  const key = role === 'papà' ? 'role_papa' : `role_${role}`;
+  const translated = t(key);
+  return translated === key ? role : translated;
+}
+
 export default function FamilyTab({ family, members, session, families, activeFamily, isAll, onSwitchFamily, onNewFamily, onChanged }) {
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
@@ -93,8 +102,8 @@ export default function FamilyTab({ family, members, session, families, activeFa
                     cursor: 'pointer', fontSize: 13, color: 'var(--ac)', fontWeight: 600,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   }}
-                  title="Invita">
-                  💌 Invita
+                  title={t('invite_btn')}>
+                  💌 {t('invite_btn')}
                 </button>
                 {isFamilyOwner && (
                   <button
@@ -104,7 +113,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
                       border: 'none', cursor: 'pointer', fontSize: 16,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
-                    title="Modifica famiglia (solo creatore)">
+                    title={t('family_edit_title')}>
                     ⚙️
                   </button>
                 )}
@@ -327,7 +336,7 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], onEdit, onRemov
           {isMe && <span style={{ fontSize: 11, color: 'var(--km)', fontWeight: 500 }}>(tu)</span>}
         </div>
         <div style={{ color: 'var(--km)', fontSize: 13 }}>
-          {member.role || t('member_one_label')}
+          {translateRole(member.role, t) || t('member_one_label')}
           {member.user_id ? ' · ' + t('has_account') : ' · ' + t('no_account')}
         </div>
         {otherFamilies.length > 0 && (
@@ -375,7 +384,7 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], onEdit, onRemov
             background: 'var(--ab)', border: 'none', color: 'var(--ac)', fontSize: 12,
             fontWeight: 600, padding: '6px 10px', borderRadius: 100,
           }}
-          title="Invita via link">
+          title={t('invite_with_link')}>
           💌
         </button>
       )}
@@ -383,7 +392,7 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], onEdit, onRemov
         <button
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
           style={{ background: 'none', border: 'none', color: 'var(--rd)', fontSize: 18, padding: 8 }}
-          title="Rimuovi">
+          title={t('remove')}>
           ✕
         </button>
       )}

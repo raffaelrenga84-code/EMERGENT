@@ -58,6 +58,37 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
 4. **Test backend completi**: 14/14 test green (`/app/backend/tests/test_ai_endpoints.py`)
 5. **Fix bug minor**: pagination cronologia chat (sort DESC + reverse per gli ultimi 10 turni)
 
+## Bug fix & enhancements — Iterazione 2 (15 maggio 2026 pomeriggio)
+1. **Bug: "Chiedi a qualcuno: Lo fai tu?" mostrava membri di altre famiglie**
+   - `TaskDetailModal.jsx` linea 205: aggiunto filtro `m.family_id === task.family_id`
+2. **Bug: "Invita" non tradotto nella sezione Famiglia**
+   - Aggiunto `invite_btn` + `family_edit_title` + `remove` per IT/EN/FR/DE
+   - `FamilyTab.jsx`: rimpiazzati tutti i title hardcoded con t()
+3. **Bug: ruoli membro solo in italiano + impossibile aggiungerne uno custom**
+   - Aggiunti `role_nonno/nonna/mamma/papa/figlio/...` per IT/EN/FR/DE (14 ruoli × 4 lingue)
+   - `AddMemberModal.jsx` e `EditMemberModal.jsx`: usano `translateRole(role, t)` per display
+   - Aggiunto bottone "+ Aggiungi ruolo personalizzato" con input testo libero
+   - I ruoli "preset" sono salvati in italiano in DB (compat. con dati esistenti); quelli custom sono salvati così come scritti
+   - `FamilyTab.jsx` MemberCard: mostra anche lì il ruolo tradotto
+4. **Bug: "Could not find birth_date column" quando si modifica un membro**
+   - Causa radice: la migration `fammy-add-birthdate.sql` non è ancora stata eseguita sul progetto Supabase dell'utente
+   - **AddMemberModal**: ora include il campo "Data di nascita" durante la creazione
+   - **EditMemberModal & AddMemberModal**: retry automatico senza `birth_date` se il DB non ha la colonna + mostra un messaggio chiaro `schema_missing_birthdate` che istruisce a eseguire la SQL migration
+   - Membro creato anche se la migration non è applicata (graceful degradation)
+5. **Notifiche per nuovi commenti**
+   - `useEventNotifications.jsx`: sub realtime a `task_responses` (INSERT), filtra system messages + i propri commenti, notifica solo se task della propria famiglia + se sono autore/assegnatario/delegated_from
+6. **Notifica locale del riepilogo AI ogni domenica alle 20:00**
+   - Scheduler `setTimeout` in `useEventNotifications.jsx`, deduplica con localStorage per ISO week
+   - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
+   - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
+
+## ⚠️ Azione richiesta dall'utente su Supabase
+Prima di testare i fix sopra, esegui sul tuo Supabase queste 2 cose:
+1. **Authentication → URL Configuration**
+   - Site URL: `https://e1a8db2a-a625-4bd8-ad0d-2f9110b01597.preview.emergentagent.com`
+   - Redirect URL: la stessa
+2. **SQL Editor**: incolla il contenuto di `frontend/fammy-add-birthdate.sql` e clicca Run. Questo aggiunge la colonna `birth_date` ai membri. Senza questa migration, i compleanni non funzionano (ma adesso almeno non rompe più la modifica del membro grazie al fallback).
+
 ## Backlog Prioritizzato
 
 ### P0 (bloccanti per testing completo)

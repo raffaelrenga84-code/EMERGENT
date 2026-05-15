@@ -166,11 +166,49 @@ export function useEventNotifications(session, profile, families, events, taskAs
       })
       .subscribe();
 
+    // TASK RESPONSES (commenti) — notifica all'autore/assegnatari quando qualcuno
+    // commenta. Ignoriamo i propri commenti e i system message.
+    const responsesChannel = supabase
+      .channel('rt-task-responses')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'task_responses',
+      }, async (payload) => {
+        if (typeof onDataChange === 'function') onDataChange();
+        if (notificationPermission !== 'granted' || !notificationsEnabled) return;
+
+        const resp = payload.new || {};
+        if (resp.type === 'system') return;
+        if (resp.author_id && myMemberIds.includes(resp.author_id)) return; // mio commento
+
+        // recupera task e verifica che sia di una mia famiglia + che mi riguardi
+        // (autore originale, assegnatario corrente o nelle delegated_from).
+        try {
+          const { data: task } = await supabase
+            .from('tasks').select('*').eq('id', resp.task_id).maybeSingle();
+          if (!task) return;
+          if (!familyIds.includes(task.family_id)) return;
+
+          const { data: asg } = await supabase
+            .from('task_assignees').select('member_id').eq('task_id', resp.task_id);
+          const assigneeIds = (asg || []).map((a) => a.member_id);
+
+          const involved =
+            (task.author_id && myMemberIds.includes(task.author_id)) ||
+            assigneeIds.some((id) => myMemberIds.includes(id)) ||
+            (Array.isArray(task.delegated_from) && task.delegated_from.some((id) => myMemberIds.includes(id)));
+
+          if (!involved) return;
+          showNewCommentNotification(task, resp);
+        } catch (e) { /* silent */ }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(tasksChannel);
       supabase.removeChannel(eventsChannel);
       supabase.removeChannel(expensesChannel);
       supabase.removeChannel(assigneesChannel);
+      supabase.removeChannel(responsesChannel);
     };
   }, [families, members, session?.user?.id, notificationPermission, notificationsEnabled, onDataChange]);
 
@@ -221,6 +259,54 @@ export function useEventNotifications(session, profile, families, events, taskAs
       scheduledNotificationsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
     };
   }, [members, notificationPermission, session?.user?.id, notificationsEnabled]);
+
+  // Riepilogo AI della settimana — notifica locale ogni domenica alle 20:00.
+  // Una vera spinta server-side richiede una Edge Function + cron su Supabase
+  // (vedi PUSH_NOTIFICATIONS_SETUP.md). Questo scheduler locale copre il caso
+  // in cui l'app/PWA è installata e aperta nel weekend.
+  useEffect(() => {
+    if (notificationPermission !== 'granted' || !session?.user?.id || !notificationsEnabled) return;
+
+    const isoWeekKey = (d) => {
+      const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      const day = date.getUTCDay() || 7;
+      date.setUTCDate(date.getUTCDate() + 4 - day);
+      const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+      const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+      return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+    };
+
+    const seenKey = 'fammy_weekly_ai_notified_' + isoWeekKey(new Date());
+    if (localStorage.getItem(seenKey)) return;
+
+    const now = new Date();
+    const targetSunday = new Date(now);
+    const dow = targetSunday.getDay(); // 0=Sun
+    const daysUntilSunday = (7 - dow) % 7;
+    targetSunday.setDate(targetSunday.getDate() + daysUntilSunday);
+    targetSunday.setHours(20, 0, 0, 0);
+    // se siamo già passati le 20:00 di domenica, fissalo a domenica prossima
+    if (targetSunday <= now) targetSunday.setDate(targetSunday.getDate() + 7);
+
+    const delay = targetSunday.getTime() - now.getTime();
+    if (delay <= 0 || delay > 8 * 86400000) return;
+
+    const key = 'weekly-ai-summary';
+    if (scheduledNotificationsRef.current.has(key)) {
+      clearTimeout(scheduledNotificationsRef.current.get(key));
+    }
+    const timeoutId = setTimeout(() => {
+      showWeeklyAISummaryNotification();
+      try { localStorage.setItem(seenKey, '1'); } catch (e) {}
+      scheduledNotificationsRef.current.delete(key);
+    }, delay);
+    scheduledNotificationsRef.current.set(key, timeoutId);
+
+    return () => {
+      const tid = scheduledNotificationsRef.current.get(key);
+      if (tid) clearTimeout(tid);
+    };
+  }, [notificationPermission, session?.user?.id, notificationsEnabled]);
 
   return {
     notificationPermission,
@@ -297,6 +383,27 @@ function showBirthdayNotification(member) {
     body: `È il compleanno di ${member.name}! 🎉`,
     icon: '/icon.png', badge: '/icon.png',
     tag: `birthday-${member.id}`, requireInteraction: false,
+  });
+  notification.addEventListener('click', () => { window.focus(); notification.close(); });
+}
+
+function showNewCommentNotification(task, response) {
+  if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  const preview = (response.text || '').slice(0, 80);
+  const notification = new Notification(`💬 Nuovo commento`, {
+    body: `${task.title}\n${preview}`,
+    icon: '/icon.png', badge: '/icon.png',
+    tag: `comment-${response.id}`, requireInteraction: false,
+  });
+  notification.addEventListener('click', () => { window.focus(); notification.close(); });
+}
+
+function showWeeklyAISummaryNotification() {
+  if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  const notification = new Notification('✨ Riepilogo della settimana', {
+    body: 'Il tuo riepilogo AI è pronto. Apri FAMMY per vedere come è andata!',
+    icon: '/icon.png', badge: '/icon.png',
+    tag: 'weekly-ai-summary', requireInteraction: false,
   });
   notification.addEventListener('click', () => { window.focus(); notification.close(); });
 }
