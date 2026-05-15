@@ -82,6 +82,31 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 13 (16 maggio 2026) — Preview famiglia + rigenera codice
+
+### Preview famiglia prima del join (2-step UX)
+`JoinFamilyByCodeModal` ora ha 3 stati: `input` → `preview` → `success`.
+- **Step input**: l'utente digita il codice 6-char
+- **Step preview**: mostra una **card grande** della famiglia (emoji 56px,
+  nome Cormorant 24px, "👥 N membri"), invita l'utente a confermare
+- **Step success**: animazione 🎉 e auto-close
+Se l'utente è già membro (peek `already_member: true`), il pulsante diventa
+"🏡 Vai alla famiglia" (no double-join). Confidence boost senza join sbagliati.
+
+### Rigenera codice invito (solo owner)
+Nuovo bottoncino "🔄 rigenera codice" sotto il codice grande in
+`FamilyInviteModal`, visibile solo all'owner della famiglia. Chiama l'RPC
+`regenerate_family_invite_code(family_id)` SECURITY DEFINER con check owner.
+Conferma con confirm() prima di procedere. `localFamily` state aggiornato
+subito senza ricaricare il modal.
+
+### SQL `fammy-invite-code.sql` esteso
+Aggiunte 2 nuove RPC:
+- `peek_family_by_code(p_code)` → ritorna `{family_id, family_name, emoji, members_count, already_member}` senza joinare
+- `regenerate_family_invite_code(p_family_id)` → solo owner, retry su collisione codice, ritorna `new_code`
+
+Entrambe `grant execute to authenticated`.
+
 ## Iterazione 12 (15 maggio 2026, mattina prestissimo) — Codice invito famiglia
 
 ### Anti-doppione robusto via codice invito (no email)

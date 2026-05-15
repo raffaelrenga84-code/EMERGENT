@@ -21,6 +21,37 @@ export default function FamilyInviteModal({ family, session, onClose }) {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [regenBusy, setRegenBusy] = useState(false);
+  // family object è una ref del prop; per riflettere il nuovo codice dopo
+  // regenerate, teniamo uno state locale che parte dal prop.
+  const [localFamily, setLocalFamily] = useState(family);
+  const isOwner = family?.created_by === session?.user?.id;
+
+  // Quando il parent passa un nuovo family object, allineiamo lo state locale
+  useEffect(() => { setLocalFamily(family); }, [family]);
+
+  const regenerateCode = async () => {
+    if (!isOwner) return;
+    if (!confirm(
+      'Rigenerare il codice invito? Il vecchio codice smetterà di funzionare e dovrai re-inviare il nuovo a chi ancora non si è unito.'
+    )) return;
+    setRegenBusy(true);
+    try {
+      const { data, error } = await supabase.rpc('regenerate_family_invite_code', {
+        p_family_id: family.id,
+      });
+      if (error) throw error;
+      if (!data?.ok) {
+        alert(`Errore: ${data?.error || 'sconosciuto'}`);
+        return;
+      }
+      setLocalFamily((f) => ({ ...f, invite_code: data.new_code }));
+    } catch (e) {
+      alert(`Errore: ${e.message}`);
+    } finally {
+      setRegenBusy(false);
+    }
+  };
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const buildUrl = (tok) => (tok ? `${origin}/invite/${tok}` : '');
@@ -90,7 +121,7 @@ export default function FamilyInviteModal({ family, session, onClose }) {
   }, [family.id, session.user.id]);
 
   const inviteUrl = buildUrl(inviteToken);
-  const codeUpper = (family.invite_code || '').toUpperCase();
+  const codeUpper = (localFamily.invite_code || '').toUpperCase();
   // Messaggio share: codice prominent + link come fallback
   const shareMessage = codeUpper
     ? `Ti aggiungo alla famiglia "${family.name}" su FAMMY 🏡\n\n` +
@@ -197,9 +228,9 @@ export default function FamilyInviteModal({ family, session, onClose }) {
   };
 
   const copyCodeToClipboard = async () => {
-    if (!family.invite_code) return;
+    if (!localFamily.invite_code) return;
     try {
-      await navigator.clipboard.writeText(family.invite_code.toUpperCase());
+      await navigator.clipboard.writeText(localFamily.invite_code.toUpperCase());
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {}
@@ -289,8 +320,25 @@ export default function FamilyInviteModal({ family, session, onClose }) {
                   }}
                   title="Tocca per copiare"
                 >
-                  {(family.invite_code || '------').toUpperCase()}
+                  {(localFamily.invite_code || '------').toUpperCase()}
                 </div>
+                {/* Rigenera codice (solo owner) */}
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={regenerateCode}
+                    disabled={regenBusy}
+                    data-testid="invite-regenerate-code-btn"
+                    style={{
+                      display: 'block', margin: '0 auto 10px',
+                      padding: '4px 12px', borderRadius: 100,
+                      background: 'transparent', border: '1px solid var(--sm)',
+                      color: 'var(--km)', fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer',
+                    }}>
+                    {regenBusy ? '⏳ rigenero...' : '🔄 rigenera codice'}
+                  </button>
+                )}
                 <div style={{
                   fontSize: 11, color: 'var(--km)', textAlign: 'center',
                   marginBottom: 14, lineHeight: 1.45,

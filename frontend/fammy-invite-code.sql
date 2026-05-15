@@ -135,6 +135,93 @@ end$$;
 
 grant execute on function public.accept_family_by_code(text, text) to authenticated;
 
+-- 3) RPC: peek_family_by_code(code) → ritorna info anteprima SENZA joinare.
+-- Usato dal frontend per mostrare "Stai per unirti a 🌳 TEST (3 membri)"
+-- prima del join. Non rivela info sensibili (solo nome/emoji/count).
+create or replace function public.peek_family_by_code(p_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_family_id uuid;
+  v_family_name text;
+  v_emoji text;
+  v_members_count int;
+  v_already_member boolean := false;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  end if;
+
+  select id, name, emoji into v_family_id, v_family_name, v_emoji
+  from public.families where upper(invite_code) = upper(trim(p_code))
+  limit 1;
+
+  if v_family_id is null then
+    return jsonb_build_object('ok', false, 'error', 'invalid_code');
+  end if;
+
+  select count(*) into v_members_count
+  from public.members where family_id = v_family_id and status = 'active';
+
+  select exists(
+    select 1 from public.members
+    where family_id = v_family_id and user_id = auth.uid()
+  ) into v_already_member;
+
+  return jsonb_build_object(
+    'ok', true,
+    'family_id', v_family_id,
+    'family_name', v_family_name,
+    'emoji', v_emoji,
+    'members_count', v_members_count,
+    'already_member', v_already_member
+  );
+end$$;
+
+grant execute on function public.peek_family_by_code(text) to authenticated;
+
+-- 4) RPC: regenerate_family_invite_code(family_id) → solo il creator può
+-- rigenerare il codice. Utile se il vecchio è finito a qualcuno che non
+-- dovrebbe averlo.
+create or replace function public.regenerate_family_invite_code(p_family_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_owner uuid;
+  v_new_code text;
+  v_attempts int := 0;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  end if;
+  select created_by into v_owner from public.families where id = p_family_id;
+  if v_owner is null then
+    return jsonb_build_object('ok', false, 'error', 'family_not_found');
+  end if;
+  if v_owner <> auth.uid() then
+    return jsonb_build_object('ok', false, 'error', 'not_owner');
+  end if;
+  loop
+    v_new_code := fammy_gen_invite_code();
+    v_attempts := v_attempts + 1;
+    if not exists (select 1 from public.families where invite_code = v_new_code) then
+      update public.families set invite_code = v_new_code where id = p_family_id;
+      return jsonb_build_object('ok', true, 'new_code', v_new_code);
+    end if;
+    if v_attempts > 10 then
+      return jsonb_build_object('ok', false, 'error', 'collisions');
+    end if;
+  end loop;
+end$$;
+
+grant execute on function public.regenerate_family_invite_code(uuid) to authenticated;
+
 -- =====================================================================
 -- USO LATO FRONTEND:
 --   const { data, error } = await supabase.rpc('accept_family_by_code', {
