@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase.js';
 import { useT, LANGS } from '../../lib/i18n.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import FamilyMemoriesCard from '../../components/FamilyMemoriesCard.jsx';
+import InviteStatsCard from '../../components/InviteStatsCard.jsx';
 import OnboardingTour from '../../components/OnboardingTour.jsx';
 import PricingScreen from '../sub/PricingScreen.jsx';
 import ThemeScreen from '../sub/ThemeScreen.jsx';
@@ -303,6 +304,10 @@ export default function ProfileTab({ session, profile, families = [], members = 
       {/* Referral / share FAMMY */}
       <div className="profile-section">
         <div className="profile-label" style={{ marginBottom: 4 }}>{t('profile_referral_h')}</div>
+
+        {/* Mini-stat: quanti hanno joinato la famiglia questa settimana */}
+        <InviteStatsCard session={session} families={families} />
+
         <p style={{ fontSize: 13, color: 'var(--km)', margin: '0 0 12px', lineHeight: 1.4 }}>
           {t('profile_referral_sub')}
         </p>
