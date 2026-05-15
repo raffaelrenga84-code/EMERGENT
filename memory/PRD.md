@@ -82,6 +82,35 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 5 (15 maggio 2026 notte+) — Daily Digest 21:00 + Realtime commenti
+
+### Cosa è stato aggiunto
+1. **Digest serale alle 21:00** in `useEventNotifications.jsx`:
+   - Scheduler giornaliero che, alle 21:00 locale dell'utente, conta i task con
+     `due_date` = domani (status ≠ 'done') e gli eventi con `starts_at` di
+     domani, poi mostra una notifica "🌙 Pronto per domani? Domani ti aspettano
+     X incarichi e Y eventi. Buona serata!"
+   - **No-spam**: se domani non hai nulla, la notifica NON parte.
+   - **Dedupe per giornata**: key `fammy_daily_digest_notified_YYYY-MM-DD` in
+     localStorage → max una notifica al giorno.
+   - Re-arm automatico quando `tasks`/`events` cambiano (la notifica usa
+     sempre il conteggio più aggiornato al momento del fire).
+   - Disattivabile con il toggle globale "Notifiche" che già esiste.
+2. **Pass-through `tasks`** all'hook `useEventNotifications` da `HomeScreen.jsx`.
+3. **`fammy-enable-realtime.sql`** (nuovo): garantisce che la publication
+   `supabase_realtime` includa `task_responses` (+ tasks/events/expenses/
+   task_assignees). Senza questo, il listener `postgres_changes` su
+   `task_responses` non riceve gli INSERT e le notifiche "💬 Nuovo commento"
+   non scattano. Idempotente.
+
+### Bug verificato (notifiche commenti)
+La logica in `useEventNotifications.jsx` lines 171-204 era già corretta:
+- skip system message, skip miei commenti, scope per famiglia
+- notifica solo se autore/assegnatario/delegated_from
+- usa `response.text` (campo corretto in `task_responses`)
+Il sospetto principale di mancato funzionamento è che la publication realtime
+non includa `task_responses` → fix con la SQL sopra.
+
 ## Iterazione 4 (15 maggio 2026 notte) — Fix 401 INVALID_CREDENTIALS Edge Functions
 
 ### Problema riscontrato

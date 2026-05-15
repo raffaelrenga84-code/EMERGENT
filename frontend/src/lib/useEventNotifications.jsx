@@ -23,7 +23,7 @@ function safeNotificationPermission() {
   } catch (e) { return 'default'; }
 }
 
-export function useEventNotifications(session, profile, families, events, taskAssignees, members = [], onDataChange) {
+export function useEventNotifications(session, profile, families, events, taskAssignees, members = [], tasks = [], onDataChange) {
   const [notificationPermission, setNotificationPermission] = useState(safeNotificationPermission());
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     try {
@@ -308,6 +308,74 @@ export function useEventNotifications(session, profile, families, events, taskAs
     };
   }, [notificationPermission, session?.user?.id, notificationsEnabled]);
 
+  // Digest serale alle 21:00 — "Domani hai X incarichi e Y eventi".
+  // Si programma ogni giorno (re-arm quando tasks/events cambiano o dopo il fire).
+  // Dedupe per giornata via localStorage: una sola notifica per data.
+  // Non scatta se domani non hai NULLA (no spam).
+  useEffect(() => {
+    if (notificationPermission !== 'granted' || !session?.user?.id || !notificationsEnabled) return;
+
+    const dayKey = (d) => {
+      // YYYY-MM-DD in local time (la dedupe è "per giorno locale dell'utente")
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(21, 0, 0, 0);
+    // Se sono già passate le 21:00 di oggi, programma per domani
+    if (target <= now) target.setDate(target.getDate() + 1);
+
+    const targetDayKey = dayKey(target);                 // giorno in cui la notifica scatta
+    const tomorrowOfTarget = new Date(target);
+    tomorrowOfTarget.setDate(tomorrowOfTarget.getDate() + 1);
+    const tomorrowKey = dayKey(tomorrowOfTarget);        // giorno di cui parla il digest
+
+    const seenKey = `fammy_daily_digest_notified_${targetDayKey}`;
+    if (localStorage.getItem(seenKey)) return;
+
+    const delay = target.getTime() - now.getTime();
+    if (delay <= 0 || delay > 25 * 3600 * 1000) return;
+
+    const key = 'daily-digest';
+    if (scheduledNotificationsRef.current.has(key)) {
+      clearTimeout(scheduledNotificationsRef.current.get(key));
+    }
+    const timeoutId = setTimeout(() => {
+      // Conta task per domani (due_date == tomorrowKey, non già completati)
+      const tomorrowTasks = (tasks || []).filter((t) => {
+        if (!t?.due_date) return false;
+        if (t.status === 'done') return false;
+        // due_date può essere YYYY-MM-DD o ISO; normalizza ai primi 10 char
+        const dd = String(t.due_date).slice(0, 10);
+        return dd === tomorrowKey;
+      }).length;
+      // Conta eventi per domani (starts_at cade nello stesso giorno locale)
+      const tomorrowEvents = (events || []).filter((e) => {
+        if (!e?.starts_at) return false;
+        const d = new Date(e.starts_at);
+        if (Number.isNaN(d.getTime())) return false;
+        return dayKey(d) === tomorrowKey;
+      }).length;
+
+      // No spam: salta se domani non hai niente
+      if (tomorrowTasks > 0 || tomorrowEvents > 0) {
+        showDailyDigestNotification(tomorrowTasks, tomorrowEvents);
+      }
+      try { localStorage.setItem(seenKey, '1'); } catch (e) {}
+      scheduledNotificationsRef.current.delete(key);
+    }, delay);
+    scheduledNotificationsRef.current.set(key, timeoutId);
+
+    return () => {
+      const tid = scheduledNotificationsRef.current.get(key);
+      if (tid) clearTimeout(tid);
+    };
+  }, [tasks, events, notificationPermission, session?.user?.id, notificationsEnabled]);
+
   return {
     notificationPermission,
     notificationsEnabled,
@@ -404,6 +472,23 @@ function showWeeklyAISummaryNotification() {
     body: 'Il tuo riepilogo AI è pronto. Apri FAMMY per vedere come è andata!',
     icon: '/icon.png', badge: '/icon.png',
     tag: 'weekly-ai-summary', requireInteraction: false,
+  });
+  notification.addEventListener('click', () => { window.focus(); notification.close(); });
+}
+
+function showDailyDigestNotification(taskCount, eventCount) {
+  if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  // Italiano colloquiale, plurale corretto
+  const parts = [];
+  if (taskCount > 0) parts.push(taskCount === 1 ? '1 incarico' : `${taskCount} incarichi`);
+  if (eventCount > 0) parts.push(eventCount === 1 ? '1 evento' : `${eventCount} eventi`);
+  const body = parts.length === 0
+    ? 'Apri FAMMY per organizzare la giornata.'
+    : `Domani ti aspettano ${parts.join(' e ')}. Buona serata! 🌙`;
+  const notification = new Notification('🌙 Pronto per domani?', {
+    body,
+    icon: '/icon.png', badge: '/icon.png',
+    tag: 'daily-digest', requireInteraction: false,
   });
   notification.addEventListener('click', () => { window.focus(); notification.close(); });
 }

@@ -65,7 +65,7 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
 
   // Auto-refresh via realtime + notifiche push per nuovi task/eventi/imprevisti
   const notificationControl = useEventNotifications(
-    session, profile, families, events, taskAssignees, members,
+    session, profile, families, events, taskAssignees, members, tasks,
     () => setRefreshKey((k) => k + 1)
   );
 
