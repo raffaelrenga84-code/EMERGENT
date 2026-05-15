@@ -24,6 +24,17 @@ export default function WeeklySummaryCard({ familyId = null, familyName = 'Famig
   const [data, setData] = useState(null); // { summary, highlights }
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  // Collapse state: dopo ~10s di "data caricato" la card si riduce a una barra
+  // compatta, così il resto della Bacheca (task elenchi) non è sepolto.
+  // L'utente può ri-aprirla con un tap. Lo stato è persistito per famiglia+settimana.
+  const collapseKey = `fammy_weekly_collapsed_${familyId || 'all'}_${isoWeekKey()}_${lang}`;
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(collapseKey) === '1'; } catch (e) { return false; }
+  });
+  const setAndPersistCollapsed = (v) => {
+    setCollapsed(v);
+    try { localStorage.setItem(collapseKey, v ? '1' : '0'); } catch (e) {}
+  };
 
   // Difesa contro race condition: se è selezionata una singola famiglia,
   // filtriamo i task/eventi/spese/membri per family_id qui DENTRO il componente.
@@ -152,7 +163,62 @@ export default function WeeklySummaryCard({ familyId = null, familyName = 'Famig
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMaterial, familyId, familyName, lang, tasksSig]);
 
+  // Auto-collapse 10 secondi dopo che i dati arrivano (solo se l'utente
+  // non l'ha già toccato esplicitamente in questa settimana).
+  useEffect(() => {
+    if (!data || collapsed) return;
+    let collapsedManually = false;
+    try { collapsedManually = localStorage.getItem(collapseKey) !== null; } catch (e) {}
+    if (collapsedManually) return;
+    const tid = setTimeout(() => setAndPersistCollapsed(true), 10000);
+    return () => clearTimeout(tid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, collapseKey]);
+
   if (!hasMaterial) return null;
+
+  // === COLLAPSED VIEW ===
+  // Barra compatta: eyebrow + prima frase del summary (60 chars) + bottone expand
+  if (data && collapsed) {
+    const firstSentence = (data.summary || '').split(/[.!?]/)[0].slice(0, 70);
+    return (
+      <button
+        type="button"
+        className="ai-summary-card"
+        data-testid="weekly-summary-collapsed"
+        onClick={() => setAndPersistCollapsed(false)}
+        style={{
+          width: 'calc(100% - 32px)',
+          textAlign: 'left',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          cursor: 'pointer',
+          border: 'none',
+        }}>
+        <span className="ai-summary-spark" style={{ flexShrink: 0 }}><Sparkles size={16} /></span>
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+          <span style={{
+            display: 'block', fontSize: 10, fontWeight: 700,
+            color: 'var(--ac)', letterSpacing: '0.18em', textTransform: 'uppercase',
+          }}>
+            {t('weekly_summary_eyebrow')}
+          </span>
+          <span style={{
+            display: 'block', fontFamily: 'var(--fs)', fontSize: 13,
+            color: 'var(--km)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            marginTop: 2,
+          }}>
+            {firstSentence}{firstSentence.length >= 70 ? '…' : ''}
+          </span>
+        </span>
+        <span style={{
+          flexShrink: 0, fontSize: 18, color: 'var(--km)', transform: 'rotate(180deg)',
+        }}>›</span>
+      </button>
+    );
+  }
 
   return (
     <div className="ai-summary-card" data-testid="weekly-summary-card">
@@ -201,6 +267,14 @@ export default function WeeklySummaryCard({ familyId = null, familyName = 'Famig
               data-testid="weekly-summary-refresh"
             >
               <RefreshCw size={12} /> {loading ? t('regenerating') : t('regenerate')}
+            </button>
+            <button
+              className="ai-pill-btn"
+              onClick={() => setAndPersistCollapsed(true)}
+              data-testid="weekly-summary-collapse"
+              title="Riduci"
+            >
+              ⌃ {t('collapse_label') || 'Riduci'}
             </button>
           </div>
         </>

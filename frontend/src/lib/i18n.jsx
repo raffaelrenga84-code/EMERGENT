@@ -280,7 +280,7 @@ export const T = {
     // AI feature labels (i18n)
     weekly_summary_eyebrow: 'Il riepilogo della settimana',
     regenerate: 'Rigenera', regenerating: 'Rigenero…',
-    retry: 'Riprova',
+    retry: 'Riprova', collapse_label: 'Riduci',
     ai_err_generic: 'Non sono riuscito a generare il riepilogo. Riprova tra poco.',
     ai_err_busy: '✨ L\'AI è sovraccarica in questo momento. Riprova tra qualche istante.',
     ai_err_quota: '⏱️ Hai raggiunto il limite gratuito di richieste AI per ora. Riprova più tardi.',
@@ -674,7 +674,7 @@ export const T = {
     td_new_comment_n: '💬 New comment on "{title}"',
     weekly_summary_eyebrow: 'Your week, recapped',
     regenerate: 'Regenerate', regenerating: 'Regenerating…',
-    retry: 'Retry',
+    retry: 'Retry', collapse_label: 'Collapse',
     ai_err_generic: 'Could not generate the summary. Please try again shortly.',
     ai_err_busy: '✨ The AI is overloaded right now. Try again in a moment.',
     ai_err_quota: '⏱️ You\'ve hit the free AI request limit for now. Try again later.',

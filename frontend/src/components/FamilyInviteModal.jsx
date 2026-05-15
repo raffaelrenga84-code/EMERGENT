@@ -218,6 +218,22 @@ export default function FamilyInviteModal({ family, session, onClose }) {
         <h2>🎁 {t('invite_people_to', { name: family.name })}</h2>
         <p className="modal-sub">{t('invite_share_hint')}</p>
 
+        {/* Warning anti-doppione: chi accetta l'invito DEVE accedere con lo
+            stesso provider (Google/Apple) che usa di solito, altrimenti
+            creerà un account duplicato. */}
+        <div style={{
+          margin: '0 0 14px', padding: '10px 12px', borderRadius: 12,
+          background: 'var(--amB)', border: '1px solid var(--am)',
+          display: 'flex', alignItems: 'flex-start', gap: 8,
+        }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+          <span style={{ fontSize: 12, color: 'var(--k)', lineHeight: 1.45 }}>
+            <strong>Per evitare account doppi:</strong> di' a chi inviti di
+            <em> aprire prima FAMMY e accedere</em> con il provider che usa di
+            solito (Google o Apple). Solo dopo dovrà cliccare il link.
+          </span>
+        </div>
+
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <span className="spin" />

@@ -10,7 +10,7 @@ import DataPrivacyScreen from '../sub/DataPrivacyScreen.jsx';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
-export default function ProfileTab({ session, profile, families = [], onChanged, notificationControl = {} }) {
+export default function ProfileTab({ session, profile, families = [], members = [], me, onChanged, notificationControl = {} }) {
   const { t, lang, setLang } = useT();
   const [view, setView] = useState('main'); // main | plans | theme | a11y | privacy
   const [editingName, setEditingName] = useState(false);
@@ -204,7 +204,7 @@ export default function ProfileTab({ session, profile, families = [], onChanged,
       {/* Family Memories — galleria mensile auto delle foto */}
       {families.length > 0 && (
         <div className="profile-section">
-          <FamilyMemoriesCard familyIds={families.map((f) => f.id)} />
+          <FamilyMemoriesCard families={families} members={members} me={me} />
         </div>
       )}
 

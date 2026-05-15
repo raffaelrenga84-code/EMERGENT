@@ -82,6 +82,36 @@ L'utente ha caricato il repo `raffaelrenga84-code/fammy` (branch `vercel/install
    - Funziona quando l'app è aperta nel weekend (PWA installata o tab aperto)
    - **Per push reali ad app chiusa**: serve deployare la Edge Function `send-push` su Supabase + impostare `VITE_VAPID_PUBLIC_KEY` + cron pg_cron settimanale che chiami `/api/ai/weekly-summary`. Vedi `PUSH_NOTIFICATIONS_SETUP.md`.
 
+## Iterazione 10 (15 maggio 2026, mezzanotte) — Memorie filtrate + AI auto-collapse + anti-doppione invito
+
+### Family Memories — upgrade
+1. **Filtro per famiglia**: chip "🌍 Tutte" + chip per ogni famiglia (mostrate
+   solo se l'utente è in più famiglie). Le foto vengono ri-fetched al cambio.
+2. **Click sulla foto apre il task/evento** corrispondente:
+   - kind=task → `TaskDetailModal` (con commenti, completamento, etc.)
+   - kind=event → `EventDetailModal` (con dettagli + assegnatari + altre foto)
+3. Empty state intelligente: "Nessuna foto questo mese in 'Renga'" (mostra il
+   filtro attivo).
+4. Card spostata da `(familyIds)` a props completi `(families, members, me)` —
+   ProfileTab aggiornato di conseguenza.
+
+### WeeklySummaryCard — auto-collapse
+- Dopo **10 secondi** dal load completo, la card si riduce a una **barra
+  compatta** (eyebrow + prima frase 70 char + freccia per riaprire). Stato
+  persistito per famiglia+settimana+lingua (`localStorage`) → se l'utente
+  l'ha chiusa, non si ri-apre da sola.
+- Pulsante **"⌃ Riduci"** anche manuale dentro la card aperta.
+- Tap sulla barra compatta → ri-espande.
+- i18n: `collapse_label` IT/EN.
+
+### Anti-doppione invito
+- Warning ambra nel **FamilyInviteModal** subito sotto il titolo:
+  "⚠️ Per evitare account doppi: di' a chi inviti di aprire prima FAMMY e
+  accedere con il provider che usa di solito (Google o Apple). Solo dopo
+  dovrà cliccare il link."
+- Affronta la causa storica del problema doppioni che l'utente aveva avuto
+  (membri con Google su gmail + magic-link Hotmail = 2 utenti distinti).
+
 ## Iterazione 9 (15 maggio 2026, notte) — Apple Sign-In + warning duplicati + design polish
 
 ### Apple Sign-In abilitato
