@@ -201,6 +201,7 @@ async def ai_chat(req: ChatRequest):
             ctx_parts.append(f"Upcoming events: {events}")
 
     family_ctx = "\n".join(ctx_parts) if ctx_parts else "No family context provided yet."
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     system_message = (
         f"You are FAMMY, a warm and helpful family-organization assistant. "
@@ -209,7 +210,29 @@ async def ai_chat(req: ChatRequest):
         f"birthdays, shared expenses, weekly planning, kids' activities, "
         f"and general home organization. Never invent data: if asked about "
         f"specific tasks or events you don't see in the context, ask the user.\n\n"
-        f"=== Family context ===\n{family_ctx}"
+        f"Today's date is {today_str} (UTC). Use this when interpreting "
+        f"relative dates such as \"oggi\", \"domani\", \"venerdì\", \"prossima settimana\".\n\n"
+        f"=== Family context ===\n{family_ctx}\n\n"
+        f"=== TOOL CALLING ===\n"
+        f"When (and ONLY when) the user clearly asks you to CREATE/ADD a new "
+        f"task (\"incarico\", \"to-do\", \"chore\") or a new event (\"evento\", "
+        f"\"appointment\", \"appuntamento\"), append a single JSON action line at "
+        f"the very end of your reply, on its own line, in EXACTLY this format:\n"
+        f"  [[ACTION:create_task|{{\"title\":\"...\",\"category\":\"care|home|health|admin|spese|other\",\"due_date\":\"YYYY-MM-DD or null\"}}]]\n"
+        f"  [[ACTION:create_event|{{\"title\":\"...\",\"starts_at\":\"YYYY-MM-DDTHH:MM or null\",\"location\":\"... or null\"}}]]\n"
+        f"Category guide:\n"
+        f"  • care  : caring for kids/elderly/pets\n"
+        f"  • home  : groceries, cleaning, repairs, household errands (e.g. buying bread)\n"
+        f"  • health: doctor, medication, fitness\n"
+        f"  • admin : paperwork, school forms, banking\n"
+        f"  • spese : BILLS to pay (bolletta, rata) — NOT groceries\n"
+        f"  • other : everything else\n"
+        f"Rules:\n"
+        f"  • Use double quotes inside the JSON. Use null (not \"null\") when missing.\n"
+        f"  • Date math: today + 1 day = tomorrow, using {today_str} as today.\n"
+        f"  • Tasks have due_date (date). Events have starts_at (date + optional time, default 19:00).\n"
+        f"  • If the user just asks a question (no creation intent), DO NOT emit any ACTION block.\n"
+        f"  • Your conversational reply (before the ACTION line) should still be friendly and confirm what you're about to add."
     )
 
     try:

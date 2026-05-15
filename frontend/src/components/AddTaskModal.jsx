@@ -18,6 +18,8 @@ export default function AddTaskModal({
   familyId, families = [], members,
   authorMemberId,
   editingTask = null,           // se valorizzato, modifica invece di creare
+  // Prefill iniziale (usato es. dalle azioni dell'AI assistant)
+  initialTitle = '', initialCategory = null, initialDueDate = '',
   onClose, onCreated, onUpdated,
 }) {
   const { t } = useT();
@@ -33,10 +35,10 @@ export default function AddTaskModal({
   ];
 
   const [step, setStep] = useState(1);
-  const [title, setTitle] = useState(editingTask?.title || '');
+  const [title, setTitle] = useState(editingTask?.title || initialTitle || '');
   const [note, setNote] = useState(editingTask?.note || '');
-  const [category, setCategory] = useState(editingTask?.category || 'care');
-  const [dueDate, setDueDate] = useState(editingTask?.due_date || '');
+  const [category, setCategory] = useState(editingTask?.category || initialCategory || 'care');
+  const [dueDate, setDueDate] = useState(editingTask?.due_date || initialDueDate || '');
   const [assignees, setAssignees] = useState([]);
   const [recurringDays, setRecurringDays] = useState(editingTask?.recurring_days || []);
   const [recurringUntil, setRecurringUntil] = useState(editingTask?.recurring_until || '');

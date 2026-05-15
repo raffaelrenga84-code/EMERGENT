@@ -11,6 +11,8 @@ import NewFamilyModal from '../components/NewFamilyModal.jsx';
 import UpdateBanner from '../components/UpdateBanner.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import AIAssistantDrawer from '../components/AIAssistantDrawer.jsx';
+import AddTaskModal from '../components/AddTaskModal.jsx';
+import AddEventModal from '../components/AddEventModal.jsx';
 
 export default function HomeScreen({ session, profile, families, onRefresh }) {
   const { t } = useT();
@@ -28,6 +30,33 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
   });
   const [showUpdateBanner, setShowUpdateBanner] = useState(true);
   const [pendingExpenseTask, setPendingExpenseTask] = useState(null);
+  // AI-driven prefill modals (opened when the AI assistant emits an ACTION)
+  const [aiTaskPrefill, setAiTaskPrefill] = useState(null); // { title, category, due_date }
+  const [aiEventPrefill, setAiEventPrefill] = useState(null); // { title, starts_at, location }
+
+  // Helper: pick the family the AI-created item should land in.
+  // Priority: currently-active family → first family the user belongs to.
+  const targetFamilyForAI = () => {
+    if (activeFamily && activeFamily !== 'all') return activeFamily;
+    return families[0]?.id || null;
+  };
+
+  const handleAIAction = (action) => {
+    if (!action || !action.type) return;
+    if (action.type === 'create_task') {
+      setAiTaskPrefill({
+        title: action.data?.title || '',
+        category: ['care', 'home', 'health', 'admin', 'spese', 'other'].includes(action.data?.category) ? action.data.category : 'other',
+        due_date: action.data?.due_date && action.data.due_date !== 'null' ? action.data.due_date : '',
+      });
+    } else if (action.type === 'create_event') {
+      setAiEventPrefill({
+        title: action.data?.title || '',
+        starts_at: action.data?.starts_at && action.data.starts_at !== 'null' ? action.data.starts_at : '',
+        location: action.data?.location && action.data.location !== 'null' ? action.data.location : '',
+      });
+    }
+  };
 
   const openExpenseForTask = (task) => {
     setPendingExpenseTask(task);
@@ -196,7 +225,34 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
         tasks={tasks}
         events={events}
         activeFamily={activeFamily}
+        onAction={handleAIAction}
       />
+
+      {aiTaskPrefill && targetFamilyForAI() && (
+        <AddTaskModal
+          familyId={targetFamilyForAI()}
+          families={families}
+          members={members}
+          authorMemberId={me?.id}
+          initialTitle={aiTaskPrefill.title}
+          initialCategory={aiTaskPrefill.category}
+          initialDueDate={aiTaskPrefill.due_date}
+          onClose={() => setAiTaskPrefill(null)}
+          onCreated={() => { setAiTaskPrefill(null); setRefreshKey((k) => k + 1); }}
+        />
+      )}
+
+      {aiEventPrefill && targetFamilyForAI() && (
+        <AddEventModal
+          familyId={targetFamilyForAI()}
+          authorMemberId={me?.id}
+          initialTitle={aiEventPrefill.title}
+          initialStartsAt={aiEventPrefill.starts_at}
+          initialLocation={aiEventPrefill.location}
+          onClose={() => setAiEventPrefill(null)}
+          onCreated={() => { setAiEventPrefill(null); setRefreshKey((k) => k + 1); }}
+        />
+      )}
     </div>
   );
 }

@@ -14,7 +14,26 @@ import { useT } from '../lib/i18n.jsx';
  * context from the parent (user id + a snapshot of the family state used to
  * personalize the assistant's answers).
  */
-export default function AIAssistantDrawer({ session, families = [], members = [], tasks = [], events = [], activeFamily }) {
+/**
+ * Parse one or more [[ACTION:type|{json}]] markers from an assistant reply.
+ * Returns { cleanText, actions: [{type, data}] }. Never throws — invalid JSON
+ * is silently dropped so the user still sees the conversational reply.
+ */
+function parseActions(reply) {
+  const re = /\[\[ACTION:(create_task|create_event)\|(\{[\s\S]*?\})\]\]/g;
+  const actions = [];
+  let m;
+  while ((m = re.exec(reply)) !== null) {
+    try {
+      const data = JSON.parse(m[2]);
+      actions.push({ type: m[1], data });
+    } catch (e) { /* skip malformed */ }
+  }
+  const cleanText = reply.replace(re, '').trim();
+  return { cleanText, actions };
+}
+
+export default function AIAssistantDrawer({ session, families = [], members = [], tasks = [], events = [], activeFamily, onAction }) {
   const { t, lang } = useT();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -77,7 +96,8 @@ export default function AIAssistantDrawer({ session, families = [], members = []
         session_id: sessionId,
       });
       setSessionId(res.session_id);
-      setMessages((m) => [...m, { role: 'assistant', content: res.reply }]);
+      const { cleanText, actions } = parseActions(res.reply || '');
+      setMessages((m) => [...m, { role: 'assistant', content: cleanText, actions }]);
     } catch (e) {
       setMessages((m) => [...m, { role: 'assistant', content: `⚠️ ${e.message}` }]);
     } finally {
@@ -149,8 +169,28 @@ export default function AIAssistantDrawer({ session, families = [], members = []
 
             <div className="ai-drawer-messages" ref={scrollerRef}>
               {messages.map((m, i) => (
-                <div key={i} className={`ai-msg ${m.role}`} data-testid={`ai-msg-${m.role}-${i}`}>
-                  {m.content}
+                <div key={i} className="ai-msg-block">
+                  <div className={`ai-msg ${m.role}`} data-testid={`ai-msg-${m.role}-${i}`}>
+                    {m.content}
+                  </div>
+                  {Array.isArray(m.actions) && m.actions.length > 0 && (
+                    <div className="ai-msg-actions">
+                      {m.actions.map((a, k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          className="ai-action-btn"
+                          data-testid={`ai-action-${a.type}-${i}-${k}`}
+                          onClick={() => {
+                            if (onAction) onAction(a);
+                            setOpen(false);
+                          }}
+                        >
+                          {a.type === 'create_task' ? `📝 ${t('open_prefilled_task')}` : `📅 ${t('open_prefilled_event')}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
               {thinking && (

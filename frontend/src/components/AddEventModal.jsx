@@ -8,12 +8,19 @@ function dateOffset(days) {
   return d.toISOString().slice(0, 10);
 }
 
-export default function AddEventModal({ familyId, authorMemberId, onClose, onCreated }) {
+export default function AddEventModal({
+  familyId, authorMemberId, onClose, onCreated,
+  // Prefill iniziale (usato es. dalle azioni dell'AI assistant)
+  initialTitle = '', initialStartsAt = '', initialLocation = '',
+}) {
   const { t } = useT();
-  const [title, setTitle] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [location, setLocation] = useState('');
+  // Splitta initialStartsAt (formato "YYYY-MM-DDTHH:MM" o "YYYY-MM-DD") in date+time
+  const _initialDate = initialStartsAt ? initialStartsAt.slice(0, 10) : '';
+  const _initialTime = (initialStartsAt && initialStartsAt.length >= 16) ? initialStartsAt.slice(11, 16) : '';
+  const [title, setTitle] = useState(initialTitle || '');
+  const [date, setDate] = useState(_initialDate);
+  const [time, setTime] = useState(_initialTime);
+  const [location, setLocation] = useState(initialLocation || '');
   const [description, setDescription] = useState('');
   const [recurringDays, setRecurringDays] = useState([]); // 0=Lun, ..., 6=Dom
   const [recurringUntil, setRecurringUntil] = useState('');
