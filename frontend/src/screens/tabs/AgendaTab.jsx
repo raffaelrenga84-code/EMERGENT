@@ -176,7 +176,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
       // entro orizzonte?
       if (ev.recurring_until && new Date(ev.recurring_until) < selectedDay) continue;
       if (!filterEvent(ev)) continue;
-      out.push({ kind: 'event', id: `skip-e-${ev.id}-${dayKey}`, title: ev.title });
+      out.push({ kind: 'event', id: `skip-e-${ev.id}-${dayKey}`, title: ev.title, realId: ev.id, dateKey });
     }
     for (const tk of (tasks || [])) {
       if (!tk.recurring_days || tk.recurring_days.length === 0) continue;
@@ -186,7 +186,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
       if (!weekdays.includes(wd) && !monthDays.includes(dom)) continue;
       if (tk.recurring_until && new Date(tk.recurring_until) < selectedDay) continue;
       if (!filterTask(tk)) continue;
-      out.push({ kind: 'task', id: `skip-t-${tk.id}-${dayKey}`, title: tk.title });
+      out.push({ kind: 'task', id: `skip-t-${tk.id}-${dayKey}`, title: tk.title, realId: tk.id, dateKey });
     }
     return out;
   })();
@@ -219,6 +219,16 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const todayCount = todayEvents.length + todayTasks.length;
   const futureCount = futureEvents.length + futureTasks.length;
   const pastCount = pastEvents.length + pastTasks.length;
+
+  const restoreSkippedOccurrence = async (skipped) => {
+    const table = skipped.kind === 'event' ? 'events' : 'tasks';
+    if (!confirm(`Ripristinare "${skipped.title}" per questa data?`)) return;
+    const { data: cur } = await supabase
+      .from(table).select('recurring_exceptions').eq('id', skipped.realId).maybeSingle();
+    const next = (cur?.recurring_exceptions || []).filter((d) => d !== skipped.dateKey);
+    await supabase.from(table).update({ recurring_exceptions: next }).eq('id', skipped.realId);
+    onChanged();
+  };
 
   const removeEvent = async (event) => {
     if (!confirm(t('agenda_delete_confirm'))) return;
@@ -373,13 +383,21 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
             {skippedForDay.length > 0 && (
               <div style={{ padding: '4px 16px 8px' }}>
                 {skippedForDay.map((s) => (
-                  <div key={s.id} data-testid={s.id}
+                  <button key={s.id} data-testid={s.id}
+                    type="button"
+                    onClick={() => restoreSkippedOccurrence(s)}
+                    title="Tocca per ripristinare questa occorrenza"
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '10px 12px', marginBottom: 6,
+                      padding: '10px 12px', marginBottom: 6, width: '100%',
                       background: 'var(--ab)', border: '1px dashed var(--sm)',
-                      borderRadius: 12, opacity: 0.75,
-                    }}>
+                      borderRadius: 12, opacity: 0.75, cursor: 'pointer',
+                      textAlign: 'left', fontFamily: 'inherit',
+                      transition: 'opacity 0.15s ease, transform 0.1s ease',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.75'; }}
+                  >
                     <span style={{ fontSize: 18 }}>🚫</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
@@ -387,11 +405,11 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
                         textDecoration: 'line-through',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>{s.title}</div>
-                      <div style={{ fontSize: 10, color: 'var(--km)', marginTop: 1, opacity: 0.8 }}>
-                        Sospeso · {s.kind === 'event' ? 'evento ricorrente' : 'incarico ricorrente'}
+                      <div style={{ fontSize: 10, color: 'var(--km)', marginTop: 1, opacity: 0.85 }}>
+                        Sospeso · {s.kind === 'event' ? 'evento ricorrente' : 'incarico ricorrente'} · ↩️ tocca per ripristinare
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
