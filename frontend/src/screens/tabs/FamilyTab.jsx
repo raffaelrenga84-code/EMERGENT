@@ -252,6 +252,45 @@ export default function FamilyTab({ family, members, session, families, activeFa
         )}
       </div>
 
+      {/* Mini-row avatar membri (max 5 + overflow counter) */}
+      {familyMembersOfThis.length > 0 && (
+        <div style={{
+          padding: '0 22px 14px',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }} data-testid="family-avatar-row">
+          {familyMembersOfThis.slice(0, 5).map((m, idx) => (
+            <div
+              key={m.id}
+              title={m.name}
+              style={{
+                width: 32, height: 32, borderRadius: 10,
+                background: m.avatar_color || '#1C1611',
+                color: 'white', fontWeight: 700, fontSize: 13,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginLeft: idx === 0 ? 0 : -8,
+                border: '2.5px solid white',
+                boxShadow: '0 2px 5px rgba(28,22,17,0.12)',
+                zIndex: 5 - idx,
+              }}>
+              {m.avatar_letter || m.name?.charAt(0)?.toUpperCase() || '?'}
+            </div>
+          ))}
+          {familyMembersOfThis.length > 5 && (
+            <div style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: 'var(--ab)',
+              color: 'var(--km)', fontWeight: 700, fontSize: 11,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginLeft: -8,
+              border: '2.5px solid white',
+              boxShadow: '0 2px 5px rgba(28,22,17,0.12)',
+            }}>
+              +{familyMembersOfThis.length - 5}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="list">
         {familyMembersOfThis.map((m) => (
           <MemberCard
