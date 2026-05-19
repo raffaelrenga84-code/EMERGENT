@@ -313,20 +313,20 @@ export default function ProfileTab({ session, profile, families = [], members = 
         </p>
         <button className="btn full" onClick={shareApp} data-testid="profile-referral-btn">{t('profile_referral_btn')}</button>
         <p style={{ fontSize: 11, color: 'var(--km)', margin: '10px 4px 0', lineHeight: 1.45, textAlign: 'center' }}>
-          💡 Per inviti dentro una famiglia, usa la sezione <strong>Famiglia → Invita</strong>.
+          💡 {t('invite_hint_family')} <strong>Famiglia → 💌</strong>.
         </p>
       </div>
 
       {/* Riguarda il tour */}
       <div className="profile-section">
-        <div className="profile-label" style={{ marginBottom: 8 }}>🎓 Tour & aiuto</div>
+        <div className="profile-label" style={{ marginBottom: 8 }}>🎓 {t('profile_tour_label')}</div>
         <button
           type="button"
           className="btn full secondary"
           onClick={() => setShowTour(true)}
           data-testid="profile-show-tour-btn"
         >
-          ✨ Rivedi il tour di benvenuto
+          {t('profile_tour_btn')}
         </button>
       </div>
 

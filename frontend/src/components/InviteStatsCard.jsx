@@ -1,21 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { useT } from '../lib/i18n.jsx';
 
-/**
- * InviteStatsCard — mostra "Hai invitato X persone questa settimana" basandosi
- * sui membri (status active, user_id non null) aggiunti negli ultimi 7 giorni
- * alle famiglie di cui l'utente è `created_by`.
- *
- * Niente schema change: conta members.created_at >= 7d ago AND
- * family.created_by = me.user_id AND member.user_id != me.user_id.
- *
- * Non si mostra se l'utente non possiede famiglie (created_by != me).
- */
 export default function InviteStatsCard({ session, families = [] }) {
+  const { t } = useT();
   const [count, setCount] = useState(null);
   const [loading, setLoading] = useState(true);
   const myUserId = session?.user?.id;
-  // Solo le famiglie di cui sono owner
   const ownedFamilyIds = families.filter((f) => f.created_by === myUserId).map((f) => f.id);
 
   useEffect(() => {
@@ -51,7 +42,7 @@ export default function InviteStatsCard({ session, families = [] }) {
   if (ownedFamilyIds.length === 0) return null;
   if (loading) return null;
 
-  const tone = pickTone(count);
+  const tone = pickTone(count, t);
 
   return (
     <div
@@ -80,7 +71,7 @@ export default function InviteStatsCard({ session, families = [] }) {
           fontSize: 10, fontWeight: 700, color: tone.accent,
           textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2,
         }}>
-          Questa settimana
+          {t('invite_stat_eyebrow')}
         </div>
         <div style={{
           fontFamily: 'var(--fs)', fontSize: 17, fontWeight: 500,
@@ -93,13 +84,14 @@ export default function InviteStatsCard({ session, families = [] }) {
   );
 }
 
-function pickTone(count) {
+function pickTone(count, t) {
+  const persons = (n) => n === 1 ? t('invite_stat_person_1') : t('invite_stat_person_n', { n });
   if (count === 0) {
     return {
       emoji: '🌱',
       bg: 'var(--ab)', border: 'var(--sm)', iconBg: 'var(--sm)',
       accent: 'var(--km)',
-      message: () => 'Pronto a far crescere la famiglia? Condividi il codice invito 💌',
+      message: () => t('invite_stat_zero'),
     };
   }
   if (count <= 3) {
@@ -107,7 +99,7 @@ function pickTone(count) {
       emoji: '🌿',
       bg: '#F4F6F2', border: '#DDE5D7', iconBg: '#DDE5D7',
       accent: '#587A4E',
-      message: (n) => `Hai invitato ${n} ${n === 1 ? 'persona' : 'persone'}. Bel inizio! 🌿`,
+      message: (n) => t('invite_stat_low', { n: persons(n) }),
     };
   }
   if (count <= 9) {
@@ -115,13 +107,13 @@ function pickTone(count) {
       emoji: '🎉',
       bg: '#FFF5EE', border: '#F5C9AC', iconBg: '#F5C9AC',
       accent: '#C1624B',
-      message: (n) => `Hai invitato ${n} persone! La famiglia sta crescendo 🎉`,
+      message: (n) => t('invite_stat_mid', { n: persons(n) }),
     };
   }
   return {
     emoji: '🚀',
     bg: '#FFF1E6', border: '#FFD6A5', iconBg: '#FFD6A5',
     accent: '#B5563D',
-    message: (n) => `Wow, ${n} nuovi membri! Sei un connettore nato 🚀`,
+    message: (n) => t('invite_stat_high', { n }),
   };
 }

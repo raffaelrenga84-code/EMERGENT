@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { useT } from '../lib/i18n.jsx';
 
 /**
- * JoinFamilyByCodeModal — flusso 2-step:
- *   1) inserisci codice → peek_family_by_code (preview senza joinare)
- *   2) conferma → accept_family_by_code (join effettivo)
- *
- * Anti-doppione: peek mostra `already_member: true` se l'utente è già dentro.
+ * JoinFamilyByCodeModal — flusso 2-step: peek_family_by_code → accept_family_by_code.
  */
 export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
+  const { t } = useT();
   const [code, setCode] = useState('');
   const [name, setName] = useState(profile?.display_name || '');
   const [step, setStep] = useState('input'); // 'input' | 'preview' | 'success'
@@ -26,15 +24,15 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
   const peek = async (e) => {
     e?.preventDefault();
     const trimmed = code.trim().toUpperCase();
-    if (trimmed.length !== 6) { setErr('Il codice deve essere di 6 caratteri'); return; }
+    if (trimmed.length !== 6) { setErr(t('join_err_6char')); return; }
     setBusy(true); setErr('');
     try {
       const { data, error } = await supabase.rpc('peek_family_by_code', { p_code: trimmed });
       if (error) throw error;
       if (!data?.ok) {
-        if (data?.error === 'invalid_code') setErr('Codice non valido. Controlla con chi te lo ha mandato.');
-        else if (data?.error === 'not_authenticated') setErr('Sessione scaduta. Riaccedi.');
-        else setErr(`Errore: ${data?.error || 'sconosciuto'}`);
+        if (data?.error === 'invalid_code') setErr(t('join_err_invalid'));
+        else if (data?.error === 'not_authenticated') setErr(t('join_err_session'));
+        else setErr(`${t('join_err_generic')}: ${data?.error || ''}`);
         return;
       }
       setPreview(data);
@@ -56,13 +54,13 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
       });
       if (error) throw error;
       if (!data?.ok) {
-        setErr(`Errore: ${data?.error || 'sconosciuto'}`);
+        setErr(`${t('join_err_generic')}: ${data?.error || ''}`);
         return;
       }
       setStep('success');
       setTimeout(() => onJoined?.(data.family_id), 1500);
     } catch (e2) {
-      setErr(e2.message || 'Errore');
+      setErr(e2.message || t('join_err_generic'));
     } finally {
       setBusy(false);
     }
@@ -78,12 +76,12 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
           <div style={{ textAlign: 'center', padding: '16px 8px' }}>
             <div style={{ fontSize: 56, marginBottom: 10 }}>🎉</div>
             <h2 style={{ margin: '0 0 8px', fontSize: 22, fontFamily: 'var(--fs)', fontWeight: 500 }}>
-              {preview.already_member ? 'Bentornato!' : 'Benvenuto!'}
+              {preview.already_member ? t('join_welcome_back') : t('join_welcome')}
             </h2>
             <p style={{ margin: 0, fontSize: 14, color: 'var(--km)', lineHeight: 1.45 }}>
               {preview.already_member
-                ? `Sei già membro di "${preview.family_name}".`
-                : `Sei stato aggiunto a "${preview.family_name}".`}
+                ? t('join_success_back', { name: preview.family_name })
+                : t('join_success_new', { name: preview.family_name })}
             </p>
           </div>
         )}
@@ -93,7 +91,7 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
           <>
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <div style={{ fontSize: 12, color: 'var(--km)', marginBottom: 4, letterSpacing: 0.5 }}>
-                STAI PER UNIRTI A
+                {t('join_about_to_join')}
               </div>
               {/* Preview card della famiglia */}
               <div style={{
@@ -111,7 +109,7 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
                   {preview.family_name}
                 </h2>
                 <div style={{ fontSize: 12, color: 'var(--km)' }}>
-                  👥 {preview.members_count} {preview.members_count === 1 ? 'membro' : 'membri'}
+                  👥 {preview.members_count === 1 ? t('join_members_count_1') : t('join_members_count_n', { n: preview.members_count })}
                 </div>
               </div>
 
@@ -121,7 +119,7 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
                   background: 'var(--amB)', border: '1px solid var(--am)',
                   fontSize: 12, color: 'var(--k)', lineHeight: 1.4,
                 }}>
-                  ✓ Sei già membro di questa famiglia. Vai pure a vedere!
+                  {t('join_already_member')}
                 </div>
               )}
             </div>
@@ -131,11 +129,11 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
                 <label htmlFor="join-name" style={{
                   display: 'block', fontSize: 11, fontWeight: 700,
                   color: 'var(--km)', marginBottom: 4, letterSpacing: 0.4,
-                }}>COME TI CHIAMI?</label>
+                }}>{t('join_name_label')}</label>
                 <input
                   id="join-name"
                   className="input"
-                  placeholder="Il tuo nome (es. Marco)"
+                  placeholder={t("join_name_ph")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   data-testid="join-name-input"
@@ -154,7 +152,7 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
 
             <div className="row">
               <button type="button" className="btn secondary" onClick={goBack} data-testid="join-back-btn">
-                ‹ Indietro
+                {t('join_back')}
               </button>
               <button type="button" className="btn" disabled={busy}
                 onClick={preview.already_member ? () => onJoined?.(preview.family_id) : confirmJoin}
@@ -164,7 +162,7 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
                   color: 'white', border: 'none',
                   boxShadow: '0 6px 18px rgba(193,98,75,0.32)',
                 }}>
-                {busy ? <span className="spin" /> : (preview.already_member ? '🏡 Vai alla famiglia' : '🚀 Unisciti')}
+                {busy ? <span className="spin" /> : (preview.already_member ? t('join_go_to_family') : t('join_submit'))}
               </button>
             </div>
           </>
@@ -176,10 +174,10 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
             <div style={{ textAlign: 'center', marginBottom: 18 }}>
               <div style={{ fontSize: 42, marginBottom: 6 }}>🎟️</div>
               <h2 style={{ margin: 0, fontSize: 22, fontFamily: 'var(--fs)', fontWeight: 500, letterSpacing: '-0.015em' }}>
-                Hai un codice invito?
+                {t('join_h')}
               </h2>
               <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--km)', lineHeight: 1.45 }}>
-                Inserisci il codice che ti hanno mandato per unirti<br />a una famiglia già esistente.
+                <span dangerouslySetInnerHTML={{ __html: t('join_sub').replace(' ', '<br />').replace('rejoindre', 'rejoindre<br />') }} />
               </p>
             </div>
 
@@ -188,7 +186,7 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
                 display: 'block', fontSize: 10, fontWeight: 700,
                 color: 'var(--km)', textTransform: 'uppercase', letterSpacing: 0.6,
                 marginBottom: 6, textAlign: 'center',
-              }}>Codice (6 caratteri)</label>
+              }}>{t('join_code_label')}</label>
               <input
                 id="invite-code-input"
                 type="text"
@@ -221,10 +219,10 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
 
               <div className="row">
                 <button type="button" className="btn secondary" onClick={onClose} data-testid="join-cancel-btn">
-                  Annulla
+                  {t('cancel')}
                 </button>
                 <button type="submit" className="btn" disabled={busy || code.length !== 6} data-testid="join-peek-btn">
-                  {busy ? <span className="spin" /> : 'Continua →'}
+                  {busy ? <span className="spin" /> : t('join_continue')}
                 </button>
               </div>
             </form>

@@ -32,9 +32,7 @@ export default function FamilyInviteModal({ family, session, onClose }) {
 
   const regenerateCode = async () => {
     if (!isOwner) return;
-    if (!confirm(
-      'Rigenerare il codice invito? Il vecchio codice smetterà di funzionare e dovrai re-inviare il nuovo a chi ancora non si è unito.'
-    )) return;
+    if (!confirm(t('invite_regen_confirm'))) return;
     setRegenBusy(true);
     try {
       const { data, error } = await supabase.rpc('regenerate_family_invite_code', {
@@ -124,10 +122,10 @@ export default function FamilyInviteModal({ family, session, onClose }) {
   const codeUpper = (localFamily.invite_code || '').toUpperCase();
   // Messaggio share: codice prominent + link come fallback
   const shareMessage = codeUpper
-    ? `Ti aggiungo alla famiglia "${family.name}" su FAMMY 🏡\n\n` +
-      `Codice invito: ${codeUpper}\n\n` +
-      `Apri FAMMY, fai login con Google/Apple e inserisci il codice.\n` +
-      `Oppure usa il link: ${inviteUrl}`
+    ? `${t('invite_msg_subject')} "${family.name}" 🏡\n\n` +
+      `${t('invite_code_label')}: ${codeUpper}\n\n` +
+      `${t('invite_msg_open')}\n` +
+      `${t('invite_msg_or_link')}: ${inviteUrl}`
     : `Ti invito a unirti alla famiglia "${family.name}" su FAMMY! 🏡\n\nApri questo link:\n${inviteUrl}`;
 
   const copyToClipboard = async () => {
@@ -141,13 +139,12 @@ export default function FamilyInviteModal({ family, session, onClose }) {
   const shareViaWeb = async () => {
     if (navigator.share) {
       try {
-        // Stesso fix del bug URL doppio: passiamo il messaggio SENZA url nel
-        // text (l'OS appende l'url separatamente)
-        const textWithoutUrl = shareMessage
-          .replace(/\s*Oppure usa il link:\s*[^\s]+/g, '')
-          .replace(/Apri questo link:\s*[^\s]+/g, '');
+        // Versione senza url per navigator.share (l'OS appende l'url da solo)
+        const textWithoutUrl = codeUpper
+          ? `${t('invite_msg_subject')} "${family.name}" 🏡\n\n${t('invite_code_label')}: ${codeUpper}\n\n${t('invite_msg_open')}`
+          : `${t('invite_msg_subject')} "${family.name}" 🏡`;
         await navigator.share({
-          title: `Invito a ${family.name}`,
+          title: `${t('invite_msg_subject')} ${family.name}`,
           text: textWithoutUrl,
           url: inviteUrl,
         });
@@ -279,9 +276,7 @@ export default function FamilyInviteModal({ family, session, onClose }) {
         }}>
           <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
           <span style={{ fontSize: 12, color: 'var(--k)', lineHeight: 1.45 }}>
-            <strong>Per evitare account doppi:</strong> di' a chi inviti di
-            <em> aprire prima FAMMY e accedere</em> con il provider che usa di
-            solito (Google o Apple). Solo dopo dovrà cliccare il link.
+            <strong>{t('invite_warn_dup_h')}</strong> {t('invite_warn_dup_b')}
           </span>
         </div>
 
@@ -318,7 +313,7 @@ export default function FamilyInviteModal({ family, session, onClose }) {
                     marginBottom: 6, cursor: 'pointer',
                     padding: '4px 0',
                   }}
-                  title="Tocca per copiare"
+                  title={t('invite_tap_copy_tooltip')}
                 >
                   {(localFamily.invite_code || '------').toUpperCase()}
                 </div>
@@ -336,15 +331,14 @@ export default function FamilyInviteModal({ family, session, onClose }) {
                       color: 'var(--km)', fontSize: 11, fontWeight: 600,
                       cursor: 'pointer',
                     }}>
-                    {regenBusy ? '⏳ rigenero...' : '🔄 rigenera codice'}
+                    {regenBusy ? `⏳ ${t('invite_regen_busy')}` : `🔄 ${t('invite_regen_btn')}`}
                   </button>
                 )}
                 <div style={{
                   fontSize: 11, color: 'var(--km)', textAlign: 'center',
                   marginBottom: 14, lineHeight: 1.45,
                 }}>
-                  Chi lo riceve apre FAMMY, fa login con Google/Apple<br />
-                  e inserisce questo codice per unirsi alla famiglia.
+                  {t('invite_code_hint')}
                 </div>
 
                 {/* Link (più piccolo, secondario) */}
@@ -353,7 +347,7 @@ export default function FamilyInviteModal({ family, session, onClose }) {
                     fontSize: 11, color: 'var(--km)', cursor: 'pointer',
                     textAlign: 'center', listStyle: 'none', padding: '6px 0',
                   }}>
-                    🔗 oppure usa il link diretto
+                    {t('invite_use_link_alt')}
                   </summary>
                   <div style={{
                     marginTop: 8, padding: 8, background: 'white',
