@@ -65,6 +65,8 @@ export default function AddTaskModal({
   const [recurrenceScope, setRecurrenceScope] = useState(editingTask?.recurring_until ? 'thisMonth' : 'forever');
 
   const scrollableRef = useRef(null);
+  const titleInputRef = useRef(null);
+  const [titleFlash, setTitleFlash] = useState(false);
   useKeyboardSafeModal(scrollableRef);
 
   // Carica gli assegnatari attuali in modo edit
@@ -124,7 +126,23 @@ export default function AddTaskModal({
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      // Feedback chiaro: scroll in cima + focus + flash visivo + messaggio.
+      // L'utente potrebbe avere il campo Titolo scrollato fuori vista perché
+      // tutti gli altri input (categoria, data, ora, luogo, assegnatari) lo
+      // hanno spinto sotto. Senza questo, il pulsante "Aggiungi" sembra
+      // "rotto".
+      setErr(t('addtask_title_required') || '💡 Inserisci un titolo per continuare');
+      if (scrollableRef.current) {
+        scrollableRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      setTitleFlash(true);
+      window.setTimeout(() => {
+        try { titleInputRef.current?.focus(); } catch (_) {}
+      }, 250);
+      window.setTimeout(() => setTitleFlash(false), 1500);
+      return;
+    }
 
     let computedUntil = null;
     if (recurringDays.length > 0) {
@@ -272,9 +290,16 @@ export default function AddTaskModal({
             {/* === TITOLO + AI HINT === */}
             <label htmlFor="title">{t('addtask_title_label')}</label>
             <input id="title" className="input" autoFocus
+              ref={titleInputRef}
               data-testid="add-task-title-input"
               placeholder={t(`addtask_title_ph_${category}`)}
-              value={title} onChange={(e) => setTitle(e.target.value)} />
+              value={title} onChange={(e) => setTitle(e.target.value)}
+              style={titleFlash ? {
+                border: '2px solid var(--rd)',
+                boxShadow: '0 0 0 4px rgba(231, 76, 60, 0.18)',
+                animation: 'fammy-flash 700ms ease-in-out',
+              } : undefined}
+            />
 
             {!isEdit && (
               <AISmartTaskHint
@@ -589,7 +614,7 @@ export default function AddTaskModal({
 
           <div className="row" style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--sm)' }}>
             <button type="button" className="btn secondary" onClick={onClose} data-testid="add-task-cancel-btn">{t('cancel')}</button>
-            <button type="submit" className="btn" disabled={busy || !title.trim()} data-testid="add-task-submit-btn">
+            <button type="submit" className="btn" disabled={busy} data-testid="add-task-submit-btn">
               {busy ? <span className="spin" /> : (isEdit ? (t('save_changes') || 'Salva modifiche') : t('add'))}
             </button>
           </div>
