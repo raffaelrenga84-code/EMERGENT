@@ -130,6 +130,8 @@ export default function SwipeableRow({
         userSelect: 'none',
         touchAction: 'pan-y',
         WebkitTapHighlightColor: 'transparent',
+        marginBottom: 12,        /* sostituisce il margin della .tc figlia */
+        borderRadius: 20,        /* clipping coerente con il border-radius della card */
       }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
@@ -209,6 +211,7 @@ export default function SwipeableRow({
 
       {/* Contenuto in primo piano che scorre */}
       <div
+        className="swipe-row-inner"
         style={{
           transform: `translate3d(${dx}px, 0, 0)`,
           transition: animating ? 'transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1)' : 'none',

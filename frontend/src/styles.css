@@ -94,6 +94,9 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--km); mar
   box-shadow: 0 2px 8px rgba(28,22,17,.06); margin-bottom: 12px;
   border: 1px solid var(--sm); transition: box-shadow .15s, transform .15s; }
 .tc:hover { box-shadow: 0 6px 18px rgba(28,22,17,.12); transform: translateY(-2px); }
+/* Quando una .tc è dentro uno SwipeableRow, il margine è gestito dal wrapper */
+.swipe-row-inner > .tc { margin-bottom: 0; box-shadow: none; }
+.swipe-row-inner > .tc:hover { transform: none; box-shadow: none; }
 .tc.care { background: #FEF8F4; }
 .tc.home { background: var(--s); }
 .tc.health { background: #F2F9F5; }
