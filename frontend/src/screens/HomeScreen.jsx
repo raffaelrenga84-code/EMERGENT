@@ -209,7 +209,13 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
           />
         )}
         {activeTab === 'profile' && (
-          <ProfileTab session={session} profile={profile} families={families} members={members} me={me} onChanged={refreshAll} notificationControl={notificationControl} />
+          <ProfileTab
+            session={session} profile={profile}
+            families={families} members={members} me={me}
+            tasks={tasks} events={events}
+            activeFamilyId={isAll ? null : activeFamily}
+            onChanged={refreshAll}
+            notificationControl={notificationControl} />
         )}
       </div>
 

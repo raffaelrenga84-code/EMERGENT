@@ -19,11 +19,15 @@ function isoWeekKey(d = new Date()) {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
-export default function WeeklySummaryCard({ familyId = null, familyName = 'Famiglia', tasks = [], events = [], expenses = [], members = [] }) {
+export default function WeeklySummaryCard({ familyId = null, familyName = 'Famiglia', tasks = [], events = [], expenses = [], members = [], lazy = false }) {
   const { t, lang } = useT();
   const [data, setData] = useState(null); // { summary, highlights }
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  // Quando `lazy` è true il render iniziale è una "shell" che invita l'utente
+  // a cliccare "Genera ora": non sprechiamo chiamate LLM finché l'utente non
+  // lo richiede esplicitamente (es. nella sezione Insights del Profilo).
+  const [primed, setPrimed] = useState(!lazy);
   // Collapse state: dopo ~10s di "data caricato" la card si riduce a una barra
   // compatta, così il resto della Bacheca (task elenchi) non è sepolto.
   // L'utente può ri-aprirla con un tap. Lo stato è persistito per famiglia+settimana.
@@ -153,6 +157,7 @@ export default function WeeklySummaryCard({ familyId = null, familyName = 'Famig
   const hasMaterial = fTasks.length > 0 || fEvents.length > 0;
 
   useEffect(() => {
+    if (!primed) return; // lazy: aspetta il click "Genera ora"
     if (hasMaterial) {
       // Reset and refetch whenever language, family or task signature changes.
       // tasksSig change handles the race where tasks load asynchronously
@@ -161,7 +166,7 @@ export default function WeeklySummaryCard({ familyId = null, familyName = 'Famig
       fetchSummary(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMaterial, familyId, familyName, lang, tasksSig]);
+  }, [primed, hasMaterial, familyId, familyName, lang, tasksSig]);
 
   // Auto-collapse 10 secondi dopo che i dati arrivano (solo se l'utente
   // non l'ha già toccato esplicitamente in questa settimana).
@@ -176,6 +181,39 @@ export default function WeeklySummaryCard({ familyId = null, familyName = 'Famig
   }, [data, collapseKey]);
 
   if (!hasMaterial) return null;
+
+  // === LAZY SHELL VIEW ===
+  // Quando `lazy=true` e l'utente non ha ancora chiesto la generazione,
+  // mostriamo un placeholder che invita al tap (zero costo LLM).
+  if (lazy && !primed && !data) {
+    return (
+      <div className="ai-summary-card" data-testid="weekly-summary-lazy">
+        <div className="ai-summary-top">
+          <span className="ai-summary-spark"><Sparkles size={18} /></span>
+          <div className="ai-summary-eyebrow">{t('weekly_summary_eyebrow')}</div>
+        </div>
+        <p style={{
+          margin: '8px 0 14px', fontSize: 14, color: 'var(--km)',
+          fontFamily: 'var(--fs)', lineHeight: 1.5,
+        }}>
+          {t('weekly_summary_lazy_hint') || 'Genera un riepilogo settimanale con AI: cosa è stato fatto, cosa ancora resta, eventi e compleanni in arrivo.'}
+        </p>
+        <button
+          type="button"
+          data-testid="weekly-summary-generate-btn"
+          onClick={() => setPrimed(true)}
+          style={{
+            padding: '10px 18px', borderRadius: 100,
+            border: 'none', background: 'var(--ac)',
+            color: 'white', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+          }}>
+          <Sparkles size={14} /> {t('weekly_summary_generate') || 'Genera ora'}
+        </button>
+      </div>
+    );
+  }
 
   // === COLLAPSED VIEW ===
   // Barra compatta: eyebrow + prima frase del summary (60 chars) + bottone expand

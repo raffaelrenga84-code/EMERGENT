@@ -6,6 +6,7 @@ import FamilyMemoriesCard from '../../components/FamilyMemoriesCard.jsx';
 import InviteStatsCard from '../../components/InviteStatsCard.jsx';
 import OnboardingTour from '../../components/OnboardingTour.jsx';
 import QuietHoursControl from '../../components/QuietHoursControl.jsx';
+import WeeklySummaryCard from '../../components/WeeklySummaryCard.jsx';
 import PricingScreen from '../sub/PricingScreen.jsx';
 import ThemeScreen from '../sub/ThemeScreen.jsx';
 import AccessibilityScreen from '../sub/AccessibilityScreen.jsx';
@@ -13,7 +14,7 @@ import DataPrivacyScreen from '../sub/DataPrivacyScreen.jsx';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
-export default function ProfileTab({ session, profile, families = [], members = [], me, onChanged, notificationControl = {} }) {
+export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, notificationControl = {} }) {
   const { t, lang, setLang } = useT();
   const [view, setView] = useState('main'); // main | plans | theme | a11y | privacy
   const [editingName, setEditingName] = useState(false);
@@ -215,6 +216,28 @@ export default function ProfileTab({ session, profile, families = [], members = 
       {families.length > 0 && (
         <div className="profile-section">
           <FamilyMemoriesCard families={families} members={members} me={me} />
+        </div>
+      )}
+
+      {/* Insights AI — Riepilogo settimanale on-demand (lazy: nessuna chiamata
+          LLM finché l'utente non preme "Genera ora") */}
+      {families.length > 0 && (
+        <div className="profile-section">
+          <div className="profile-label" style={{ marginBottom: 12 }}>
+            ✨ {t('profile_insights_h') || 'Insights'}
+          </div>
+          <WeeklySummaryCard
+            lazy
+            familyId={activeFamilyId}
+            familyName={
+              activeFamilyId
+                ? (families.find((f) => f.id === activeFamilyId)?.name || 'Famiglia')
+                : `${families.length} ${t('profile_insights_families_label') || 'famiglie'}`
+            }
+            tasks={tasks}
+            events={events}
+            members={members}
+          />
         </div>
       )}
 
