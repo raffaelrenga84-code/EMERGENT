@@ -440,6 +440,102 @@ export function useEventNotifications(session, profile, families, events, taskAs
     };
   }, [tasks, events, notificationPermission, session?.user?.id, notificationsEnabled]);
 
+  // === Follow-up reminders alle 19:00 ===
+  // Per le task che IO HO CREATO ma nessuno si è preso in carico (status='todo').
+  // 1. ⚠️ URGENTE: scade DOMANI e nessuno l'ha presa → notifica forte
+  // 2. 🕊️ GENTILE: creata da >= 3 giorni, ancora 'todo', senza assegnatari
+  //    "attivi" (nessuno claim/delegate) → reminder soft
+  // Dedupe per giorno × task (no spam) e rispetto delle quiet hours.
+  useEffect(() => {
+    if (notificationPermission !== 'granted' || !session?.user?.id || !notificationsEnabled) return;
+
+    const dayKey = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const myUserId = session.user.id;
+    const myMemberIds = (members || [])
+      .filter((m) => m.user_id === myUserId)
+      .map((m) => m.id);
+
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(19, 0, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+
+    const targetDayKey = dayKey(target);
+    const tomorrowOfTarget = new Date(target);
+    tomorrowOfTarget.setDate(tomorrowOfTarget.getDate() + 1);
+    const tomorrowKey = dayKey(tomorrowOfTarget);
+
+    const delay = target.getTime() - now.getTime();
+    if (delay <= 0 || delay > 25 * 3600 * 1000) return;
+
+    const key = 'follow-up-reminders';
+    if (scheduledNotificationsRef.current.has(key)) {
+      clearTimeout(scheduledNotificationsRef.current.get(key));
+    }
+    const timeoutId = setTimeout(() => {
+      try {
+        // Solo task create da me, non completate, e dove nessuno ha ancora
+        // accettato (status='todo', no delegated_to).
+        const candidates = (tasks || []).filter((t) => {
+          if (!t || t.status === 'done') return false;
+          if (t.status !== 'todo') return false; // 'taken' = qualcuno se n'è preso carico
+          if (t.delegated_to) return false; // qualcuno è stato designato
+          // Devo essere io l'autore: confronto con i miei member_id
+          return !!(t.author_id && myMemberIds.includes(t.author_id));
+        });
+
+        const urgent = []; // scade domani
+        const gentle = []; // ferma da >=3 giorni
+        const threeDaysAgo = new Date(now);
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+        for (const t of candidates) {
+          const seenKey = `fammy_followup_notified_${targetDayKey}_${t.id}`;
+          if (localStorage.getItem(seenKey)) continue;
+
+          // URGENT: scade domani
+          if (t.due_date && String(t.due_date).slice(0, 10) === tomorrowKey) {
+            urgent.push(t);
+            continue;
+          }
+          // GENTILE: creata da >= 3 giorni
+          if (t.created_at) {
+            const created = new Date(t.created_at);
+            if (!Number.isNaN(created.getTime()) && created <= threeDaysAgo) {
+              gentle.push(t);
+            }
+          }
+        }
+
+        // Cap: max 5 notifiche per evitare spam (le altre verranno notificate domani)
+        const all = [...urgent.slice(0, 3), ...gentle.slice(0, 2)];
+        all.forEach((task) => {
+          const isUrgent = urgent.includes(task);
+          if (isUrgent) showFollowUpUrgentNotification(task);
+          else showFollowUpGentleNotification(task);
+          try {
+            localStorage.setItem(
+              `fammy_followup_notified_${targetDayKey}_${task.id}`, '1'
+            );
+          } catch (e) { /* storage pieno */ }
+        });
+      } catch (e) { /* silent */ }
+      scheduledNotificationsRef.current.delete(key);
+    }, delay);
+    scheduledNotificationsRef.current.set(key, timeoutId);
+
+    return () => {
+      const tid = scheduledNotificationsRef.current.get(key);
+      if (tid) clearTimeout(tid);
+    };
+  }, [tasks, members, notificationPermission, session?.user?.id, notificationsEnabled]);
+
   return {
     notificationPermission,
     notificationsEnabled,
@@ -526,6 +622,34 @@ function showAssignedToMyTaskNotification(task, assignee) {
     icon: '/icon.png', badge: '/icon.png',
     tag: `creator-assigned-${task.id}-${assignee?.id || 'x'}`,
     requireInteraction: false,
+  });
+  notification.addEventListener('click', () => { window.focus(); notification.close(); });
+}
+
+// Promemoria GENTILE: task creato da me, ferma da >= 3 giorni senza che
+// nessuno l'abbia presa. Tono soft, non interrompente.
+function showFollowUpGentleNotification(task) {
+  if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return;
+  const notification = new Notification(`🕊️ Aspetta ancora qualcuno`, {
+    body: `"${task.title}" — ti va di dare uno sguardo?`,
+    icon: '/icon.png', badge: '/icon.png',
+    tag: `followup-gentle-${task.id}`,
+    requireInteraction: false,
+  });
+  notification.addEventListener('click', () => { window.focus(); notification.close(); });
+}
+
+// Promemoria URGENTE: task creato da me, scade DOMANI e nessuno l'ha presa.
+// Tono d'allarme, requireInteraction per assicurare visibilità.
+function showFollowUpUrgentNotification(task) {
+  if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return;
+  const notification = new Notification(`⚠️ Scade domani — nessuno l'ha presa`, {
+    body: `"${task.title}" sta per scadere. Vuoi farla tu o sollecitare qualcuno?`,
+    icon: '/icon.png', badge: '/icon.png',
+    tag: `followup-urgent-${task.id}`,
+    requireInteraction: true,
   });
   notification.addEventListener('click', () => { window.focus(); notification.close(); });
 }
