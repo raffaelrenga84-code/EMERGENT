@@ -374,15 +374,18 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         renderTaskList([...visibleMyTasks, ...visibleOtherTasks])
       )}
 
-      {dones.length > 0 && visibleDones.length > 0 && (
+      {/* Sezione "Fatti": SEMPRE visibile (a prescindere dal filtro rapido)
+          perché serve da archivio degli incarichi completati. Collapsata di
+          default. */}
+      {dones.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <CollapsibleSection
             label={t('section_done_short')}
-            count={visibleDones.length}
+            count={dones.length}
             open={openSections.done}
             onToggle={() => toggle('done')}
           >
-            {renderTaskList(visibleDones)}
+            {renderTaskList(dones)}
           </CollapsibleSection>
         </div>
       )}
