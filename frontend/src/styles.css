@@ -489,6 +489,7 @@ html[data-theme="dark"] .ai-pill-btn { background: rgba(255,255,255,.05); color:
 @keyframes fammy-toast-in { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes fammy-flash { 0% { transform: scale(1); } 30% { transform: scale(1.015); } 100% { transform: scale(1); } }
 @keyframes fammy-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fammy-fab-pop { from { opacity: 0; transform: translateY(8px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .ai-drawer-grip { width: 36px; height: 4px; background: var(--sd); border-radius: 100px; margin: 10px auto 4px; }
 .ai-drawer-header { padding: 8px 22px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--sd); }
 .ai-drawer-avatar {

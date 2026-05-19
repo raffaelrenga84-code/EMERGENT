@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useEventNotifications } from '../lib/useEventNotifications.jsx';
 import { usePullToRefresh } from '../lib/usePullToRefresh.jsx';
+import { useAbsences } from '../lib/useAbsences.js';
 import NotificationsPrompt from '../components/NotificationsPrompt.jsx';
 import BachecaTab from './tabs/BachecaTab.jsx';
 import AgendaTab from './tabs/AgendaTab.jsx';
@@ -65,10 +66,15 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
     setActiveTab('spese');
   };
 
+  // Assenze (condivise via RLS — vedo le mie + quelle delle famiglie a cui appartengo).
+  // Caricate qui in alto per essere disponibili al notification hook.
+  const { absences, refresh: refreshAbsences } = useAbsences(session, refreshKey);
+
   // Auto-refresh via realtime + notifiche push per nuovi task/eventi/imprevisti
   const notificationControl = useEventNotifications(
     session, profile, families, events, taskAssignees, members, tasks,
-    () => setRefreshKey((k) => k + 1)
+    () => setRefreshKey((k) => k + 1),
+    absences,
   );
 
   useEffect(() => {
@@ -112,7 +118,7 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
   const refreshAll = () => { refresh(); onRefresh && onRefresh(); };
 
   // Pull-to-refresh: tira giù il dito in cima a qualsiasi tab → re-fetch
-  const { indicator: pullIndicator } = usePullToRefresh(refreshAll);
+  const { indicator: pullIndicator } = usePullToRefresh(() => { refreshAll(); refreshAbsences(); });
 
   const isAll = activeFamily === 'all';
   const family = isAll ? null : families.find((f) => f.id === activeFamily);
@@ -162,10 +168,12 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
             tasks={tasks}
             members={members}
             taskAssignees={taskAssignees}
+            absences={absences}
+            profile={profile}
             me={me}
             session={session}
             isAll={isAll}
-            onChanged={refresh}
+            onChanged={() => { refresh(); refreshAbsences(); }}
             onOpenExpenseForTask={openExpenseForTask}
           />
         )}
@@ -203,9 +211,12 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
             families={families}
             activeFamily={activeFamily}
             isAll={isAll}
+            absences={absences}
+            profile={profile}
+            tasks={tasks}
             onSwitchFamily={setActiveFamily}
             onNewFamily={() => setShowNewFamily(true)}
-            onChanged={refreshAll}
+            onChanged={() => { refreshAll(); refreshAbsences(); }}
           />
         )}
         {activeTab === 'profile' && (

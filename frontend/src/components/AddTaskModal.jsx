@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
+import { findAbsenceOverlap, absenceLabel, fmtAbsenceRange } from '../lib/useAbsences.js';
 import AISmartTaskHint from './AISmartTaskHint.jsx';
 import NativeDateInput from './NativeDateInput.jsx';
 
@@ -23,6 +24,7 @@ function dateOffset(days) {
 export default function AddTaskModal({
   familyId, families = [], members,
   authorMemberId,
+  absences = [],
   editingTask = null,
   // Prefill iniziale (usato es. dalle azioni dell'AI assistant)
   initialTitle = '', initialCategory = null, initialDueDate = '',
@@ -163,6 +165,29 @@ export default function AddTaskModal({
     }
 
     setBusy(true); setErr('');
+
+    // Check assenze: se almeno un assegnatario sarà via nel periodo della
+    // task, chiediamo conferma prima di salvare.
+    if (assignees.length > 0 && absences && absences.length > 0) {
+      const checkDate = dueDate || new Date().toISOString().slice(0, 10);
+      const busyMembers = [];
+      for (const aId of assignees) {
+        const m = members.find((mm) => mm.id === aId);
+        if (!m?.user_id) continue;
+        const overlap = findAbsenceOverlap(absences, m.user_id, checkDate, checkDate);
+        if (overlap) busyMembers.push({ name: m.name, abs: overlap });
+      }
+      if (busyMembers.length > 0) {
+        const lines = busyMembers
+          .map((b) => `• ${b.name}: ${absenceLabel(b.abs)} ${fmtAbsenceRange(b.abs)}`)
+          .join('\n');
+        const ok = window.confirm(
+          (t('addtask_absent_confirm_h') || '⚠️ Alcuni assegnatari saranno via:') + '\n\n' + lines + '\n\n' +
+          (t('addtask_absent_confirm_q') || 'Vuoi assegnare comunque?')
+        );
+        if (!ok) { setBusy(false); return; }
+      }
+    }
 
     // Deriva family_id dagli assegnatari
     let finalFamilyId = taskFamily;
@@ -448,15 +473,31 @@ export default function AddTaskModal({
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                           {g.members.map((m) => {
                             const selected = assignees.includes(m.id);
+                            // Verifica se questo membro è in assenza nel
+                            // periodo della task (oggi se nessuna due_date).
+                            const overlap = findAbsenceOverlap(
+                              absences, m.user_id,
+                              dueDate || new Date().toISOString().slice(0, 10),
+                              dueDate || new Date().toISOString().slice(0, 10),
+                            );
                             return (
                               <button key={m.id} type="button"
                                 data-testid={`add-task-assignee-${m.id}`}
-                                onClick={() => toggleAssignee(m.id)} style={chipMember(selected)}>
+                                onClick={() => toggleAssignee(m.id)} style={chipMember(selected)}
+                                title={overlap ? `${absenceLabel(overlap)} · ${fmtAbsenceRange(overlap)}` : undefined}>
                                 {selected && <span>✓ </span>}
                                 <span style={avatarStyle(m)}>
                                   {m.avatar_letter || m.name.charAt(0).toUpperCase()}
                                 </span>
                                 {m.name}
+                                {overlap && (
+                                  <span style={{
+                                    marginLeft: 4, padding: '1px 6px', borderRadius: 100,
+                                    background: 'rgba(243,156,18,0.18)',
+                                    border: '1px solid rgba(243,156,18,0.45)',
+                                    color: '#B36E00', fontSize: 10, fontWeight: 700,
+                                  }}>{absenceLabel(overlap)}</span>
+                                )}
                               </button>
                             );
                           })}

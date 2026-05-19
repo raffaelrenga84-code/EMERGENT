@@ -45,7 +45,7 @@ function safeNotificationPermission() {
   } catch (e) { return 'default'; }
 }
 
-export function useEventNotifications(session, profile, families, events, taskAssignees, members = [], tasks = [], onDataChange) {
+export function useEventNotifications(session, profile, families, events, taskAssignees, members = [], tasks = [], onDataChange, absences = []) {
   const [notificationPermission, setNotificationPermission] = useState(safeNotificationPermission());
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     try {
@@ -536,6 +536,66 @@ export function useEventNotifications(session, profile, families, events, taskAs
     };
   }, [tasks, events, notificationPermission, session?.user?.id, notificationsEnabled]);
 
+  // === Return-home notification ALLE 9:00 ===
+  // Se un membro della mia famiglia rientra OGGI da un'assenza, mando una
+  // notifica gentile alle 9:00 del giorno dopo `end_date`. È utile per:
+  //  • Salutarlo ("👋 Maria è tornata!")
+  //  • Decidere quante task in sospeso può prendere
+  useEffect(() => {
+    if (notificationPermission !== 'granted' || !session?.user?.id || !notificationsEnabled) return;
+    if (!absences || absences.length === 0) return;
+
+    const dayKey = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(9, 0, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+
+    const targetDayKey = dayKey(target);
+    // L'assenza è "appena finita" se end_date === ieri rispetto al target.
+    const yesterdayOfTarget = new Date(target);
+    yesterdayOfTarget.setDate(yesterdayOfTarget.getDate() - 1);
+    const yesterdayKey = dayKey(yesterdayOfTarget);
+
+    const delay = target.getTime() - now.getTime();
+    if (delay <= 0 || delay > 25 * 3600 * 1000) return;
+
+    const myUserId = session.user.id;
+
+    const key = 'return-home';
+    if (scheduledNotificationsRef.current.has(key)) {
+      clearTimeout(scheduledNotificationsRef.current.get(key));
+    }
+    const timeoutId = setTimeout(() => {
+      try {
+        const returners = absences.filter((a) =>
+          a.end_date === yesterdayKey && a.user_id !== myUserId
+        );
+        for (const abs of returners) {
+          const seenKey = `fammy_return_notified_${targetDayKey}_${abs.id}`;
+          if (localStorage.getItem(seenKey)) continue;
+          const member = members.find((m) => m.user_id === abs.user_id);
+          const name = member?.name || abs.member_name || 'Un membro';
+          showReturnHomeNotification(name);
+          try { localStorage.setItem(seenKey, '1'); } catch (e) {}
+        }
+      } catch (e) { /* silent */ }
+      scheduledNotificationsRef.current.delete(key);
+    }, delay);
+    scheduledNotificationsRef.current.set(key, timeoutId);
+
+    return () => {
+      const tid = scheduledNotificationsRef.current.get(key);
+      if (tid) clearTimeout(tid);
+    };
+  }, [absences, members, notificationPermission, session?.user?.id, notificationsEnabled]);
+
   // === Follow-up reminders alle 19:00 ===
   // Per le task che IO HO CREATO ma nessuno si è preso in carico (status='todo').
   // 1. ⚠️ URGENTE: scade DOMANI e nessuno l'ha presa → notifica forte
@@ -770,6 +830,19 @@ function showFollowUpUrgentNotification(task) {
   } else {
     try { new Notification(title, { ...options, actions: undefined }); } catch (_) {}
   }
+}
+
+// Notifica al RIENTRO: "X è tornato/a" — chi è tornato ieri ti viene
+// segnalato alle 9:00 di oggi, una sola volta per assenza.
+function showReturnHomeNotification(name) {
+  if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return;
+  const notification = new Notification(`👋 ${name} è tornato/a`, {
+    body: `Buongiorno! ${name} è tornato/a oggi. Bentornato/a in famiglia.`,
+    icon: '/icon.png', badge: '/icon.png',
+    tag: `return-home-${name}`, requireInteraction: false,
+  });
+  notification.addEventListener('click', () => { window.focus(); notification.close(); });
 }
 
 function showBirthdayNotification(member) {

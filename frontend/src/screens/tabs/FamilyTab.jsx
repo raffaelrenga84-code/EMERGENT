@@ -7,6 +7,9 @@ import EditMemberModal from '../../components/EditMemberModal.jsx';
 import EditFamilyModal from '../../components/EditFamilyModal.jsx';
 import FamilyInviteModal from '../../components/FamilyInviteModal.jsx';
 import JoinFamilyByCodeModal from '../../components/JoinFamilyByCodeModal.jsx';
+import AbsenceModal from '../../components/AbsenceModal.jsx';
+import WhoIsWhereTimeline from '../../components/WhoIsWhereTimeline.jsx';
+import { findActiveAbsence, absenceLabel, fmtAbsenceRange } from '../../lib/useAbsences.js';
 
 // Mostra il ruolo nella lingua corrente. Preset → traduzione `role_<id>`.
 // I ruoli "custom" inseriti dall'utente vengono mostrati così come sono.
@@ -17,12 +20,14 @@ function translateRole(role, t) {
   return translated === key ? role : translated;
 }
 
-export default function FamilyTab({ family, members, session, families, activeFamily, isAll, onSwitchFamily, onNewFamily, onChanged }) {
+export default function FamilyTab({ family, members, session, families, activeFamily, isAll, absences = [], profile, tasks = [], onSwitchFamily, onNewFamily, onChanged }) {
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [editingFamily, setEditingFamily] = useState(false);
   const [showFamilyInvite, setShowFamilyInvite] = useState(null); // family object o null
+  const [showAbsence, setShowAbsence] = useState(false);
+  const [editingAbsence, setEditingAbsence] = useState(null);
   const [expandedFamilies, setExpandedFamilies] = useState({});
   const [editingFamilyAll, setEditingFamilyAll] = useState(null);
   const [addMemberToFamily, setAddMemberToFamily] = useState(null); // family object da vista Tutte
@@ -305,19 +310,40 @@ export default function FamilyTab({ family, members, session, families, activeFa
       )}
 
       <div className="list">
-        {familyMembersOfThis.map((m) => (
-          <MemberCard
-            key={m.id}
-            member={m}
-            isMe={m.user_id === session.user.id}
-            isOwner={m.user_id === family.created_by}
-            otherFamilies={otherFamiliesFor(m, family.id)}
-            onEdit={() => setEditingMember(m)}
-            onRemove={() => removeMember(m)}
-            onInvite={() => setShowFamilyInvite(family)}
-          />
-        ))}
+        {familyMembersOfThis.map((m) => {
+          const activeAbs = findActiveAbsence(absences, m.user_id);
+          return (
+            <MemberCard
+              key={m.id}
+              member={m}
+              isMe={m.user_id === session.user.id}
+              isOwner={m.user_id === family.created_by}
+              otherFamilies={otherFamiliesFor(m, family.id)}
+              activeAbsence={activeAbs}
+              onEdit={() => setEditingMember(m)}
+              onRemove={() => removeMember(m)}
+              onInvite={() => setShowFamilyInvite(family)}
+              onSetAbsence={
+                m.user_id === session.user.id
+                  ? () => { setEditingAbsence(activeAbs); setShowAbsence(true); }
+                  : null
+              }
+            />
+          );
+        })}
       </div>
+
+      {/* Timeline "🌍 Chi è dove" — assenze visibili a questa famiglia */}
+      <WhoIsWhereTimeline
+        absences={absences}
+        members={familyMembersOfThis}
+        familyId={family.id}
+        onEditAbsence={(abs) => {
+          if (abs.user_id !== session.user.id) return; // solo le mie
+          setEditingAbsence(abs);
+          setShowAbsence(true);
+        }}
+      />
 
       <div style={{ padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <button className="btn full secondary" onClick={() => setShowAdd(true)}>
@@ -390,11 +416,24 @@ export default function FamilyTab({ family, members, session, families, activeFa
           onJoined={() => { setShowJoinCode(false); onChanged && onChanged(); }}
         />
       )}
+
+      {showAbsence && (
+        <AbsenceModal
+          session={session}
+          profile={profile}
+          families={families}
+          tasks={tasks}
+          members={members}
+          editingAbsence={editingAbsence}
+          onClose={() => { setShowAbsence(false); setEditingAbsence(null); }}
+          onSaved={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
+        />
+      )}
     </>
   );
 }
 
-function MemberCard({ member, isMe, isOwner, otherFamilies = [], onEdit, onRemove, onInvite }) {
+function MemberCard({ member, isMe, isOwner, otherFamilies = [], activeAbsence, onEdit, onRemove, onInvite, onSetAbsence }) {
   const { t } = useT();
   const canInvite = !isMe && !member.user_id;
 
@@ -408,9 +447,23 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], onEdit, onRemov
         size={40}
       />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {member.name}
           {isMe && <span style={{ fontSize: 11, color: 'var(--km)', fontWeight: 500 }}>(tu)</span>}
+          {activeAbsence && (
+            <span
+              data-testid={`member-absence-badge-${member.id}`}
+              style={{
+                padding: '2px 8px', borderRadius: 100,
+                background: 'rgba(243,156,18,0.18)',
+                border: '1px solid rgba(243,156,18,0.5)',
+                color: '#B36E00', fontSize: 11, fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}
+              title={fmtAbsenceRange(activeAbsence)}>
+              {absenceLabel(activeAbsence)} · {fmtAbsenceRange(activeAbsence)}
+            </span>
+          )}
         </div>
         <div style={{ color: 'var(--km)', fontSize: 13 }}>
           {translateRole(member.role, t) || t('member_one_label')}
@@ -436,6 +489,21 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], onEdit, onRemov
           <div style={{ color: 'var(--km)', fontSize: 12, marginTop: 3 }}>
             🎂 {new Date(member.birthday).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
+        )}
+        {isMe && onSetAbsence && (
+          <button
+            type="button"
+            data-testid="set-absence-btn"
+            onClick={(e) => { e.stopPropagation(); onSetAbsence(); }}
+            style={{
+              marginTop: 6, padding: '4px 10px',
+              fontSize: 11, fontWeight: 600,
+              border: '1px solid var(--sm)', borderRadius: 100,
+              background: 'white', color: 'var(--ac)', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+            ✈️ {activeAbsence ? (t('manage_absence') || 'Gestisci assenza') : (t('set_absence') || 'Imposta assenza')}
+          </button>
         )}
       </div>
 

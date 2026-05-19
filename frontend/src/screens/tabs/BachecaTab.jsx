@@ -7,13 +7,16 @@ import AddTaskModal from '../../components/AddTaskModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import OnboardingChecklist from '../../components/OnboardingChecklist.jsx';
 import SwipeableRow from '../../components/SwipeableRow.jsx';
+import AbsenceModal from '../../components/AbsenceModal.jsx';
+import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
-export default function BachecaTab({ familyId, families, tasks, members, taskAssignees = [], me, session, isAll, onChanged, onOpenExpenseForTask }) {
+export default function BachecaTab({ familyId, families, tasks, members, taskAssignees = [], absences = [], profile, me, session, isAll, onChanged, onOpenExpenseForTask }) {
   const allMembers = members;
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
+  const [showAbsence, setShowAbsence] = useState(false);
   const [selTask, setSelTask] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [openSections, setOpenSections] = useState({ mine: true, all: true, done: false });
@@ -275,12 +278,25 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           <h3>{t('bacheca_empty_h')}</h3>
           <p>{t('bacheca_empty_p')}</p>
         </div>
-        <button className="fab" onClick={() => setShowAdd(true)}>+</button>
+        <FabSpeedDial
+          testid="bacheca-fab"
+          actions={[
+            { id: 'task',    icon: '📋', label: t('fab_new_task') || 'Nuovo incarico', onClick: () => setShowAdd(true), testid: 'bacheca-fab-new-task' },
+            { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza', onClick: () => setShowAbsence(true), testid: 'bacheca-fab-new-absence' },
+          ]}
+        />
         {showAdd && (
           <AddTaskModal familyId={targetFamilyId} families={families} members={allMembers}
             authorMemberId={me?.id}
+            absences={absences}
             onClose={() => setShowAdd(false)}
             onCreated={() => { setShowAdd(false); onChanged(); }} />
+        )}
+        {showAbsence && (
+          <AbsenceModal session={session} profile={profile} families={families}
+            tasks={tasks} members={allMembers}
+            onClose={() => setShowAbsence(false)}
+            onSaved={() => { setShowAbsence(false); onChanged(); }} />
         )}
       </>
     );
@@ -371,7 +387,13 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         </div>
       )}
 
-      <button className="fab" onClick={() => setShowAdd(true)}>+</button>
+      <FabSpeedDial
+        testid="bacheca-fab-2"
+        actions={[
+          { id: 'task',    icon: '📋', label: t('fab_new_task') || 'Nuovo incarico', onClick: () => setShowAdd(true), testid: 'bacheca-fab2-new-task' },
+          { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza', onClick: () => setShowAbsence(true), testid: 'bacheca-fab2-new-absence' },
+        ]}
+      />
 
       {showAdd && (
         <AddTaskModal
@@ -379,8 +401,21 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           families={families}
           members={allMembers}
           authorMemberId={me?.id}
+          absences={absences}
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); onChanged(); }}
+        />
+      )}
+
+      {showAbsence && (
+        <AbsenceModal
+          session={session}
+          profile={profile}
+          families={families}
+          tasks={tasks}
+          members={allMembers}
+          onClose={() => setShowAbsence(false)}
+          onSaved={() => { setShowAbsence(false); onChanged(); }}
         />
       )}
 
@@ -403,6 +438,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           families={families}
           members={allMembers}
           authorMemberId={me?.id}
+          absences={absences}
           editingTask={editingTask}
           onClose={() => setEditingTask(null)}
           onUpdated={() => { setEditingTask(null); onChanged(); }}
