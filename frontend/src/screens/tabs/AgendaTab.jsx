@@ -348,7 +348,31 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
 
       {targetFamily && (
         <div style={{ padding: '4px 16px 12px', display: 'flex', gap: 8, flexDirection: 'column' }}>
-          {/* Export singola famiglia visibile sempre se c'è solo 1 famiglia, anche in Tutte */}
+          {/* Download .ics: funziona ovunque (Android/iOS/Desktop). Niente backend. */}
+          <button
+            className="btn full"
+            data-testid="agenda-download-ics-btn"
+            onClick={() => {
+              const visibleEvents = (events || []).filter((e) => filterEvent({ ...e }));
+              const visibleTasks = (tasks || []).filter((tk) => tk.due_date && filterTask(tk));
+              const cn = isAll
+                ? 'FAMMY · Tutte le famiglie'
+                : `FAMMY · ${targetFamily?.name || 'Agenda'}`;
+              const filename = `fammy-${(targetFamily?.name || 'agenda').toLowerCase().replace(/\s+/g, '-')}.ics`;
+              downloadIcs({ events: visibleEvents, tasks: visibleTasks, calName: cn, filename });
+            }}
+            style={{
+              background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
+              color: 'white', border: 'none',
+              padding: '12px 18px', borderRadius: 14,
+              fontSize: 14, fontWeight: 700,
+              boxShadow: '0 6px 18px rgba(193,98,75,0.28)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+            <span style={{ fontSize: 18 }}>📥</span>
+            <span>Scarica agenda (.ics)</span>
+          </button>
+          {/* Export sync URL singola famiglia (richiede backend) */}
           {(!isAll || families.length === 1) && (
             <button className="btn full secondary" onClick={() => setShowCalendar(true)}>
               {t('family_export_calendar')}
@@ -670,6 +694,20 @@ function EventCard({ event, me, family, past, onRemove, onClick }) {
             {event._isRecurringInstance && <span style={{ fontSize: 12 }} title="Ricorrente">🔁</span>}
             {event.recurring_days && !event._isRecurringInstance && <span style={{ fontSize: 12 }} title="Ricorrente">🔁</span>}
           </div>
+          {/* Riga compatta meta: ora + luogo (più visibile, in 1 colpo d'occhio) */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+            fontSize: 12, color: 'var(--km)', marginTop: 4, fontWeight: 600,
+          }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              🕐 {start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+            </span>
+            {event.location && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                · 📍 {event.location}
+              </span>
+            )}
+          </div>
           {family && (
             <div style={{
               display: 'inline-block', padding: '2px 8px', borderRadius: 100,
@@ -680,7 +718,6 @@ function EventCard({ event, me, family, past, onRemove, onClick }) {
               {family.emoji} {family.name}
             </div>
           )}
-          {event.location && <div style={{ color: 'var(--km)', fontSize: 13, marginTop: 4 }}>📍 {event.location}</div>}
           {event.description && <div style={{ color: 'var(--km)', fontSize: 13, marginTop: 4 }}>{event.description}</div>}
         </div>
         {canDelete && (
@@ -721,6 +758,24 @@ function TaskAsEventCard({ task, family, past, onClick }) {
               <span style={{ fontSize: 12 }} title="Ricorrente">🔁</span>
             )}
           </div>
+          {/* Riga meta: ora (se presente) + luogo */}
+          {(task.due_time || task.location) && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+              fontSize: 12, color: 'var(--km)', marginTop: 4, fontWeight: 600,
+            }}>
+              {task.due_time && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  🕐 {task.due_time}
+                </span>
+              )}
+              {task.location && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  {task.due_time && '· '}📍 {task.location}
+                </span>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
             <span style={{
               padding: '2px 8px', borderRadius: 100,
