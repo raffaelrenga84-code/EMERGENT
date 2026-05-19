@@ -1,4 +1,66 @@
-# FAMMY — Family Organization App (Iterazione 1)
+# FAMMY — Family Organization App (Iterazione 14)
+
+## Iterazione 14 (19 maggio 2026) — Wave 2 UX Zenzap: Tab orizzontali + Swipe iOS
+
+### Tab orizzontali nei modali di dettaglio
+Nuovo componente riusabile **`DetailTabs.jsx`** (pill-shape, sticky, count badge).
+
+**TaskDetailModal** ora ha 3 tab:
+- **📋 Dettagli** — banner delega + assegnatari + azioni assegnazione + stato (Da fare/Fatto/Da pagare)
+- **💬 Thread** — commenti (con label "sistema" per i system messages) + composer
+- **📎 Allegati** — foto allegate (signed URLs, lightbox) + spese collegate (`expenses.task_id`)
+
+**EventDetailModal** ora ha 2 tab:
+- **📋 Dettagli** — luogo + note + assegnatari
+- **📸 Foto** — galleria con lightbox
+
+Tutti i tab hanno empty state ariosi (emoji 36px + testo).
+
+### Swipe actions iOS Mail-style sui task della Bacheca
+Nuovo componente **`SwipeableRow.jsx`** — touch events nativi, axis-lock, snap behavior, auto-trigger past threshold.
+
+Per ogni TaskCard nella Bacheca:
+- **Swipe LEFT corto** (~80-220px) → rivela ✓ Completa + 🗑 Elimina
+- **Swipe LEFT lungo** (>220px) → auto-Elimina (con confirm dialog)
+- **Swipe RIGHT corto** (~80-160px) → rivela azione veloce contestuale:
+  - se task done: ↩️ Riapri
+  - se assegnato a me: ✓ Fatto
+  - altrimenti: 👤 A me
+- **Swipe RIGHT lungo** (>160px) → auto-trigger della quick action
+- **Tap fuori** o **tap sulla card aperta** → chiude lo swipe
+
+L'azione "Elimina" usa `confirm()` per evitare cancellazioni accidentali (su istanze ricorrenti elimina TUTTA la serie — coerente con la logica esistente di TaskDetailModal).
+
+### Fix bug pre-esistente
+`BachecaTab.jsx` referenziava `visibleDones` ma la variabile non era mai dichiarata
+(probabile residuo dell'iterazione 13). Aggiunto `applyQuickFilter()` che ora
+applica davvero i filtri rapidi (`all`/`todo`/`urgent`/`mine`) ai task in tutte
+e 3 le sezioni (Mie, Tutte, Fatti).
+
+### i18n
+Nuove key in IT/EN/FR/DE: `td_tab_details`, `td_tab_thread`, `td_tab_attach`,
+`td_attach_photos`, `td_attach_expenses`, `td_no_attachments`,
+`td_no_linked_expenses`, `td_expense_untitled`, `td_system_label`,
+`ed_tab_details`, `ed_tab_photos`, `ed_no_photos`,
+`swipe_done`, `swipe_undo`, `swipe_delete`, `swipe_assign_me`.
+
+### File modificati / nuovi
+- ➕ `/app/frontend/src/components/SwipeableRow.jsx` (nuovo, 220 righe)
+- ➕ `/app/frontend/src/components/DetailTabs.jsx` (nuovo, 70 righe)
+- ✏️ `/app/frontend/src/components/TaskDetailModal.jsx` (tabs + attachments fetch)
+- ✏️ `/app/frontend/src/components/EventDetailModal.jsx` (tabs)
+- ✏️ `/app/frontend/src/screens/tabs/BachecaTab.jsx` (SwipeableRow + filtri funzionanti)
+- ✏️ `/app/frontend/src/lib/i18n.jsx` (16 nuove keys × 4 lingue)
+
+### Testing
+- Lint: tutti i file ✅
+- Smoke test screenshot: login screen renders correctly ✅
+- Funzionalità swipe + tab → richiede login Google OAuth (non testabile da
+  testing agent automatici); test manuale richiesto dall'utente.
+
+---
+
+# FAMMY — Family Organization App (Iterazione 1-13)
 
 ## Problem Statement (originale)
 > "crea app per organizzazione famigliare prendendo spunto da quello che ho già fatto nel GITHUB"

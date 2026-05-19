@@ -7,6 +7,7 @@ import AddTaskModal from '../../components/AddTaskModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import WeeklySummaryCard from '../../components/WeeklySummaryCard.jsx';
 import OnboardingChecklist from '../../components/OnboardingChecklist.jsx';
+import SwipeableRow from '../../components/SwipeableRow.jsx';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
@@ -58,6 +59,18 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const myTasks = todos.filter(isMine);
   const otherTasks = todos.filter((t) => !isMine(t));
 
+  // Quick filter applicato ai conteggi della sezione "Fatti"
+  const applyQuickFilter = (list) => {
+    if (quickFilter === 'all')     return list;
+    if (quickFilter === 'todo')    return list.filter((x) => x.status !== 'done');
+    if (quickFilter === 'urgent')  return list.filter((x) => (x.priority === 'high') || x.urgent);
+    if (quickFilter === 'mine')    return list.filter(isMine);
+    return list;
+  };
+  const visibleMyTasks    = applyQuickFilter(myTasks);
+  const visibleOtherTasks = applyQuickFilter(otherTasks);
+  const visibleDones      = applyQuickFilter(dones);
+
   const openPriorityMenu = (e, task) => {
     e.stopPropagation();
     if (task.status === 'done') return;
@@ -72,31 +85,124 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     onChanged();
   };
 
+  // === Swipe actions ===
+  const quickToggleDone = async (task) => {
+    // Per le istanze ricorrenti, l'id reale è in _origId (le ricorrenze
+    // sono soggette a un workflow speciale; per swipe veloce trattiamo
+    // l'intera serie).
+    const id = task._origId || task.id;
+    const nextStatus = task.status === 'done' ? 'todo' : 'done';
+    await supabase.from('tasks').update({ status: nextStatus }).eq('id', id);
+    onChanged();
+  };
+
+  const quickDelete = async (task) => {
+    const ok = window.confirm(t('td_delete_confirm') || 'Eliminare questo incarico?');
+    if (!ok) return;
+    const id = task._origId || task.id;
+    await supabase.from('tasks').delete().eq('id', id);
+    onChanged();
+  };
+
+  const quickAssignMe = async (task) => {
+    if (!me) return;
+    const id = task._origId || task.id;
+    // Rimuovi assignees attuali e aggiungi me
+    await supabase.from('task_assignees').delete().eq('task_id', id);
+    await supabase.from('task_assignees').insert({ task_id: id, member_id: me.id });
+    await supabase.from('tasks').update({
+      status: 'taken', urgent: false, priority: 'normal',
+      delegated_to: null,
+    }).eq('id', id);
+    onChanged();
+  };
+
   const getFamily = (task) => families?.find((f) => f.id === task.family_id);
   const targetFamilyId = familyId || families?.[0]?.id;
   const toggle = (k) => setOpenSections((s) => ({ ...s, [k]: !s[k] }));
 
   const renderTaskList = (list) => (
     <div className="list">
-      {list.map((task) => (
-        <TaskCard
-          key={task.id} task={task}
-          family={isAll ? getFamily(task) : null}
-          assignees={assigneesForTask(task.id)}
-          statusLabel={ST_LABEL[task.status]}
-          onClick={() => {
-            if (priorityMenuOpen?.taskId === task.id) {
-              setPriorityMenuOpen(null);
-            } else {
-              setSelTask(task);
+      {list.map((task) => {
+        const isDone = task.status === 'done';
+        const isAssignedToMe = me && (
+          (task.delegated_to && task.delegated_to === me.id) ||
+          (assigneesForTask(task.id).length === 1 && assigneesForTask(task.id)[0].id === me.id)
+        );
+        // Azioni a destra (swipe LEFT): Completa + Elimina
+        const rightActions = [
+          {
+            id: 'done',
+            icon: isDone ? '↩️' : '✓',
+            label: isDone ? (t('swipe_undo') || 'Riapri') : (t('swipe_done') || 'Fatto'),
+            color: isDone ? '#F39C12' : 'var(--gn)',
+            testid: `swipe-done-${task.id}`,
+            onAction: () => quickToggleDone(task),
+          },
+          {
+            id: 'delete',
+            icon: '🗑',
+            label: t('swipe_delete') || 'Elimina',
+            color: 'var(--rd)',
+            testid: `swipe-delete-${task.id}`,
+            onAction: () => quickDelete(task),
+          },
+        ];
+        // Azione a sinistra (swipe RIGHT): quick action contestuale
+        const leftAction = isDone
+          ? {
+              id: 'undo',
+              icon: '↩️',
+              label: t('swipe_undo') || 'Riapri',
+              color: '#F39C12',
+              testid: `swipe-undo-${task.id}`,
+              onAction: () => quickToggleDone(task),
             }
-          }}
-          onCheck={(e) => openPriorityMenu(e, task)}
-          priorityMenu={priorityMenuOpen?.taskId === task.id}
-          onSetPriority={(p) => setPriority(task.id, p)}
-          onClosePriorityMenu={() => setPriorityMenuOpen(null)}
-        />
-      ))}
+          : isAssignedToMe
+          ? {
+              id: 'quickdone',
+              icon: '✓',
+              label: t('swipe_done') || 'Fatto',
+              color: 'var(--gn)',
+              testid: `swipe-quickdone-${task.id}`,
+              onAction: () => quickToggleDone(task),
+            }
+          : {
+              id: 'assign',
+              icon: '👤',
+              label: t('swipe_assign_me') || 'A me',
+              color: 'var(--ac)',
+              testid: `swipe-assign-${task.id}`,
+              onAction: () => quickAssignMe(task),
+            };
+        return (
+          <SwipeableRow
+            key={task.id}
+            rightActions={rightActions}
+            leftAction={leftAction}
+            disabled={priorityMenuOpen?.taskId === task.id}
+            testidContainer={`task-swipe-${task.id}`}
+          >
+            <TaskCard
+              task={task}
+              family={isAll ? getFamily(task) : null}
+              assignees={assigneesForTask(task.id)}
+              statusLabel={ST_LABEL[task.status]}
+              onClick={() => {
+                if (priorityMenuOpen?.taskId === task.id) {
+                  setPriorityMenuOpen(null);
+                } else {
+                  setSelTask(task);
+                }
+              }}
+              onCheck={(e) => openPriorityMenu(e, task)}
+              priorityMenu={priorityMenuOpen?.taskId === task.id}
+              onSetPriority={(p) => setPriority(task.id, p)}
+              onClosePriorityMenu={() => setPriorityMenuOpen(null)}
+            />
+          </SwipeableRow>
+        );
+      })}
     </div>
   );
 
@@ -193,26 +299,26 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
       <div style={{ marginBottom: 24 }}>
         <CollapsibleSection
           label={t('section_mine')}
-          count={myTasks.length}
+          count={visibleMyTasks.length}
           open={openSections.mine}
           onToggle={() => toggle('mine')}
           empty={t('no_mine_tasks')}
           accent="var(--am)"
           background="var(--am)"
         >
-          {myTasks.length > 0 && renderTaskList(myTasks)}
+          {visibleMyTasks.length > 0 && renderTaskList(visibleMyTasks)}
         </CollapsibleSection>
       </div>
 
       <div style={{ marginTop: 20 }}>
         <CollapsibleSection
           label={t('section_all')}
-          count={otherTasks.length}
+          count={visibleOtherTasks.length}
           open={openSections.all}
           onToggle={() => toggle('all')}
           background="var(--ab)"
         >
-          {otherTasks.length > 0 ? renderTaskList(otherTasks) : (
+          {visibleOtherTasks.length > 0 ? renderTaskList(visibleOtherTasks) : (
             <p style={{ padding: '0 22px 12px', color: 'var(--km)', fontSize: 13 }}>—</p>
           )}
         </CollapsibleSection>

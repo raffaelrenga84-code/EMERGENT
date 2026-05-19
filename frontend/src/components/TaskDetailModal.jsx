@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
+import DetailTabs from './DetailTabs.jsx';
 
 const CAT_EMOJI = {
   care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌',
@@ -30,6 +31,11 @@ export default function TaskDetailModal({
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [assignees, setAssignees] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [photoUrls, setPhotoUrls] = useState({});
+  const [linkedExpenses, setLinkedExpenses] = useState([]);
+  const [lightbox, setLightbox] = useState(null);
+  const [activeTab, setActiveTab] = useState('details');
   const [busy, setBusy] = useState(false);
   const [showDelegate, setShowDelegate] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -48,6 +54,37 @@ export default function TaskDetailModal({
       if (!cancelled) {
         const memberIds = (assigneeData || []).map((a) => a.member_id);
         setAssignees(members.filter((m) => memberIds.includes(m.id)));
+      }
+
+      // Allegati foto
+      const { data: attData } = await supabase
+        .from('task_attachments')
+        .select('id, file_path, file_name')
+        .eq('task_id', realTaskId);
+      if (!cancelled) setAttachments(attData || []);
+      // Signed URLs (bucket privato)
+      if (attData && attData.length > 0) {
+        const urls = {};
+        for (const att of attData) {
+          const { data: sig } = await supabase.storage
+            .from('task-attachments')
+            .createSignedUrl(att.file_path, 60 * 60);
+          if (sig?.signedUrl) urls[att.id] = sig.signedUrl;
+        }
+        if (!cancelled) setPhotoUrls(urls);
+      }
+
+      // Spese collegate al task (se la tabella expenses ha la colonna task_id)
+      try {
+        const { data: expData } = await supabase
+          .from('expenses')
+          .select('id, amount, description, created_at, category')
+          .eq('task_id', realTaskId)
+          .order('created_at', { ascending: false });
+        if (!cancelled) setLinkedExpenses(expData || []);
+      } catch (e) {
+        // colonna potrebbe non esistere su DB legacy: ignora
+        if (!cancelled) setLinkedExpenses([]);
       }
     })();
     return () => { cancelled = true; };
@@ -345,6 +382,21 @@ export default function TaskDetailModal({
           <p className="modal-sub">📍 {task.location}</p>
         )}
 
+        {/* Tab orizzontali: Dettagli / Thread / Allegati */}
+        <DetailTabs
+          tabs={[
+            { id: 'details', label: t('td_tab_details') || 'Dettagli', icon: '📋' },
+            { id: 'thread',  label: t('td_tab_thread')  || 'Thread',   icon: '💬', count: comments.length },
+            { id: 'attach',  label: t('td_tab_attach')  || 'Allegati', icon: '📎', count: attachments.length + linkedExpenses.length },
+          ]}
+          active={activeTab}
+          onChange={setActiveTab}
+          testidPrefix="task-detail-tabs"
+        />
+
+        {/* ====== TAB: DETTAGLI ====== */}
+        {activeTab === 'details' && (
+          <div data-testid="task-detail-pane-details">
         {isDelegateTarget && (
           <div style={{
             marginTop: 12, padding: '12px 14px',
@@ -465,32 +517,7 @@ export default function TaskDetailModal({
           )}
         </div>
 
-        {/* Commenti */}
-        <div style={{ marginTop: 24 }}>
-          <label>{t('td_comments')} ({comments.length})</label>
-          <div style={{ maxHeight: 200, overflowY: 'auto', marginBottom: 8 }}>
-            {comments.length === 0 && <p style={{ color: 'var(--km)', fontSize: 13 }}>{t('td_no_comments')}</p>}
-            {comments.map((c) => {
-              const author = members.find((m) => m.id === c.author_id);
-              return (
-                <div key={c.id} className="card" style={{ marginBottom: 6, padding: 10 }}>
-                  <div style={{ fontSize: 12, color: 'var(--km)', marginBottom: 2 }}>
-                    <strong>{author?.name || t('td_someone')}</strong> · {new Date(c.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                  <div style={{ fontSize: 14 }}>{c.text}</div>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input className="input" placeholder={t('td_comment_ph')}
-              value={newComment} onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') addComment(); }} />
-            <button className="btn" onClick={addComment} disabled={busy || !newComment.trim()}>{t('td_send')}</button>
-          </div>
-        </div>
-
-        {/* Stato — sotto i commenti. Click = chiude il modale */}
+        {/* Stato — click = chiude il modale */}
         <div style={{ marginTop: 20 }}>
           <label>{t('td_status')}</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -509,6 +536,151 @@ export default function TaskDetailModal({
             {t('td_status_hint')}
           </p>
         </div>
+          </div>
+        )}
+
+        {/* ====== TAB: THREAD ====== */}
+        {activeTab === 'thread' && (
+          <div data-testid="task-detail-pane-thread">
+            <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 8 }}>
+              {comments.length === 0 && (
+                <div style={{
+                  padding: '32px 16px', textAlign: 'center',
+                  color: 'var(--km)', fontSize: 13,
+                }}>
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
+                  {t('td_no_comments')}
+                </div>
+              )}
+              {comments.map((c) => {
+                const author = members.find((m) => m.id === c.author_id);
+                const isSystem = c.type === 'system';
+                return (
+                  <div key={c.id} className="card"
+                    style={{
+                      marginBottom: 6, padding: 10,
+                      background: isSystem ? 'var(--ab)' : 'white',
+                      borderLeft: isSystem ? '3px solid var(--ac)' : 'none',
+                    }}>
+                    <div style={{ fontSize: 12, color: 'var(--km)', marginBottom: 2 }}>
+                      <strong>{author?.name || t('td_someone')}</strong> · {new Date(c.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {isSystem && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>· {t('td_system_label') || 'sistema'}</span>}
+                    </div>
+                    <div style={{ fontSize: 14 }}>{c.text}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" placeholder={t('td_comment_ph')}
+                value={newComment} onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') addComment(); }}
+                data-testid="task-comment-input" />
+              <button className="btn" onClick={addComment} disabled={busy || !newComment.trim()}
+                data-testid="task-comment-send">{t('td_send')}</button>
+            </div>
+          </div>
+        )}
+
+        {/* ====== TAB: ALLEGATI & SPESE ====== */}
+        {activeTab === 'attach' && (
+          <div data-testid="task-detail-pane-attach">
+            {/* Foto */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: 'var(--km)',
+                textTransform: 'uppercase', marginBottom: 8,
+              }}>
+                📸 {t('td_attach_photos') || 'Foto'} {attachments.length > 0 ? `(${attachments.length})` : ''}
+              </div>
+              {attachments.length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--km)', fontStyle: 'italic', padding: '12px 0' }}>
+                  {t('td_no_attachments') || 'Nessuna foto allegata'}
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                  gap: 8,
+                }}>
+                  {attachments.map((att) => (
+                    <button key={att.id} type="button"
+                      onClick={() => setLightbox(photoUrls[att.id])}
+                      data-testid={`task-photo-${att.id}`}
+                      style={{
+                        aspectRatio: '1', borderRadius: 10, overflow: 'hidden',
+                        border: '1px solid var(--sm)', padding: 0,
+                        background: 'var(--ab)', cursor: 'zoom-in',
+                      }}>
+                      {photoUrls[att.id] ? (
+                        <img src={photoUrls[att.id]} alt={att.file_name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      ) : (
+                        <div style={{
+                          width: '100%', height: '100%', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center', fontSize: 22,
+                        }}>🖼️</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Spese collegate */}
+            <div>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: 'var(--km)',
+                textTransform: 'uppercase', marginBottom: 8,
+              }}>
+                💶 {t('td_attach_expenses') || 'Spese collegate'} {linkedExpenses.length > 0 ? `(${linkedExpenses.length})` : ''}
+              </div>
+              {linkedExpenses.length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--km)', fontStyle: 'italic', padding: '12px 0' }}>
+                  {t('td_no_linked_expenses') || 'Nessuna spesa collegata'}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {linkedExpenses.map((ex) => (
+                    <div key={ex.id} className="card"
+                      data-testid={`task-expense-${ex.id}`}
+                      style={{
+                        padding: 10, display: 'flex', alignItems: 'center',
+                        gap: 10, fontSize: 13,
+                      }}>
+                      <span style={{ fontSize: 20 }}>💶</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700 }}>
+                          {ex.description || t('td_expense_untitled') || 'Spesa'}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--km)' }}>
+                          {new Date(ex.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          {ex.category && <span> · {ex.category}</span>}
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 700, color: 'var(--ac)' }}>
+                        € {Number(ex.amount || 0).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Lightbox */}
+        {lightbox && (
+          <div onClick={() => setLightbox(null)} data-testid="task-photo-lightbox"
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)',
+              zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 16, cursor: 'zoom-out',
+            }}>
+            <img src={lightbox} alt=""
+              style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8 }} />
+          </div>
+        )}
 
         <div className="row" style={{ marginTop: 24 }}>
           <button className="btn secondary" onClick={onClose}>{t('td_close')}</button>

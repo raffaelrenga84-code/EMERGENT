@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import AddEventModal from './AddEventModal.jsx';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
+import DetailTabs from './DetailTabs.jsx';
 
 /**
  * EventDetailModal — mostra dettagli completi di un evento:
@@ -18,6 +19,7 @@ export default function EventDetailModal({ event, families = [], members = [], m
   const [lightbox, setLightbox] = useState(null);
   const [editing, setEditing] = useState(false);
   const [recurringChoice, setRecurringChoice] = useState(null); // 'edit' | 'delete'
+  const [activeTab, setActiveTab] = useState('details');
 
   const origId = event._origId || event.id;
   const occDate = event._occurrenceDate || (event._isRecurringInstance ? new Date(event.starts_at).toISOString().slice(0, 10) : null);
@@ -157,6 +159,20 @@ export default function EventDetailModal({ event, families = [], members = [], m
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: 12 }}>
+          {/* Tab orizzontali: Dettagli / Foto */}
+          <DetailTabs
+            tabs={[
+              { id: 'details', label: t('ed_tab_details') || 'Dettagli', icon: '📋' },
+              { id: 'photos',  label: t('ed_tab_photos')  || 'Foto',     icon: '📸', count: attachments.length },
+            ]}
+            active={activeTab}
+            onChange={setActiveTab}
+            testidPrefix="event-detail-tabs"
+          />
+
+          {/* ===== TAB: DETTAGLI ===== */}
+          {activeTab === 'details' && (
+            <div data-testid="event-detail-pane-details">
           {event.location && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase', marginBottom: 4 }}>
@@ -209,15 +225,22 @@ export default function EventDetailModal({ event, families = [], members = [], m
               </div>
             )}
           </div>
+            </div>
+          )}
 
-          {/* === FOTO === */}
-          {(loading || attachments.length > 0) && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase', marginBottom: 8 }}>
-                📸 Foto {attachments.length > 0 ? `(${attachments.length})` : ''}
-              </div>
+          {/* ===== TAB: FOTO ===== */}
+          {activeTab === 'photos' && (
+            <div data-testid="event-detail-pane-photos" style={{ marginBottom: 8 }}>
               {loading ? (
                 <div style={{ fontSize: 13, color: 'var(--km)' }}>Caricamento…</div>
+              ) : attachments.length === 0 ? (
+                <div style={{
+                  padding: '32px 16px', textAlign: 'center',
+                  color: 'var(--km)', fontSize: 13,
+                }}>
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>📸</div>
+                  {t('ed_no_photos') || 'Nessuna foto allegata a questo evento'}
+                </div>
               ) : (
                 <div style={{
                   display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8,
