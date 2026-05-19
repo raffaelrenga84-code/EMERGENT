@@ -54,17 +54,27 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     return list.length === 1 && list[0].id === me.id;
   };
 
+  // Una task è "da seguire" se l'ho creata io ma NON è assegnata solo a me
+  // (ovvero: l'ho delegata ad altri / a tutta la famiglia → voglio fare follow-up).
+  const isFollowUp = (task) => {
+    if (!me || task.status === 'done') return false;
+    if (task.author_id !== me.id) return false;
+    return !isMine(task);
+  };
+
   const todos = tasks.filter((task) => task.status !== 'done');
   const dones = tasks.filter((task) => task.status === 'done');
   const myTasks = todos.filter(isMine);
   const otherTasks = todos.filter((t) => !isMine(t));
+  const followUpTasks = todos.filter(isFollowUp);
 
   // Quick filter applicato ai conteggi della sezione "Fatti"
   const applyQuickFilter = (list) => {
-    if (quickFilter === 'all')     return list;
-    if (quickFilter === 'todo')    return list.filter((x) => x.status !== 'done');
-    if (quickFilter === 'urgent')  return list.filter((x) => (x.priority === 'high') || x.urgent);
-    if (quickFilter === 'mine')    return list.filter(isMine);
+    if (quickFilter === 'all')      return list;
+    if (quickFilter === 'todo')     return list.filter((x) => x.status !== 'done');
+    if (quickFilter === 'urgent')   return list.filter((x) => (x.priority === 'high') || x.urgent);
+    if (quickFilter === 'mine')     return list.filter(isMine);
+    if (quickFilter === 'followup') return list.filter(isFollowUp);
     return list;
   };
   const visibleMyTasks    = applyQuickFilter(myTasks);
@@ -188,6 +198,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
               family={isAll ? getFamily(task) : null}
               assignees={assigneesForTask(task.id)}
               statusLabel={ST_LABEL[task.status]}
+              isFollowUp={isFollowUp(task)}
+              followUpLabel={t('badge_follow_up') || '✏️ Creata da te'}
               onClick={() => {
                 if (priorityMenuOpen?.taskId === task.id) {
                   setPriorityMenuOpen(null);
@@ -254,16 +266,17 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         />
       )}
 
-      {/* Filtri rapidi: Tutte / Da fare / Urgenti / Solo mie */}
+      {/* Filtri rapidi: Tutte / Da fare / Urgenti / Solo mie / Da seguire */}
       <div style={{
         padding: '6px 16px 8px',
         display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none',
       }} data-testid="bacheca-quick-filters">
         {[
-          { id: 'all',    label: t('filter_all')    || '🌍 Tutte',    count: tasks.length },
-          { id: 'todo',   label: t('filter_todo')   || '📋 Da fare',  count: todos.length },
-          { id: 'urgent', label: t('filter_urgent') || '🚨 Urgenti',  count: tasks.filter((x) => x.priority === 'high').length },
-          { id: 'mine',   label: t('filter_mine')   || '👤 Solo mie', count: todos.filter(isMine).length },
+          { id: 'all',      label: t('filter_all')      || '🌍 Tutte',      count: tasks.length },
+          { id: 'todo',     label: t('filter_todo')     || '📋 Da fare',    count: todos.length },
+          { id: 'urgent',   label: t('filter_urgent')   || '🚨 Urgenti',    count: tasks.filter((x) => x.priority === 'high').length },
+          { id: 'mine',     label: t('filter_mine')     || '👤 Solo mie',   count: myTasks.length },
+          { id: 'followup', label: t('filter_followup') || '👁️ Da seguire', count: followUpTasks.length },
         ].map((f) => {
           const active = quickFilter === f.id;
           return (
@@ -384,7 +397,7 @@ function CollapsibleSection({ label, count, open, onToggle, children, empty, acc
   );
 }
 
-function TaskCard({ task, family, assignees, statusLabel, onClick, onCheck, priorityMenu, onSetPriority, onClosePriorityMenu }) {
+function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLabel, onClick, onCheck, priorityMenu, onSetPriority, onClosePriorityMenu }) {
   const priority = task.priority || (task.urgent ? 'high' : 'normal');
   const priorityColor = priority === 'high' ? 'var(--rd)'
                       : priority === 'medium' ? '#F39C12'
@@ -470,6 +483,18 @@ function TaskCard({ task, family, assignees, statusLabel, onClick, onCheck, prio
               </span>
             )}
             {task.location && <span className="tc-meta" style={{ marginTop: 0 }}>📍 {task.location}</span>}
+            {isFollowUp && (
+              <span
+                data-testid={`task-followup-badge-${task.id}`}
+                style={{
+                  padding: '2px 8px', borderRadius: 100,
+                  background: 'rgba(193, 98, 75, 0.12)',
+                  color: 'var(--ac)',
+                  fontSize: 11, fontWeight: 700,
+                  letterSpacing: '0.01em',
+                  border: '1px solid rgba(193, 98, 75, 0.25)',
+                }}>{followUpLabel}</span>
+            )}
           </div>
         </div>
         <span className={`sp ${task.status}`}>{statusLabel}</span>

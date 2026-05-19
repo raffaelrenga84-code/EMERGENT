@@ -178,13 +178,31 @@ export function useEventNotifications(session, profile, families, events, taskAs
       })
       .subscribe();
 
-    // TASK ASSIGNEES — refresh per cambi di assegnazione
+    // TASK ASSIGNEES — refresh + notifica al CREATOR quando qualcuno si prende un task
     const assigneesChannel = supabase
       .channel('rt-task-assignees')
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'task_assignees',
-      }, () => {
+      }, async (payload) => {
         if (typeof onDataChange === 'function') onDataChange();
+        if (notificationPermission !== 'granted' || !notificationsEnabled) return;
+        if (payload.eventType !== 'INSERT') return;
+        const row = payload.new || {};
+        if (!row.task_id || !row.member_id) return;
+        // Salta se l'assegnatario sono io stesso (no auto-notifica)
+        if (myMemberIds.includes(row.member_id)) return;
+        try {
+          const { data: task } = await supabase
+            .from('tasks').select('id, title, family_id, author_id')
+            .eq('id', row.task_id).maybeSingle();
+          if (!task) return;
+          if (!familyIds.includes(task.family_id)) return;
+          // Notifica SOLO se il creator sono io (= sto seguendo questo task)
+          if (!task.author_id || !myMemberIds.includes(task.author_id)) return;
+          // Nome del nuovo assegnatario per il body
+          const assignee = members.find((m) => m.id === row.member_id);
+          showAssignedToMyTaskNotification(task, assignee);
+        } catch (e) { /* silent */ }
       })
       .subscribe();
 
@@ -492,6 +510,22 @@ function showDelegatedTaskNotification(task, family) {
     body: `Ti hanno chiesto di occuparti di: ${task.title}`,
     icon: '/icon.png', badge: '/icon.png',
     tag: `delegated-task-${task.id}`, requireInteraction: true,
+  });
+  notification.addEventListener('click', () => { window.focus(); notification.close(); });
+}
+
+// Notifica al CREATOR quando qualcun altro si prende in carico (o gli viene
+// assegnato) un task che il creator ha creato. Conferma il "follow-up loop"
+// che chiude il cerchio per chi delega.
+function showAssignedToMyTaskNotification(task, assignee) {
+  if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return;
+  const name = assignee?.name || 'Qualcuno';
+  const notification = new Notification(`✅ ${name} se ne occupa`, {
+    body: `Si è preso in carico: ${task.title}`,
+    icon: '/icon.png', badge: '/icon.png',
+    tag: `creator-assigned-${task.id}-${assignee?.id || 'x'}`,
+    requireInteraction: false,
   });
   notification.addEventListener('click', () => { window.focus(); notification.close(); });
 }
