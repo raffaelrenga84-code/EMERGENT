@@ -367,7 +367,34 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
             onToggle={() => toggle('today')}
             accent="var(--am)"
           >
-            {todayCount > 0 ? renderItems(todayEvents, todayTasks, false) : <p style={{ padding: '0 22px 12px', color: 'var(--km)', fontSize: 13 }}>—</p>}
+            {todayCount > 0 ? renderItems(todayEvents, todayTasks, false) : (
+              skippedForDay.length === 0 && <p style={{ padding: '0 22px 12px', color: 'var(--km)', fontSize: 13 }}>—</p>
+            )}
+            {skippedForDay.length > 0 && (
+              <div style={{ padding: '4px 16px 8px' }}>
+                {skippedForDay.map((s) => (
+                  <div key={s.id} data-testid={s.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', marginBottom: 6,
+                      background: 'var(--ab)', border: '1px dashed var(--sm)',
+                      borderRadius: 12, opacity: 0.75,
+                    }}>
+                    <span style={{ fontSize: 18 }}>🚫</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 13, fontWeight: 600, color: 'var(--km)',
+                        textDecoration: 'line-through',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{s.title}</div>
+                      <div style={{ fontSize: 10, color: 'var(--km)', marginTop: 1, opacity: 0.8 }}>
+                        Sospeso · {s.kind === 'event' ? 'evento ricorrente' : 'incarico ricorrente'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CollapsibleSection>
 
           <CollapsibleSection
