@@ -7,6 +7,7 @@ import InviteStatsCard from '../../components/InviteStatsCard.jsx';
 import OnboardingTour from '../../components/OnboardingTour.jsx';
 import QuietHoursControl from '../../components/QuietHoursControl.jsx';
 import WeeklySummaryCard from '../../components/WeeklySummaryCard.jsx';
+import WeeklyEmailSyncToggle from '../../components/WeeklyEmailSyncToggle.jsx';
 import PricingScreen from '../sub/PricingScreen.jsx';
 import ThemeScreen from '../sub/ThemeScreen.jsx';
 import AccessibilityScreen from '../sub/AccessibilityScreen.jsx';
@@ -238,6 +239,11 @@ export default function ProfileTab({ session, profile, families = [], members = 
             events={events}
             members={members}
           />
+
+          {/* Sync settimanale calendario via email */}
+          <div style={{ marginTop: 12 }}>
+            <WeeklyEmailSyncToggle session={session} />
+          </div>
         </div>
       )}
 
