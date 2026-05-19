@@ -1,5 +1,17 @@
 # FAMMY — Family Organization App (Iterazione 14)
 
+## Iterazione 14.1 (19 maggio 2026, sera) — Hotfix Bacheca
+
+Dopo il deploy di iter 14, l'utente ha segnalato:
+1. **i18n IT mancanti**: i chip filtro mostravano `filter_todo` / `filter_urgent` raw → mancavano nelle dichiarazioni IT (esistevano solo in EN/FR/DE come duplicati interni).
+2. **Sezioni ridondanti**: "⭐ Solo le mie da fare" + "📋 Tutte" sotto i filtri rapidi erano una doppia gerarchia confusa (sopra i filtri Tutte/Da fare/Urgenti/Solo mie, sotto le sezioni con gli stessi nomi).
+
+### Fix
+- **i18n IT**: aggiunti `filter_todo`, `filter_urgent` con emoji (linea 69). Migliorato `filter_all` da "Tutto" → "🌍 Tutte".
+- **i18n EN/FR/DE**: emoji-prefix uniformati + rimossi duplicati che convivevano in stesso oggetto (era sopravvissuta solo l'ultima dichiarazione, ora la sola "vera").
+- **BachecaTab**: rimosse le due `CollapsibleSection` "mine"/"all" e sostituite con **una sola lista flat** (mie task prima, poi le altre per priorità visuale). Empty state contestuale al filtro attivo. "Fatti" rimane come collapsibile a fondo pagina.
+- Nuova i18n key `no_tasks_filter` ("— Nessun risultato con questo filtro —") × 4 lingue.
+
 ## Iterazione 14 (19 maggio 2026) — Wave 2 UX Zenzap: Tab orizzontali + Swipe iOS
 
 ### Tab orizzontali nei modali di dettaglio

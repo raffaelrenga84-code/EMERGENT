@@ -296,43 +296,29 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         })}
       </div>
 
-      <div style={{ marginBottom: 24 }}>
-        <CollapsibleSection
-          label={t('section_mine')}
-          count={visibleMyTasks.length}
-          open={openSections.mine}
-          onToggle={() => toggle('mine')}
-          empty={t('no_mine_tasks')}
-          accent="var(--am)"
-          background="var(--am)"
-        >
-          {visibleMyTasks.length > 0 && renderTaskList(visibleMyTasks)}
-        </CollapsibleSection>
-      </div>
-
-      <div style={{ marginTop: 20 }}>
-        <CollapsibleSection
-          label={t('section_all')}
-          count={visibleOtherTasks.length}
-          open={openSections.all}
-          onToggle={() => toggle('all')}
-          background="var(--ab)"
-        >
-          {visibleOtherTasks.length > 0 ? renderTaskList(visibleOtherTasks) : (
-            <p style={{ padding: '0 22px 12px', color: 'var(--km)', fontSize: 13 }}>—</p>
-          )}
-        </CollapsibleSection>
-      </div>
+      {/* Lista task: prima le mie, poi le altre (no più sotto-sezioni:
+          i filtri rapidi qui sopra forniscono già il filtering UX) */}
+      {(visibleMyTasks.length + visibleOtherTasks.length) === 0 ? (
+        <p style={{ padding: '24px 22px', color: 'var(--km)', fontSize: 13, textAlign: 'center' }}>
+          {quickFilter === 'mine'
+            ? t('no_mine_tasks')
+            : (t('no_tasks_filter') || '— Nessun risultato con questo filtro —')}
+        </p>
+      ) : (
+        renderTaskList([...visibleMyTasks, ...visibleOtherTasks])
+      )}
 
       {dones.length > 0 && visibleDones.length > 0 && (
-        <CollapsibleSection
-          label={t('section_done_short')}
-          count={visibleDones.length}
-          open={openSections.done}
-          onToggle={() => toggle('done')}
-        >
-          {renderTaskList(visibleDones)}
-        </CollapsibleSection>
+        <div style={{ marginTop: 12 }}>
+          <CollapsibleSection
+            label={t('section_done_short')}
+            count={visibleDones.length}
+            open={openSections.done}
+            onToggle={() => toggle('done')}
+          >
+            {renderTaskList(visibleDones)}
+          </CollapsibleSection>
+        </div>
       )}
 
       <button className="fab" onClick={() => setShowAdd(true)}>+</button>
