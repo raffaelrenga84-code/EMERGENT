@@ -24,7 +24,6 @@ export default function FamilyTab({ family, members, session, families, activeFa
   const [editingFamily, setEditingFamily] = useState(false);
   const [showFamilyInvite, setShowFamilyInvite] = useState(null); // family object o null
   const [expandedFamilies, setExpandedFamilies] = useState({});
-  const [inviteMenuOpen, setInviteMenuOpen] = useState(null);
   const [editingFamilyAll, setEditingFamilyAll] = useState(null);
   const [addMemberToFamily, setAddMemberToFamily] = useState(null); // family object da vista Tutte
   const [showJoinCode, setShowJoinCode] = useState(false);
@@ -63,7 +62,6 @@ export default function FamilyTab({ family, members, session, families, activeFa
         {families.map((f) => {
           const familyMembers = members.filter((m) => m.family_id === f.id);
           const isExpanded = expandedFamilies[f.id] || false;
-          const inviteOpen = inviteMenuOpen === f.id;
           const isFamilyOwner = f.created_by === session.user.id;
           return (
             <div key={f.id} style={{
@@ -97,7 +95,8 @@ export default function FamilyTab({ family, members, session, families, activeFa
                 background: '#F7F4ED',
               }}>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setInviteMenuOpen(inviteOpen ? null : f.id); }}
+                  onClick={(e) => { e.stopPropagation(); setShowFamilyInvite(f); }}
+                  data-testid={`family-quick-invite-${f.id}`}
                   style={{
                     flex: 1, padding: '10px 12px', background: 'transparent',
                     border: 'none', borderRight: isFamilyOwner ? '1px solid var(--sm)' : 'none',
@@ -121,57 +120,6 @@ export default function FamilyTab({ family, members, session, families, activeFa
                 )}
               </div>
 
-              {inviteOpen && (
-                <div style={{
-                  background: 'white', borderTop: '1px solid var(--sm)', padding: 12,
-                  display: 'flex', flexDirection: 'column', gap: 8,
-                }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase' }}>
-                    Condividi invito
-                  </div>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/invite/${f.invite_token || 'temp'}`);
-                      setInviteMenuOpen(null);
-                    }}
-                    style={{
-                      padding: '10px 12px', background: 'var(--ab)', border: 'none', borderRadius: 8,
-                      fontSize: 13, fontWeight: 600, color: 'var(--ac)', cursor: 'pointer',
-                    }}>
-                    🔗 Copia link
-                  </button>
-                  <button
-                    onClick={() => {
-                      const text = `Unisciti a ${f.name} su Fammy! 🎉 ${window.location.origin}/invite/${f.invite_token || 'temp'}`;
-                      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
-                      setInviteMenuOpen(null);
-                    }}
-                    style={{
-                      padding: '10px 12px', background: '#25D366', border: 'none', borderRadius: 8,
-                      fontSize: 13, fontWeight: 600, color: 'white', cursor: 'pointer',
-                    }}>
-                    💬 WhatsApp
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: `Unisciti a ${f.name}`,
-                          text: `Unisciti a ${f.name} su Fammy!`,
-                          url: `${window.location.origin}/invite/${f.invite_token || 'temp'}`,
-                        });
-                      }
-                      setInviteMenuOpen(null);
-                    }}
-                    style={{
-                      padding: '10px 12px', background: 'var(--ab)', border: 'none', borderRadius: 8,
-                      fontSize: 13, fontWeight: 600, color: 'var(--ac)', cursor: 'pointer',
-                    }}>
-                    📤 Condividi
-                  </button>
-                </div>
-              )}
-
               {isExpanded && (
                 <>
                   <div className="list" style={{ borderTop: '1px solid var(--sm)' }}>
@@ -188,29 +136,13 @@ export default function FamilyTab({ family, members, session, families, activeFa
                       />
                     ))}
                   </div>
-                  {/* Azioni espanse: aggiungi membro + invita link */}
+                  {/* Azione espansa: aggiungi membro (l'invito è già nel bottone sopra) */}
                   <div style={{
-                    padding: '12px', display: 'flex', flexDirection: 'column', gap: 8,
+                    padding: '12px',
                     borderTop: '1px solid var(--sm)', background: '#FBFAF7',
                   }}>
                     <button className="btn full secondary" onClick={() => setAddMemberToFamily(f)}>
                       {t('add_member')}
-                    </button>
-                    <button
-                      className="btn full"
-                      onClick={() => setShowFamilyInvite(f)}
-                      data-testid={`family-invite-cta-${f.id}`}
-                      style={{
-                        background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
-                        color: 'white', border: 'none',
-                        padding: '12px 16px', borderRadius: 14,
-                        fontSize: 14, fontWeight: 700,
-                        boxShadow: '0 6px 18px rgba(193,98,75,0.28)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      }}
-                    >
-                      <span style={{ fontSize: 18 }}>💌</span>
-                      <span>{t('invite_with_link')}</span>
                     </button>
                   </div>
                 </>
