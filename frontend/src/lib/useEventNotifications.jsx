@@ -3,6 +3,28 @@ import { supabase } from './supabase.js';
 import { isBirthdayTomorrow } from './birthdayUtils.js';
 
 const NOTIFICATIONS_ENABLED_KEY = 'fammy_notifications_enabled';
+const QUIET_HOURS_KEY = 'fammy_quiet_hours'; // JSON: { enabled, startHour, endHour }
+
+// Verifica se l'ora corrente cade nelle "ore silenziose" (default 22-07)
+// e quindi le notifiche locali NON vanno mostrate. Le push del server sono
+// gestite lato Edge Function (cron-digest non gira nelle quiet hours).
+export function inQuietHours() {
+  try {
+    const raw = localStorage.getItem(QUIET_HOURS_KEY);
+    if (!raw) return false;
+    const cfg = JSON.parse(raw);
+    if (!cfg?.enabled) return false;
+    const now = new Date();
+    const h = now.getHours();
+    const s = Number(cfg.startHour ?? 22);
+    const e = Number(cfg.endHour ?? 7);
+    if (s === e) return false;
+    // Range che attraversa la mezzanotte (es 22-07): h>=s || h<e
+    if (s > e) return (h >= s || h < e);
+    // Range normale (es 13-15)
+    return (h >= s && h < e);
+  } catch (err) { return false; }
+}
 
 /**
  * Hook per gestire le notifiche push e l'auto-refresh dei dati:
@@ -417,6 +439,7 @@ export function useEventNotifications(session, profile, families, events, taskAs
 
 function showEventNotification(event) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return; // do not disturb
   const startTime = new Date(event.starts_at);
   const timeStr = startTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const notification = new Notification(`📅 ${event.title}`, {
@@ -429,6 +452,7 @@ function showEventNotification(event) {
 
 function showNewEventNotification(event, family) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return; // do not disturb
   const startTime = new Date(event.starts_at);
   const dateStr = startTime.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   const notification = new Notification(`✨ Nuovo evento in ${family?.name || 'Famiglia'}`, {
@@ -441,6 +465,7 @@ function showNewEventNotification(event, family) {
 
 function showNewTaskNotification(task, family) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return; // do not disturb
   const notification = new Notification(`📋 Nuovo incarico in ${family?.name || 'Famiglia'}`, {
     body: task.title || 'Apri FAMMY per vederlo',
     icon: '/icon.png', badge: '/icon.png',
@@ -451,6 +476,7 @@ function showNewTaskNotification(task, family) {
 
 function showUrgentTaskNotification(task, family) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return; // do not disturb
   const notification = new Notification(`🚨 Incarico urgente in ${family?.name || 'Famiglia'}`, {
     body: `${task.title} ha bisogno di attenzione`,
     icon: '/icon.png', badge: '/icon.png',
@@ -461,6 +487,7 @@ function showUrgentTaskNotification(task, family) {
 
 function showDelegatedTaskNotification(task, family) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return; // do not disturb
   const notification = new Notification(`🧡 Lo fai tu?`, {
     body: `Ti hanno chiesto di occuparti di: ${task.title}`,
     icon: '/icon.png', badge: '/icon.png',
@@ -471,6 +498,7 @@ function showDelegatedTaskNotification(task, family) {
 
 function showBirthdayNotification(member) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return; // do not disturb
   const notification = new Notification(`🎂 Compleanno domani!`, {
     body: `È il compleanno di ${member.name}! 🎉`,
     icon: '/icon.png', badge: '/icon.png',
@@ -481,6 +509,7 @@ function showBirthdayNotification(member) {
 
 function showNewCommentNotification(task, response) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return; // do not disturb
   const preview = (response.text || '').slice(0, 80);
   const notification = new Notification(`💬 Nuovo commento`, {
     body: `${task.title}\n${preview}`,
@@ -492,6 +521,7 @@ function showNewCommentNotification(task, response) {
 
 function showWeeklyAISummaryNotification() {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return; // do not disturb
   const notification = new Notification('✨ Riepilogo della settimana', {
     body: 'Il tuo riepilogo AI è pronto. Apri FAMMY per vedere come è andata!',
     icon: '/icon.png', badge: '/icon.png',
@@ -502,6 +532,7 @@ function showWeeklyAISummaryNotification() {
 
 function showEventAssigneeNotification(ev) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
+  if (inQuietHours()) return; // do not disturb
   const when = ev.starts_at ? new Date(ev.starts_at) : null;
   const whenStr = when
     ? when.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) +

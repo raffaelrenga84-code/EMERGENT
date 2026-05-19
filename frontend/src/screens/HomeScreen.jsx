@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useEventNotifications } from '../lib/useEventNotifications.jsx';
 import { usePullToRefresh } from '../lib/usePullToRefresh.jsx';
+import NotificationsPrompt from '../components/NotificationsPrompt.jsx';
 import BachecaTab from './tabs/BachecaTab.jsx';
 import AgendaTab from './tabs/AgendaTab.jsx';
 import SpeseTab from './tabs/SpeseTab.jsx';
@@ -127,6 +128,12 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
   return (
     <div className="scr">
       {pullIndicator}
+      {/* Notifications prompt — bloccante una sola volta finché 'default' */}
+      {notificationControl.notificationPermission === 'default' && (
+        <NotificationsPrompt
+          onGranted={() => notificationControl.setNotificationsEnabled?.(true)}
+        />
+      )}
       {showUpdateBanner && <UpdateBanner onDismiss={() => setShowUpdateBanner(false)} />}
 
       {showOnboarding && (

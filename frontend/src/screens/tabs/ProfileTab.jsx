@@ -5,6 +5,7 @@ import Avatar from '../../components/Avatar.jsx';
 import FamilyMemoriesCard from '../../components/FamilyMemoriesCard.jsx';
 import InviteStatsCard from '../../components/InviteStatsCard.jsx';
 import OnboardingTour from '../../components/OnboardingTour.jsx';
+import QuietHoursControl from '../../components/QuietHoursControl.jsx';
 import PricingScreen from '../sub/PricingScreen.jsx';
 import ThemeScreen from '../sub/ThemeScreen.jsx';
 import AccessibilityScreen from '../sub/AccessibilityScreen.jsx';
@@ -276,10 +277,14 @@ export default function ProfileTab({ session, profile, families = [], members = 
             />
           )}
 
-          {/* Test push notification (utile per verificare che le push ad app
-              chiusa siano configurate correttamente). */}
+          {/* Test push notification */}
           {notificationControl.notificationPermission === 'granted' && (
             <TestPushButton session={session} />
+          )}
+
+          {/* Quiet Hours - non disturbare 22-07 */}
+          {notificationControl.notificationPermission === 'granted' && (
+            <QuietHoursControl />
           )}
 
           {/* Info */}

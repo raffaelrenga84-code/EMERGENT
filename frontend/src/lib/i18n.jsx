@@ -722,6 +722,7 @@ export const T = {
     weekly_summary_eyebrow: 'Your week, recapped',
     regenerate: 'Regenerate', regenerating: 'Regenerating…',
     retry: 'Retry', collapse_label: 'Collapse',
+    filter_all: '🌍 All', filter_todo: '📋 To do', filter_urgent: '🚨 Urgent', filter_mine: '👤 Only mine',
     invite_hint_family: 'For invites inside a family, use the',
     profile_tour_label: 'Tour & help',
     profile_tour_btn: '✨ Replay welcome tour',
@@ -1200,6 +1201,7 @@ export const T = {
     weekly_summary_eyebrow: 'Le récap de la semaine',
     regenerate: 'Régénérer', regenerating: 'En cours…',
     retry: 'Réessayer', collapse_label: 'Réduire',
+    filter_all: '🌍 Tout', filter_todo: '📋 À faire', filter_urgent: '🚨 Urgent', filter_mine: '👤 Pour moi',
     invite_hint_family: 'Pour les invitations dans une famille, utilise la section',
     profile_tour_label: 'Tour & aide',
     profile_tour_btn: '✨ Revoir le tour de bienvenue',
@@ -1662,6 +1664,7 @@ export const T = {
     weekly_summary_eyebrow: 'Deine Wochenzusammenfassung',
     regenerate: 'Neu erstellen', regenerating: 'Erstelle…',
     retry: 'Erneut versuchen', collapse_label: 'Einklappen',
+    filter_all: '🌍 Alle', filter_todo: '📋 Zu tun', filter_urgent: '🚨 Dringend', filter_mine: '👤 Nur meine',
     invite_hint_family: 'Für Einladungen innerhalb einer Familie nutze',
     profile_tour_label: 'Tour & Hilfe',
     profile_tour_btn: '✨ Willkommens-Tour ansehen',
@@ -1892,3 +1895,4 @@ export function I18nProvider({ initialLang = 'it', children }) {
 export function useT() {
   return useContext(I18nContext);
 }
+

@@ -6,6 +6,7 @@ import BirthdayReminder from '../../components/BirthdayReminder.jsx';
 import AddTaskModal from '../../components/AddTaskModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import WeeklySummaryCard from '../../components/WeeklySummaryCard.jsx';
+import OnboardingChecklist from '../../components/OnboardingChecklist.jsx';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
@@ -17,6 +18,9 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const [editingTask, setEditingTask] = useState(null);
   const [openSections, setOpenSections] = useState({ mine: true, all: true, done: false });
   const [priorityMenuOpen, setPriorityMenuOpen] = useState(null);
+  // Filtro rapido in cima alla bacheca: all | mine | todo | urgent
+  const [quickFilter, setQuickFilter] = useState('all');
+  const family = families?.find((f) => f.id === familyId);
 
   const ST_LABEL = {
     todo: t('section_todo'), taken: 'In carico', done: 'Fatto', to_pay: 'Da pagare',
@@ -131,6 +135,61 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         members={members}
       />
 
+      {/* Onboarding checklist progressiva (sparisce a setup completo o dismissato) */}
+      {!isAll && family && (
+        <OnboardingChecklist
+          family={family}
+          members={members}
+          tasks={tasks}
+          notificationPermission={typeof Notification !== 'undefined' ? Notification.permission : 'denied'}
+          onAddTask={() => setShowAdd(true)}
+          onInviteFamily={() => window.dispatchEvent(new CustomEvent('fammy_request_invite'))}
+          onExportAgenda={() => window.dispatchEvent(new CustomEvent('fammy_request_export'))}
+        />
+      )}
+
+      {/* Filtri rapidi: Tutte / Da fare / Urgenti / Solo mie */}
+      <div style={{
+        padding: '6px 16px 8px',
+        display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none',
+      }} data-testid="bacheca-quick-filters">
+        {[
+          { id: 'all',    label: t('filter_all')    || '🌍 Tutte',    count: tasks.length },
+          { id: 'todo',   label: t('filter_todo')   || '📋 Da fare',  count: todos.length },
+          { id: 'urgent', label: t('filter_urgent') || '🚨 Urgenti',  count: tasks.filter((x) => x.priority === 'high').length },
+          { id: 'mine',   label: t('filter_mine')   || '👤 Solo mie', count: todos.filter(isMine).length },
+        ].map((f) => {
+          const active = quickFilter === f.id;
+          return (
+            <button
+              key={f.id}
+              type="button"
+              data-testid={`bacheca-filter-${f.id}`}
+              onClick={() => setQuickFilter(f.id)}
+              style={{
+                padding: '7px 14px', borderRadius: 100,
+                border: '1.5px solid', borderColor: active ? 'var(--k)' : 'var(--sm)',
+                background: active ? 'var(--k)' : 'white',
+                color: active ? 'white' : 'var(--km)',
+                fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                cursor: 'pointer', flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                transition: 'all 0.15s ease',
+              }}>
+              <span>{f.label}</span>
+              {f.count > 0 && (
+                <span style={{
+                  background: active ? 'rgba(255,255,255,0.22)' : 'var(--ab)',
+                  color: active ? 'white' : 'var(--km)',
+                  fontSize: 10, fontWeight: 700,
+                  padding: '1px 6px', borderRadius: 100,
+                }}>{f.count}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       <div style={{ marginBottom: 24 }}>
         <CollapsibleSection
           label={t('section_mine')}
@@ -159,14 +218,14 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         </CollapsibleSection>
       </div>
 
-      {dones.length > 0 && (
+      {dones.length > 0 && visibleDones.length > 0 && (
         <CollapsibleSection
           label={t('section_done_short')}
-          count={dones.length}
+          count={visibleDones.length}
           open={openSections.done}
           onToggle={() => toggle('done')}
         >
-          {renderTaskList(dones)}
+          {renderTaskList(visibleDones)}
         </CollapsibleSection>
       )}
 

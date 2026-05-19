@@ -216,10 +216,23 @@ export default function FamilyTab({ family, members, session, families, activeFa
         padding: '4px 22px 14px',
         display: 'flex', alignItems: 'center', gap: 14,
       }}>
-        <span style={{
-          fontSize: 40, lineHeight: 1, flexShrink: 0,
-          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.08))',
-        }}>{family.emoji}</span>
+        {family.photo_url ? (
+          <div
+            data-testid="family-hero-photo"
+            style={{
+              width: 56, height: 56, flexShrink: 0,
+              borderRadius: 16,
+              background: `url(${family.photo_url}) center/cover no-repeat`,
+              boxShadow: '0 4px 12px rgba(28,22,17,0.15)',
+              border: '2px solid white',
+            }}
+          />
+        ) : (
+          <span style={{
+            fontSize: 40, lineHeight: 1, flexShrink: 0,
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.08))',
+          }}>{family.emoji}</span>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 style={{
             margin: 0, fontFamily: 'var(--fs)', fontSize: 22, fontWeight: 500,

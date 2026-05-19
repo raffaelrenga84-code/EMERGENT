@@ -360,6 +360,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
                 : `FAMMY · ${targetFamily?.name || 'Agenda'}`;
               const filename = `fammy-${(targetFamily?.name || 'agenda').toLowerCase().replace(/\s+/g, '-')}.ics`;
               downloadIcs({ events: visibleEvents, tasks: visibleTasks, calName: cn, filename });
+              try { localStorage.setItem('fammy_exported_ics', '1'); } catch (e) {}
             }}
             style={{
               background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
