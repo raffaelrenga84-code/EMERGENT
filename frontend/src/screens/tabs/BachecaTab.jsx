@@ -23,6 +23,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const [priorityMenuOpen, setPriorityMenuOpen] = useState(null);
   // Filtro rapido in cima alla bacheca: todo (default) | all | mine | urgent | followup
   const [quickFilter, setQuickFilter] = useState('todo');
+  // Filtro temporale per archivio "Fatti": '7d' (default) | '30d' | 'all'
+  const [donesRange, setDonesRange] = useState('7d');
   // Mappa { taskId: [{id, text, created_at, author_id}] } caricata on-demand
   // quando il filtro 'followup' è attivo: mini-timeline degli ultimi system msg.
   const [followUpHistory, setFollowUpHistory] = useState({});
@@ -73,7 +75,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const otherTasks = todos.filter((t) => !isMine(t));
   const followUpTasks = todos.filter(isFollowUp);
 
-  // Quick filter applicato ai conteggi della sezione "Fatti"
+  // Filtri rapidi applicati ai TODO
   const applyQuickFilter = (list) => {
     if (quickFilter === 'all')      return list;
     if (quickFilter === 'todo')     return list.filter((x) => x.status !== 'done');
@@ -82,9 +84,20 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     if (quickFilter === 'followup') return list.filter(isFollowUp);
     return list;
   };
+
+  // Filtri applicati alla sezione "✓ Fatti" — usano lo stesso quickFilter
+  // ma ignorano 'todo' (perché contraddittorio: una task done non è "da fare").
+  const applyQuickFilterToDones = (list) => {
+    if (quickFilter === 'urgent')   return list.filter((x) => (x.priority === 'high') || x.urgent);
+    if (quickFilter === 'mine')     return list.filter(isMine);
+    if (quickFilter === 'followup') return list.filter((x) => me && x.author_id === me.id);
+    return list; // 'all' e 'todo' → tutto l'archivio
+  };
+
   const visibleMyTasks    = applyQuickFilter(myTasks);
   const visibleOtherTasks = applyQuickFilter(otherTasks);
-  const visibleDones      = applyQuickFilter(dones);
+  // Pre-filtra per quick filter; il filtro temporale viene applicato dopo.
+  const filteredDones     = applyQuickFilterToDones(dones);
 
   // Carica la cronologia (system messages) quando il filtro 'followup' è
   // attivo. Una sola query batch per tutti i task_id in follow-up.
@@ -374,18 +387,24 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         renderTaskList([...visibleMyTasks, ...visibleOtherTasks])
       )}
 
-      {/* Sezione "Fatti": SEMPRE visibile (a prescindere dal filtro rapido)
-          perché serve da archivio degli incarichi completati. Collapsata di
-          default. */}
+      {/* Sezione "Fatti": SEMPRE visibile (a prescindere dal filtro "Da fare")
+          ma rispetta gli altri filtri (Solo mie, Urgenti, Da seguire).
+          All'interno: pill temporali + raggruppamento per giorno. */}
       {dones.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <CollapsibleSection
             label={t('section_done_short')}
-            count={dones.length}
+            count={filteredDones.length}
             open={openSections.done}
             onToggle={() => toggle('done')}
           >
-            {renderTaskList(dones)}
+            <DoneArchive
+              dones={filteredDones}
+              range={donesRange}
+              onRangeChange={setDonesRange}
+              t={t}
+              renderTaskList={renderTaskList}
+            />
           </CollapsibleSection>
         </div>
       )}
@@ -723,4 +742,144 @@ function PrioBtn({ color, label, onClick, active, testid }) {
       {label}{active ? ' ✓' : ''}
     </button>
   );
+}
+
+/**
+ * DoneArchive — archivio incarichi completati con filtro temporale +
+ * raggruppamento per giorno (pattern Things 3 / Todoist "Completed").
+ *
+ * Date di riferimento: `updated_at` se presente, altrimenti `created_at`.
+ */
+function DoneArchive({ dones, range, onRangeChange, t, renderTaskList }) {
+  // Filtra per range temporale
+  const now = Date.now();
+  const cutoff = range === '7d'
+    ? now - 7 * 24 * 3600 * 1000
+    : range === '30d'
+    ? now - 30 * 24 * 3600 * 1000
+    : 0;
+  const inRange = dones.filter((task) => {
+    if (range === 'all') return true;
+    const ref = task.updated_at || task.created_at;
+    if (!ref) return false;
+    return new Date(ref).getTime() >= cutoff;
+  });
+
+  // Raggruppa per "Oggi" / "Ieri" / weekday della settimana corrente /
+  // "N settimane fa" / data assoluta
+  const groups = groupDonesByDay(inRange, t);
+
+  return (
+    <div data-testid="done-archive">
+      {/* Pill temporali */}
+      <div style={{
+        display: 'flex', gap: 6, padding: '0 16px 10px',
+        flexWrap: 'wrap',
+      }} data-testid="done-range-pills">
+        {[
+          { id: '7d',  label: t('done_range_7d')  || 'Ultimi 7 giorni' },
+          { id: '30d', label: t('done_range_30d') || 'Ultimi 30 giorni' },
+          { id: 'all', label: t('done_range_all') || 'Tutto' },
+        ].map((r) => {
+          const active = range === r.id;
+          return (
+            <button key={r.id} type="button"
+              data-testid={`done-range-${r.id}`}
+              onClick={() => onRangeChange(r.id)}
+              style={{
+                padding: '6px 12px', borderRadius: 100,
+                border: active ? '1.5px solid var(--k)' : '1.5px solid var(--sm)',
+                background: active ? 'var(--k)' : 'white',
+                color: active ? 'white' : 'var(--km)',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}>{r.label}</button>
+          );
+        })}
+      </div>
+
+      {inRange.length === 0 ? (
+        <div style={{
+          padding: '24px 22px', textAlign: 'center',
+          color: 'var(--km)', fontSize: 13,
+        }}>
+          {range === 'all'
+            ? (t('done_empty_all') || 'Nessun incarico completato')
+            : (t('done_empty_range') || 'Nessun incarico completato in questo periodo')}
+        </div>
+      ) : (
+        <div>
+          {groups.map((g) => (
+            <div key={g.key} style={{ marginBottom: 8 }}>
+              <div style={{
+                padding: '6px 22px 4px',
+                fontSize: 11, fontWeight: 800, color: 'var(--km)',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}>{g.label} · {g.items.length}</div>
+              {renderTaskList(g.items)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function groupDonesByDay(dones, t) {
+  // Order DESC by date
+  const sorted = [...dones].sort((a, b) => {
+    const ra = new Date(a.updated_at || a.created_at || 0).getTime();
+    const rb = new Date(b.updated_at || b.created_at || 0).getTime();
+    return rb - ra;
+  });
+
+  const buckets = new Map(); // key -> { label, sortKey, items[] }
+
+  for (const task of sorted) {
+    const ref = task.updated_at || task.created_at;
+    const d = ref ? new Date(ref) : null;
+    let key, label, sortKey;
+    if (!d || Number.isNaN(d.getTime())) {
+      key = 'unknown';
+      label = t('done_group_unknown') || 'Data ignota';
+      sortKey = -Infinity;
+    } else {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const ref0 = new Date(d); ref0.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((today.getTime() - ref0.getTime()) / (24 * 3600 * 1000));
+      if (diffDays === 0) {
+        key = 'today';
+        label = t('done_group_today') || 'Oggi';
+        sortKey = 1000;
+      } else if (diffDays === 1) {
+        key = 'yesterday';
+        label = t('done_group_yesterday') || 'Ieri';
+        sortKey = 900;
+      } else if (diffDays < 7) {
+        // Es. "Sabato" (giorno settimana)
+        key = `wd-${ref0.toISOString().slice(0, 10)}`;
+        label = ref0.toLocaleDateString(undefined, { weekday: 'long' });
+        // capitalize first
+        label = label.charAt(0).toUpperCase() + label.slice(1);
+        sortKey = 800 - diffDays;
+      } else if (diffDays < 14) {
+        key = 'last-week';
+        label = t('done_group_last_week') || 'Settimana scorsa';
+        sortKey = 700;
+      } else if (diffDays < 30) {
+        key = 'this-month';
+        label = t('done_group_this_month') || 'Questo mese';
+        sortKey = 600;
+      } else {
+        // Per mese/anno
+        key = ref0.toISOString().slice(0, 7); // YYYY-MM
+        label = ref0.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        label = label.charAt(0).toUpperCase() + label.slice(1);
+        sortKey = -ref0.getTime();
+      }
+    }
+    if (!buckets.has(key)) buckets.set(key, { key, label, sortKey, items: [] });
+    buckets.get(key).items.push(task);
+  }
+  return Array.from(buckets.values()).sort((a, b) => b.sortKey - a.sortKey);
 }
