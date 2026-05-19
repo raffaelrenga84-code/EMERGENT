@@ -21,8 +21,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const [editingTask, setEditingTask] = useState(null);
   const [openSections, setOpenSections] = useState({ mine: true, all: true, done: false });
   const [priorityMenuOpen, setPriorityMenuOpen] = useState(null);
-  // Filtro rapido in cima alla bacheca: all | mine | todo | urgent | followup
-  const [quickFilter, setQuickFilter] = useState('all');
+  // Filtro rapido in cima alla bacheca: todo (default) | all | mine | urgent | followup
+  const [quickFilter, setQuickFilter] = useState('todo');
   // Mappa { taskId: [{id, text, created_at, author_id}] } caricata on-demand
   // quando il filtro 'followup' è attivo: mini-timeline degli ultimi system msg.
   const [followUpHistory, setFollowUpHistory] = useState({});
@@ -319,17 +319,17 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         />
       )}
 
-      {/* Filtri rapidi: Tutte / Da fare / Urgenti / Solo mie / Da seguire */}
+      {/* Filtri rapidi: Da fare (default) → Urgenti → Solo mie → Da seguire → Tutte */}
       <div style={{
         padding: '6px 16px 8px',
         display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none',
       }} data-testid="bacheca-quick-filters">
         {[
-          { id: 'all',      label: t('filter_all')      || '🌍 Tutte',      count: tasks.length },
           { id: 'todo',     label: t('filter_todo')     || '📋 Da fare',    count: todos.length },
           { id: 'urgent',   label: t('filter_urgent')   || '🚨 Urgenti',    count: tasks.filter((x) => x.priority === 'high').length },
           { id: 'mine',     label: t('filter_mine')     || '👤 Solo mie',   count: myTasks.length },
           { id: 'followup', label: t('filter_followup') || '👁️ Da seguire', count: followUpTasks.length },
+          { id: 'all',      label: t('filter_all')      || '🌍 Tutte',      count: tasks.length },
         ].map((f) => {
           const active = quickFilter === f.id;
           return (
