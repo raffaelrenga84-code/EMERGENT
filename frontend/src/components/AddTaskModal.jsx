@@ -288,33 +288,8 @@ export default function AddTaskModal({
 
         <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div ref={scrollableRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
-            {/* === TITOLO + AI HINT === */}
-            <label htmlFor="title">{t('addtask_title_label')}</label>
-            <input id="title" className="input" autoFocus
-              ref={titleInputRef}
-              data-testid="add-task-title-input"
-              placeholder={t(`addtask_title_ph_${category}`)}
-              value={title} onChange={(e) => setTitle(e.target.value)}
-              style={titleFlash ? {
-                border: '2px solid var(--rd)',
-                boxShadow: '0 0 0 4px rgba(231, 76, 60, 0.18)',
-                animation: 'fammy-flash 700ms ease-in-out',
-              } : undefined}
-            />
-
-            {!isEdit && (
-              <AISmartTaskHint
-                title={title}
-                currentCategory={category}
-                onApply={({ category: c, dueDate: d }) => {
-                  if (c) setCategory(c);
-                  if (d) setDueDate(d);
-                }}
-              />
-            )}
-
             {/* === CATEGORIA === */}
-            <div style={{ marginTop: 20 }}>
+            <div>
               <label>{t('addtask_cat_label')}</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="add-task-category-row">
                 {CATEGORIES.map((c) => (
@@ -325,6 +300,33 @@ export default function AddTaskModal({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* === TITOLO + AI HINT === */}
+            <div style={{ marginTop: 20 }}>
+              <label htmlFor="title">{t('addtask_title_label')}</label>
+              <input id="title" className="input" autoFocus
+                ref={titleInputRef}
+                data-testid="add-task-title-input"
+                placeholder={t(`addtask_title_ph_${category}`)}
+                value={title} onChange={(e) => setTitle(e.target.value)}
+                style={titleFlash ? {
+                  border: '2px solid var(--rd)',
+                  boxShadow: '0 0 0 4px rgba(231, 76, 60, 0.18)',
+                  animation: 'fammy-flash 700ms ease-in-out',
+                } : undefined}
+              />
+
+              {!isEdit && (
+                <AISmartTaskHint
+                  title={title}
+                  currentCategory={category}
+                  onApply={({ category: c, dueDate: d }) => {
+                    if (c) setCategory(c);
+                    if (d) setDueDate(d);
+                  }}
+                />
+              )}
             </div>
 
             {/* === QUANDO (data + ora) === */}
@@ -430,12 +432,15 @@ export default function AddTaskModal({
                     <button type="button" onClick={() => toggleAllOfFamily(g.members)}
                       data-testid={`add-task-family-select-all-${g.family.id}`}
                       style={{
-                        width: '100%', padding: '8px 12px', borderRadius: 0,
+                        width: '100%', padding: '10px 12px', borderRadius: 0,
                         border: 'none', borderTop: '1px solid var(--sm)',
-                        background: allSelected ? 'var(--ac)' : 'var(--ab)',
-                        color: allSelected ? 'white' : 'var(--k)',
-                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        background: allSelected ? 'var(--ac)' : 'white',
+                        color: allSelected ? 'white' : 'var(--ac)',
+                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        letterSpacing: '0.02em',
                       }}>
+                      <span style={{ fontSize: 14 }}>{allSelected ? '✓' : '☐'}</span>
                       {allSelected ? t('deselect_all') : t('select_all')}
                     </button>
                     {isExpanded && (
@@ -462,6 +467,31 @@ export default function AddTaskModal({
                 );
               })}
             </div>
+
+            {/* Info "Da seguire": appare quando hai assegnato a qualcun altro
+                ma NON a te stesso → la task finirà in 👁️ Da seguire e
+                riceverai notifiche se viene presa/in scadenza. */}
+            {!isEdit && authorMemberId && assignees.length > 0 && !assignees.includes(authorMemberId) && (
+              <div
+                data-testid="add-task-followup-hint"
+                style={{
+                  marginTop: -4, marginBottom: 12,
+                  padding: '10px 14px',
+                  background: 'rgba(193, 98, 75, 0.10)',
+                  border: '1px solid rgba(193, 98, 75, 0.25)',
+                  borderRadius: 12,
+                  fontSize: 12, lineHeight: 1.45,
+                  color: 'var(--ac)',
+                  display: 'flex', gap: 8, alignItems: 'flex-start',
+                }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>👁️</span>
+                <span style={{ flex: 1, color: 'var(--k)' }}>
+                  <strong style={{ color: 'var(--ac)' }}>{t('addtask_followup_title') || 'Andrà in Da seguire'}</strong>
+                  <br />
+                  {t('addtask_followup_hint') || 'Non sei tra gli assegnatari. La troverai nel filtro Da seguire della Bacheca e riceverai una notifica quando qualcuno se ne occupa.'}
+                </span>
+              </div>
+            )}
 
             {/* === RICORRENZA === */}
             <div style={{ marginTop: 20 }}>

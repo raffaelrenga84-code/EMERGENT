@@ -5,7 +5,6 @@ import Avatar from '../../components/Avatar.jsx';
 import BirthdayReminder from '../../components/BirthdayReminder.jsx';
 import AddTaskModal from '../../components/AddTaskModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
-import WeeklySummaryCard from '../../components/WeeklySummaryCard.jsx';
 import OnboardingChecklist from '../../components/OnboardingChecklist.jsx';
 import SwipeableRow from '../../components/SwipeableRow.jsx';
 
@@ -137,14 +136,6 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     onChanged();
   };
 
-  const quickDelete = async (task) => {
-    const ok = window.confirm(t('td_delete_confirm') || 'Eliminare questo incarico?');
-    if (!ok) return;
-    const id = task._origId || task.id;
-    await supabase.from('tasks').delete().eq('id', id);
-    onChanged();
-  };
-
   const quickAssignMe = async (task) => {
     if (!me) return;
     const id = task._origId || task.id;
@@ -170,33 +161,54 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           (task.delegated_to && task.delegated_to === me.id) ||
           (assigneesForTask(task.id).length === 1 && assigneesForTask(task.id)[0].id === me.id)
         );
-        // Azioni a destra (swipe LEFT): Completa + Elimina
-        const rightActions = [
-          {
-            id: 'done',
-            icon: isDone ? '↩️' : '✓',
-            label: isDone ? (t('swipe_undo') || 'Riapri') : (t('swipe_done') || 'Fatto'),
-            color: isDone ? '#F39C12' : 'var(--gn)',
-            testid: `swipe-done-${task.id}`,
-            onAction: () => quickToggleDone(task),
-          },
-          {
-            id: 'delete',
-            icon: '🗑',
-            label: t('swipe_delete') || 'Elimina',
-            color: 'var(--rd)',
-            testid: `swipe-delete-${task.id}`,
-            onAction: () => quickDelete(task),
-          },
-        ];
-        // Azione a sinistra (swipe RIGHT): quick action contestuale
+        // Swipe LEFT: azioni positive (mai distruttive). L'eliminazione
+        // resta gestita solo dal modal di dettaglio (richiede conferma +
+        // verifica autore).
+        const rightActions = isDone
+          ? [{
+              id: 'undo',
+              icon: '↩️',
+              label: t('swipe_undo') || 'Riapri',
+              color: '#F39C12',
+              testid: `swipe-undo-${task.id}`,
+              onAction: () => quickToggleDone(task),
+            }]
+          : isAssignedToMe
+          ? [{
+              id: 'done',
+              icon: '✓',
+              label: t('swipe_done') || 'Fatto',
+              color: 'var(--gn)',
+              testid: `swipe-done-${task.id}`,
+              onAction: () => quickToggleDone(task),
+            }]
+          : [
+              {
+                id: 'done',
+                icon: '✓',
+                label: t('swipe_done') || 'Fatto',
+                color: 'var(--gn)',
+                testid: `swipe-done-${task.id}`,
+                onAction: () => quickToggleDone(task),
+              },
+              {
+                id: 'claim',
+                icon: '✋',
+                label: t('swipe_claim') || 'Me ne occupo',
+                color: 'var(--ac)',
+                testid: `swipe-claim-${task.id}`,
+                onAction: () => quickAssignMe(task),
+              },
+            ];
+        // Swipe RIGHT: azione veloce contestuale (singola, identica a quella
+        // rapida dello swipe sinistro nello stato corrente).
         const leftAction = isDone
           ? {
               id: 'undo',
               icon: '↩️',
               label: t('swipe_undo') || 'Riapri',
               color: '#F39C12',
-              testid: `swipe-undo-${task.id}`,
+              testid: `swipe-quick-undo-${task.id}`,
               onAction: () => quickToggleDone(task),
             }
           : isAssignedToMe
@@ -210,10 +222,10 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
             }
           : {
               id: 'assign',
-              icon: '👤',
-              label: t('swipe_assign_me') || 'A me',
+              icon: '✋',
+              label: t('swipe_claim') || 'Me ne occupo',
               color: 'var(--ac)',
-              testid: `swipe-assign-${task.id}`,
+              testid: `swipe-quick-claim-${task.id}`,
               onAction: () => quickAssignMe(task),
             };
         return (
@@ -277,18 +289,6 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   return (
     <>
       <BirthdayReminder members={members} session={session} familyId={familyId} families={families} />
-
-      <WeeklySummaryCard
-        familyId={isAll ? null : familyId}
-        familyName={
-          isAll
-            ? `${families?.length || 1} famiglie`
-            : (families?.find((f) => f.id === familyId)?.name || 'Famiglia')
-        }
-        tasks={tasks}
-        events={[]} /* events live in AgendaTab - omitted here to avoid double-fetch */
-        members={members}
-      />
 
       {/* Onboarding checklist progressiva (sparisce a setup completo o dismissato) */}
       {!isAll && family && (
@@ -408,6 +408,62 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           onUpdated={() => { setEditingTask(null); onChanged(); }}
         />
       )}
+
+      {/* Bottom-sheet priority menu (fuori dallo SwipeableRow per non essere
+          clippato dall'overflow:hidden delle card). */}
+      {priorityMenuOpen && (() => {
+        const target = tasks.find((tt) => tt.id === priorityMenuOpen.taskId);
+        const currentPriority = target?.priority || (target?.urgent ? 'high' : 'normal');
+        return (
+          <div
+            data-testid="priority-sheet-backdrop"
+            onClick={() => setPriorityMenuOpen(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1500,
+              background: 'rgba(28,22,17,0.35)',
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            }}>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              data-testid="priority-sheet"
+              style={{
+                width: '100%', maxWidth: 520,
+                background: 'white',
+                borderTopLeftRadius: 22, borderTopRightRadius: 22,
+                padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
+                boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
+                display: 'flex', flexDirection: 'column', gap: 8,
+                animation: 'fammy-sheet-up 220ms cubic-bezier(.2,.8,.3,1)',
+              }}>
+              <div style={{
+                width: 40, height: 4, borderRadius: 4, background: 'var(--sm)',
+                margin: '0 auto 8px',
+              }} />
+              <div style={{
+                fontSize: 11, fontWeight: 800, color: 'var(--km)',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                textAlign: 'center', marginBottom: 6,
+              }}>{t('priority_sheet_title') || 'Imposta priorità'}</div>
+              <PrioBtn color="var(--gn)" label="🟢 Normale"
+                onClick={() => setPriority(priorityMenuOpen.taskId, 'normal')}
+                active={currentPriority === 'normal'} testid="prio-normal" />
+              <PrioBtn color="#F39C12" label="🟠 Attenzione"
+                onClick={() => setPriority(priorityMenuOpen.taskId, 'medium')}
+                active={currentPriority === 'medium'} testid="prio-medium" />
+              <PrioBtn color="var(--rd)" label="🔴 Urgente / Imprevisto"
+                onClick={() => setPriority(priorityMenuOpen.taskId, 'high')}
+                active={currentPriority === 'high'} testid="prio-high" />
+              <button onClick={() => setPriorityMenuOpen(null)}
+                data-testid="priority-sheet-cancel"
+                style={{
+                  marginTop: 6, padding: '12px', borderRadius: 12,
+                  border: '1px solid var(--sm)', background: 'white',
+                  fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
+                }}>{t('cancel') || 'Annulla'}</button>
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }
@@ -463,26 +519,6 @@ function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLa
           } : {}}>
           {task.status === 'done' ? '✓' : ' '}
         </button>
-        {priorityMenu && (
-          <div onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute', top: '100%', left: 0, marginTop: 4,
-              background: '#ffffff', border: '1px solid var(--sm)', borderRadius: 12,
-              padding: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-              zIndex: 1001, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 220,
-              isolation: 'isolate',
-            }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase', padding: '4px 8px' }}>Priorità</div>
-            <PrioBtn color="var(--gn)" label="🟢 Normale" onClick={() => onSetPriority('normal')} active={priority === 'normal'} />
-            <PrioBtn color="#F39C12" label="🟠 Attenzione" onClick={() => onSetPriority('medium')} active={priority === 'medium'} />
-            <PrioBtn color="var(--rd)" label="🔴 Urgente / Imprevisto" onClick={() => onSetPriority('high')} active={priority === 'high'} />
-            <button onClick={onClosePriorityMenu}
-              style={{
-                marginTop: 4, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--sm)',
-                background: 'white', fontSize: 12, color: 'var(--km)', cursor: 'pointer',
-              }}>Annulla</button>
-          </div>
-        )}
         <span className="tc-emoji">{CAT[task.category] || '📌'}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="tc-title" style={priority === 'high' ? { color: 'var(--rd)', fontWeight: 700, fontSize: 14 } : {}}>{priority === 'high' ? '🚨 ' : ''}{task.title}</div>
@@ -629,21 +665,20 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
-function PrioBtn({ color, label, onClick, active }) {
+function PrioBtn({ color, label, onClick, active, testid }) {
   // Sfondo SEMPRE opaco: usiamo bianco per inattivo e una versione chiara opaca
   // per l'attivo (mescolando il colore con bianco, no alpha) così non trapela
   // nulla dalla card sottostante.
-  const activeBg = color.startsWith('var(')
-    ? `color-mix(in srgb, ${color} 18%, #ffffff)`
-    : `color-mix(in srgb, ${color} 18%, #ffffff)`;
+  const activeBg = `color-mix(in srgb, ${color} 18%, #ffffff)`;
   return (
     <button onClick={onClick}
+      data-testid={testid}
       style={{
-        padding: '8px 10px', borderRadius: 8,
-        border: active ? `2px solid ${color}` : '1px solid var(--sm)',
+        padding: '14px 16px', borderRadius: 12,
+        border: active ? `2px solid ${color}` : '1.5px solid var(--sm)',
         background: active ? activeBg : '#ffffff',
         color: 'var(--ink, #1C1611)',
-        fontSize: 13, fontWeight: 600, textAlign: 'left', cursor: 'pointer',
+        fontSize: 15, fontWeight: 600, textAlign: 'left', cursor: 'pointer',
         whiteSpace: 'nowrap',
       }}>
       {label}{active ? ' ✓' : ''}
