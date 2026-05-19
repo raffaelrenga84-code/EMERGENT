@@ -207,19 +207,53 @@ export default function FamilyTab({ family, members, session, families, activeFa
     );
   }
 
+  const familyMembersOfThis = members.filter(m => m.family_id === family.id);
+
   return (
     <>
-      <div style={{ padding: '0 22px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div className="sh-l" style={{ padding: 0 }}>{t('nav_family')}</div>
+      {/* Hero header famiglia: emoji grande + nome + contatore membri */}
+      <div style={{
+        padding: '4px 22px 14px',
+        display: 'flex', alignItems: 'center', gap: 14,
+      }}>
+        <span style={{
+          fontSize: 40, lineHeight: 1, flexShrink: 0,
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.08))',
+        }}>{family.emoji}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 style={{
+            margin: 0, fontFamily: 'var(--fs)', fontSize: 22, fontWeight: 500,
+            letterSpacing: '-0.02em', color: 'var(--k)', lineHeight: 1.15,
+          }} data-testid="family-name-header">{family.name}</h2>
+          <div style={{
+            fontSize: 12, color: 'var(--km)', marginTop: 4,
+            display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
+          }} data-testid="family-members-counter">
+            <span>👥</span>
+            <span>
+              {familyMembersOfThis.length}{' '}
+              {familyMembersOfThis.length === 1 ? t('member_one_label') : t('member_many_label')}
+            </span>
+          </div>
+        </div>
         {isOwner && (
-          <button className="link-btn" onClick={() => setEditingFamily(true)}>
+          <button
+            className="link-btn"
+            onClick={() => setEditingFamily(true)}
+            data-testid="family-edit-btn"
+            style={{
+              padding: '8px 12px', borderRadius: 100,
+              background: 'var(--ab)', border: '1px solid var(--sm)',
+              fontSize: 12, fontWeight: 600, color: 'var(--km)',
+              flexShrink: 0,
+            }}>
             ⚙️ {t('edit')}
           </button>
         )}
       </div>
 
       <div className="list">
-        {members.filter(m => m.family_id === family.id).map((m) => (
+        {familyMembersOfThis.map((m) => (
           <MemberCard
             key={m.id}
             member={m}
