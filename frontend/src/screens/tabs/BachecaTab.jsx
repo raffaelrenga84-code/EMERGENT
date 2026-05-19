@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
 import Avatar from '../../components/Avatar.jsx';
@@ -19,8 +19,11 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const [editingTask, setEditingTask] = useState(null);
   const [openSections, setOpenSections] = useState({ mine: true, all: true, done: false });
   const [priorityMenuOpen, setPriorityMenuOpen] = useState(null);
-  // Filtro rapido in cima alla bacheca: all | mine | todo | urgent
+  // Filtro rapido in cima alla bacheca: all | mine | todo | urgent | followup
   const [quickFilter, setQuickFilter] = useState('all');
+  // Mappa { taskId: [{id, text, created_at, author_id}] } caricata on-demand
+  // quando il filtro 'followup' è attivo: mini-timeline degli ultimi system msg.
+  const [followUpHistory, setFollowUpHistory] = useState({});
   const family = families?.find((f) => f.id === familyId);
 
   const ST_LABEL = {
@@ -80,6 +83,34 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const visibleMyTasks    = applyQuickFilter(myTasks);
   const visibleOtherTasks = applyQuickFilter(otherTasks);
   const visibleDones      = applyQuickFilter(dones);
+
+  // Carica la cronologia (system messages) quando il filtro 'followup' è
+  // attivo. Una sola query batch per tutti i task_id in follow-up.
+  useEffect(() => {
+    if (quickFilter !== 'followup' || followUpTasks.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    const taskIds = followUpTasks.map((t) => t._origId || t.id);
+    (async () => {
+      const { data } = await supabase
+        .from('task_responses')
+        .select('id, task_id, text, created_at, author_id, type')
+        .eq('type', 'system')
+        .in('task_id', taskIds)
+        .order('created_at', { ascending: false });
+      if (cancelled || !data) return;
+      // Raggruppa per task_id e tieni solo i primi 3 (sono già DESC)
+      const grouped = {};
+      for (const row of data) {
+        if (!grouped[row.task_id]) grouped[row.task_id] = [];
+        if (grouped[row.task_id].length < 3) grouped[row.task_id].push(row);
+      }
+      setFollowUpHistory(grouped);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickFilter, followUpTasks.map((t) => t.id).join(',')]);
 
   const openPriorityMenu = (e, task) => {
     e.stopPropagation();
@@ -200,6 +231,12 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
               statusLabel={ST_LABEL[task.status]}
               isFollowUp={isFollowUp(task)}
               followUpLabel={t('badge_follow_up') || '✏️ Creata da te'}
+              followUpHistory={
+                quickFilter === 'followup' && isFollowUp(task)
+                  ? (followUpHistory[task._origId || task.id] || [])
+                  : []
+              }
+              members={members}
               onClick={() => {
                 if (priorityMenuOpen?.taskId === task.id) {
                   setPriorityMenuOpen(null);
@@ -397,7 +434,7 @@ function CollapsibleSection({ label, count, open, onToggle, children, empty, acc
   );
 }
 
-function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLabel, onClick, onCheck, priorityMenu, onSetPriority, onClosePriorityMenu }) {
+function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLabel, followUpHistory = [], members = [], onClick, onCheck, priorityMenu, onSetPriority, onClosePriorityMenu }) {
   const priority = task.priority || (task.urgent ? 'high' : 'normal');
   const priorityColor = priority === 'high' ? 'var(--rd)'
                       : priority === 'medium' ? '#F39C12'
@@ -499,8 +536,92 @@ function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLa
         </div>
         <span className={`sp ${task.status}`}>{statusLabel}</span>
       </div>
+
+      {/* Mini-timeline cronologia follow-up (visibile solo dentro il filtro
+          "Da seguire" e quando ci sono system messages da mostrare). */}
+      {isFollowUp && followUpHistory.length > 0 && (
+        <FollowUpTimeline events={followUpHistory} members={members} />
+      )}
     </div>
   );
+}
+
+function FollowUpTimeline({ events, members }) {
+  return (
+    <div
+      data-testid="task-followup-timeline"
+      style={{
+        marginTop: 10,
+        paddingTop: 10,
+        borderTop: '1px dashed rgba(28, 22, 17, 0.12)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}>
+      <div style={{
+        fontSize: 10, fontWeight: 700, color: 'var(--km)',
+        textTransform: 'uppercase', letterSpacing: '0.04em',
+        marginBottom: 2,
+      }}>
+        🕘 Cronologia
+      </div>
+      {events.map((ev) => {
+        const { icon, tone } = classifySystemMessage(ev.text);
+        const author = members.find((m) => m.id === ev.author_id);
+        return (
+          <div key={ev.id} style={{
+            display: 'flex', alignItems: 'flex-start', gap: 8,
+            fontSize: 12, color: 'var(--k)', lineHeight: 1.4,
+          }}>
+            <span style={{ fontSize: 14, flexShrink: 0, marginTop: -1 }}>{icon}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ color: tone === 'urgent' ? 'var(--rd)' : 'var(--k)', fontWeight: 600 }}>
+                {truncate(ev.text, 60)}
+              </span>
+              {' '}
+              <span style={{ color: 'var(--km)', fontSize: 11 }}>
+                · {author?.name ? `${author.name.split(' ')[0]} · ` : ''}{relativeTime(ev.created_at)}
+              </span>
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function truncate(s, n) {
+  if (!s) return '';
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+function relativeTime(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const ms = Date.now() - d.getTime();
+  const min = Math.round(ms / 60000);
+  if (min < 1) return 'ora';
+  if (min < 60) return `${min} min fa`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h}h fa`;
+  const days = Math.round(h / 24);
+  if (days === 1) return 'ieri';
+  if (days < 7) return `${days}g fa`;
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+// Mappa il testo del system message all'icona + tono.
+// I pattern coprono i messaggi creati dal codice esistente (TaskDetailModal
+// e useEventNotifications follow-up actions).
+function classifySystemMessage(text) {
+  const t = (text || '').toLowerCase();
+  if (t.includes('sollecito') || t.includes('reminder'))    return { icon: '🔔', tone: 'urgent' };
+  if (t.includes('imprevisto') || t.includes('unexpected')) return { icon: '⚠️', tone: 'urgent' };
+  if (t.includes('rifiut') || t.includes('refus'))          return { icon: '🙅', tone: 'info' };
+  if (t.includes('me ne occupo') || t.includes('claim'))    return { icon: '✋', tone: 'info' };
+  if (t.includes('delega') || t.includes('lo fa'))          return { icon: '🧡', tone: 'info' };
+  if (t.includes('ricorrenza') || t.includes('recurrence')) return { icon: '🔁', tone: 'info' };
+  return { icon: '·', tone: 'info' };
 }
 
 function fmtDate(d) {
