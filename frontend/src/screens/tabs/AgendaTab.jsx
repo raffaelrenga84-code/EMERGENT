@@ -121,9 +121,13 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
     const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [selectedDay, setSelectedDay] = useState(null);
-  const [openSections, setOpenSections] = useState({ today: true, future: true, past: false });
-  const [onlyMine, setOnlyMine] = useState(false);
+  const [openSections, setOpenSections] = useState({ today: false, future: false, past: false });
+  const [onlyMine, setOnlyMine] = useState(true);
   const [eventAssignees, setEventAssignees] = useState([]);
+  // Quando siamo in "Tutte le famiglie": permette di selezionare quali
+  // famiglie includere nell'export del calendario telefono. Di default tutte.
+  const [exportFamilies, setExportFamilies] = useState(null); // null = init lazy
+  const [showExportPicker, setShowExportPicker] = useState(false);
 
   // Carica gli assegnatari di eventi per il filtro "Solo a me"
   useEffect(() => {
@@ -316,20 +320,22 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
 
       {targetFamily && (
         <div style={{ padding: '4px 16px 12px', display: 'flex', gap: 8, flexDirection: 'column' }}>
-          {/* Download .ics: funziona ovunque (Android/iOS/Desktop). Niente backend. */}
+          {/* Picker famiglie quando siamo in "Tutte le famiglie" — l'utente
+              può scegliere quali esportare nel calendario del telefono. */}
+          {isAll && families.length > 1 && (
+            <ExportFamiliesPicker
+              families={families}
+              selected={exportFamilies === null ? families.map((f) => f.id) : exportFamilies}
+              onChange={setExportFamilies}
+              t={t}
+            />
+          )}
+
+          {/* PULSANTE 1: Apple Calendar (.ics) */}
           <button
             className="btn full"
-            data-testid="agenda-download-ics-btn"
-            onClick={() => {
-              const visibleEvents = (events || []).filter((e) => filterEvent({ ...e }));
-              const visibleTasks = (tasks || []).filter((tk) => tk.due_date && filterTask(tk));
-              const cn = isAll
-                ? 'FAMMY · Tutte le famiglie'
-                : `FAMMY · ${targetFamily?.name || 'Agenda'}`;
-              const filename = `fammy-${(targetFamily?.name || 'agenda').toLowerCase().replace(/\s+/g, '-')}.ics`;
-              downloadIcs({ events: visibleEvents, tasks: visibleTasks, calName: cn, filename });
-              try { localStorage.setItem('fammy_exported_ics', '1'); } catch (e) {}
-            }}
+            data-testid="agenda-export-iphone-btn"
+            onClick={() => exportToCalendar({ provider: 'apple', events, tasks, families, targetFamily, isAll, exportFamilies, filterEvent, filterTask })}
             style={{
               background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
               color: 'white', border: 'none',
@@ -338,20 +344,24 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
               boxShadow: '0 6px 18px rgba(193,98,75,0.28)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
-            <span style={{ fontSize: 18 }}>📥</span>
-            <span>Scarica agenda (.ics)</span>
+            <span style={{ fontSize: 18 }}>📲</span>
+            <span>{t('export_to_iphone') || 'Aggiungi a iPhone'}</span>
           </button>
-          {/* Export sync URL singola famiglia (richiede backend) */}
-          {(!isAll || families.length === 1) && (
-            <button className="btn full secondary" onClick={() => setShowCalendar(true)}>
-              {t('family_export_calendar')}
-            </button>
-          )}
-          {families.length > 1 && (
-            <button className="btn full secondary" onClick={() => setShowExportAll(true)}>
-              🎨 Esporta tutti i calendari
-            </button>
-          )}
+
+          {/* PULSANTE 2: Google Calendar */}
+          <button
+            className="btn full secondary"
+            data-testid="agenda-export-google-btn"
+            onClick={() => exportToCalendar({ provider: 'google', events, tasks, families, targetFamily, isAll, exportFamilies, filterEvent, filterTask })}
+            style={{
+              padding: '12px 18px', borderRadius: 14,
+              fontSize: 14, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              border: '1.5px solid var(--sm)',
+            }}>
+            <span style={{ fontSize: 18 }}>📅</span>
+            <span>{t('export_to_google') || 'Aggiungi a Google Calendar'}</span>
+          </button>
         </div>
       )}
 
@@ -481,6 +491,141 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         />
       )}
     </>
+  );
+}
+
+// === EXPORT CALENDAR HELPERS ===
+
+/**
+ * Esporta gli eventi visibili nel calendario del telefono dell'utente.
+ * Genera SEMPRE lo stesso file .ics (formato universale):
+ *  - provider='apple': scarica e basta — iOS lo apre auto in Apple Calendar
+ *  - provider='google': scarica + apre la pagina di import di Google Calendar
+ *
+ * Su Android, sia Apple-style download che Google aprono il file nel calendar
+ * predefinito (di solito Google Calendar). Su desktop, Apple = download
+ * generico, Google = apre la pagina di import nel browser.
+ *
+ * Filtra per esportFamilies se siamo in "tutte le famiglie".
+ */
+function exportToCalendar({ provider, events, tasks, families, targetFamily, isAll, exportFamilies, filterEvent, filterTask }) {
+  // Determina quali family_id includere
+  const allowedFamilyIds = isAll && exportFamilies !== null
+    ? new Set(exportFamilies)
+    : null; // null = no filtering aggiuntivo
+
+  const visibleEvents = (events || []).filter((e) => {
+    if (allowedFamilyIds && !allowedFamilyIds.has(e.family_id)) return false;
+    return filterEvent({ ...e });
+  });
+  const visibleTasks = (tasks || []).filter((tk) => {
+    if (!tk.due_date) return false;
+    if (allowedFamilyIds && !allowedFamilyIds.has(tk.family_id)) return false;
+    return filterTask(tk);
+  });
+
+  // Nome calendario (anche in base a famiglie scelte)
+  let cn;
+  if (isAll) {
+    if (allowedFamilyIds && allowedFamilyIds.size < families.length) {
+      const picked = families.filter((f) => allowedFamilyIds.has(f.id)).map((f) => f.name);
+      cn = `FAMMY · ${picked.join(' + ')}`;
+    } else {
+      cn = 'FAMMY · Tutte le famiglie';
+    }
+  } else {
+    cn = `FAMMY · ${targetFamily?.name || 'Agenda'}`;
+  }
+  const filename = `fammy-${(targetFamily?.name || 'agenda').toLowerCase().replace(/\s+/g, '-')}.ics`;
+
+  downloadIcs({ events: visibleEvents, tasks: visibleTasks, calName: cn, filename });
+  try { localStorage.setItem('fammy_exported_ics', '1'); } catch (e) {}
+
+  // Toast contestuale + redirect Google se richiesto
+  if (provider === 'google') {
+    // Apre la pagina di "Importa" di Google Calendar in una nuova tab —
+    // l'utente trascina/seleziona il .ics appena scaricato e lo importa.
+    window.setTimeout(() => {
+      window.open('https://calendar.google.com/calendar/u/0/r/settings/export', '_blank', 'noopener,noreferrer');
+    }, 600);
+    window.dispatchEvent(new CustomEvent('fammy_toast', {
+      detail: {
+        text: '📅 Calendario scaricato. Aprilo dalla pagina di Google Calendar che si è appena aperta.',
+        tone: 'info',
+      },
+    }));
+  } else {
+    window.dispatchEvent(new CustomEvent('fammy_toast', {
+      detail: {
+        text: '📲 Calendario scaricato. Apri il file per aggiungerlo al tuo iPhone.',
+        tone: 'success',
+      },
+    }));
+  }
+}
+
+/**
+ * ExportFamiliesPicker — chip toggle per scegliere quali famiglie includere
+ * nell'export del calendario telefono. Visibile solo in modalità "Tutte".
+ */
+function ExportFamiliesPicker({ families, selected, onChange, t }) {
+  const isAllSelected = selected.length === families.length;
+  const toggle = (fid) => {
+    if (selected.includes(fid)) {
+      // Mai disabilitare tutto
+      if (selected.length === 1) return;
+      onChange(selected.filter((x) => x !== fid));
+    } else {
+      onChange([...selected, fid]);
+    }
+  };
+  const setAll = () => onChange(families.map((f) => f.id));
+  return (
+    <div
+      data-testid="export-families-picker"
+      style={{
+        padding: '10px 12px',
+        background: 'var(--ab)',
+        border: '1px solid var(--sm)',
+        borderRadius: 12,
+        marginBottom: 4,
+      }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: 'var(--km)',
+        textTransform: 'uppercase', letterSpacing: '0.04em',
+        marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span>📦 {t('export_pick_families') || 'Famiglie da esportare'}</span>
+        {!isAllSelected && (
+          <button type="button" onClick={setAll}
+            data-testid="export-families-all"
+            style={{
+              background: 'transparent', border: 'none', padding: 0,
+              color: 'var(--ac)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              textTransform: 'none', letterSpacing: 0,
+            }}>{t('export_select_all') || 'Tutte'}</button>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {families.map((f) => {
+          const active = selected.includes(f.id);
+          return (
+            <button key={f.id} type="button"
+              data-testid={`export-fam-${f.id}`}
+              onClick={() => toggle(f.id)}
+              style={{
+                padding: '6px 12px', borderRadius: 100,
+                border: `1.5px solid ${active ? 'var(--ac)' : 'var(--sm)'}`,
+                background: active ? 'var(--ac)' : 'white',
+                color: active ? 'white' : 'var(--k)',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}>
+              {active && '✓ '}{f.emoji} {f.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

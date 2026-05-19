@@ -197,6 +197,8 @@ export const T = {
     done_group_today: 'Oggi', done_group_yesterday: 'Ieri',
     done_group_last_week: 'Settimana scorsa', done_group_this_month: 'Questo mese',
     done_group_unknown: 'Data ignota',
+    export_to_iphone: 'Aggiungi a iPhone', export_to_google: 'Aggiungi a Google Calendar',
+    export_pick_families: 'Famiglie da esportare', export_select_all: 'Tutte',
 
     // Expenses tab
     expenses_total: 'Totale', expenses_this_month: 'Questo mese',
@@ -695,6 +697,8 @@ export const T = {
     done_group_today: 'Today', done_group_yesterday: 'Yesterday',
     done_group_last_week: 'Last week', done_group_this_month: 'This month',
     done_group_unknown: 'Unknown date',
+    export_to_iphone: 'Add to iPhone', export_to_google: 'Add to Google Calendar',
+    export_pick_families: 'Families to export', export_select_all: 'All',
 
     expenses_total: 'Total', expenses_this_month: 'This month',
     expenses_per_person: 'Per person', expenses_movements: 'Transactions',
@@ -1225,6 +1229,8 @@ export const T = {
     done_group_today: 'Aujourd\'hui', done_group_yesterday: 'Hier',
     done_group_last_week: 'Semaine dernière', done_group_this_month: 'Ce mois',
     done_group_unknown: 'Date inconnue',
+    export_to_iphone: 'Ajouter à iPhone', export_to_google: 'Ajouter à Google Calendar',
+    export_pick_families: 'Familles à exporter', export_select_all: 'Toutes',
 
     expenses_total: 'Total', expenses_this_month: 'Ce mois',
     expenses_per_person: 'Par personne', expenses_movements: 'Mouvements',
@@ -1748,6 +1754,8 @@ export const T = {
     done_group_today: 'Heute', done_group_yesterday: 'Gestern',
     done_group_last_week: 'Letzte Woche', done_group_this_month: 'Diesen Monat',
     done_group_unknown: 'Datum unbekannt',
+    export_to_iphone: 'Zum iPhone hinzufügen', export_to_google: 'Zu Google Calendar hinzufügen',
+    export_pick_families: 'Zu exportierende Familien', export_select_all: 'Alle',
 
     expenses_total: 'Gesamt', expenses_this_month: 'Diesen Monat',
     expenses_per_person: 'Pro Person', expenses_movements: 'Bewegungen',
