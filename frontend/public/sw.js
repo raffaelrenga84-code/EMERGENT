@@ -69,6 +69,10 @@ self.addEventListener('notificationclick', event => {
     return;
   }
 
+  // Per le notifiche con actions (es. follow-up urgenti), inoltra
+  // l'action al client. Default = 'open'.
+  const action = event.action || 'open';
+  const data = event.notification.data || {};
   const targetUrl = '/';
 
   event.waitUntil(
@@ -77,13 +81,21 @@ self.addEventListener('notificationclick', event => {
         // Cerca una finestra FAMMY già aperta
         for (const client of clientList) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.postMessage({ type: 'NOTIFICATION_CLICK', data: event.notification.data || {} });
+            client.postMessage({
+              type: 'NOTIFICATION_CLICK',
+              action,
+              data,
+            });
             return client.focus();
           }
         }
-        // Altrimenti apri nuova finestra
+        // Altrimenti apri nuova finestra: passa action via query param
+        // così il client può gestirla al boot.
         if (clients.openWindow) {
-          return clients.openWindow(targetUrl);
+          const url = action !== 'open'
+            ? `${targetUrl}?fammy_action=${encodeURIComponent(action)}&task=${encodeURIComponent(data.taskId || '')}`
+            : targetUrl;
+          return clients.openWindow(url);
         }
       })
   );

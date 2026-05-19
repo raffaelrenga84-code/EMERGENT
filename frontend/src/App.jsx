@@ -12,6 +12,7 @@ import HomeScreen from './screens/HomeScreen.jsx';
 import InviteAcceptScreen from './screens/InviteAcceptScreen.jsx';
 import CookieConsentBanner, { getConsent } from './components/CookieConsentBanner.jsx';
 import PrivacyPolicyModal from './components/PrivacyPolicyModal.jsx';
+import ToastListener from './components/ToastListener.jsx';
 
 // Applica preferenze utente (tema + accessibilità) al primo render
 applyTheme(getCurrentTheme());
@@ -130,6 +131,7 @@ export default function App() {
   return (
     <I18nProvider initialLang={lang}>
       {content}
+      <ToastListener />
       <CookieConsentBanner
         onChange={(v) => setConsent(v)}
         onOpenPrivacy={() => setShowPrivacy(true)}

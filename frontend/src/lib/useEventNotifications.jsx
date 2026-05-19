@@ -291,6 +291,102 @@ export function useEventNotifications(session, profile, families, events, taskAs
     };
   }, [onDataChange]);
 
+  // === Gestione ACTIONS click dalle notifiche follow-up urgenti ===
+  // Riceve messaggi dal Service Worker (`NOTIFICATION_CLICK`) e dal query
+  // param `?fammy_action=claim&task=<id>` (quando l'app non era già aperta).
+  // - claim  → mi assegno il task + status='taken'
+  // - remind → posto un commento di sistema "🔔 Sollecitato"
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const myUserId = session.user.id;
+    const myMemberIdsForFamily = (familyId) => (members || [])
+      .filter((m) => m.user_id === myUserId && m.family_id === familyId)
+      .map((m) => m.id);
+
+    const claimTask = async (taskId) => {
+      const { data: task } = await supabase
+        .from('tasks').select('id, family_id, title').eq('id', taskId).maybeSingle();
+      if (!task) return;
+      const myMember = myMemberIdsForFamily(task.family_id)[0];
+      if (!myMember) return;
+      await supabase.from('task_assignees').delete().eq('task_id', taskId);
+      await supabase.from('task_assignees').insert({ task_id: taskId, member_id: myMember });
+      await supabase.from('tasks').update({
+        status: 'taken', urgent: false, priority: 'normal',
+        delegated_to: null,
+      }).eq('id', taskId);
+      await supabase.from('task_responses').insert({
+        task_id: taskId, author_id: myMember,
+        text: 'Me ne occupo io ✓ (da promemoria)',
+        type: 'system',
+      });
+      window.dispatchEvent(new CustomEvent('fammy_toast', {
+        detail: { text: `✋ Hai preso "${task.title}" — buona giornata!` }
+      }));
+      if (typeof onDataChange === 'function') onDataChange();
+    };
+
+    const remindTask = async (taskId) => {
+      const { data: task } = await supabase
+        .from('tasks').select('id, family_id, title').eq('id', taskId).maybeSingle();
+      if (!task) return;
+      const myMember = myMemberIdsForFamily(task.family_id)[0];
+      if (!myMember) return;
+      await supabase.from('task_responses').insert({
+        task_id: taskId, author_id: myMember,
+        text: '🔔 Sollecito gentile — questa task è in scadenza',
+        type: 'system',
+      });
+      // bump priority a 'medium' per evidenziarla a tutti
+      await supabase.from('tasks').update({ priority: 'medium' }).eq('id', taskId);
+      window.dispatchEvent(new CustomEvent('fammy_toast', {
+        detail: { text: `🔔 Sollecito inviato per "${task.title}"` }
+      }));
+      if (typeof onDataChange === 'function') onDataChange();
+    };
+
+    const handleAction = (action, data) => {
+      const taskId = data?.taskId;
+      if (!taskId) return;
+      if (action === 'claim')  return void claimTask(taskId);
+      if (action === 'remind') return void remindTask(taskId);
+      // 'open' o default: focus su task (no-op qui, l'app è già focus)
+    };
+
+    // 1) Listener Service Worker (app già aperta al click della notifica)
+    const onSWMessage = (event) => {
+      const msg = event.data || {};
+      if (msg.type !== 'NOTIFICATION_CLICK') return;
+      handleAction(msg.action, msg.data || {});
+    };
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', onSWMessage);
+    }
+
+    // 2) Query param all'avvio (app aperta dal click di un'action button
+    //    quando non era già live)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get('fammy_action');
+      const taskId = params.get('task');
+      if (action && taskId) {
+        handleAction(action, { taskId });
+        // pulisci l'URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('fammy_action');
+        url.searchParams.delete('task');
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch (e) { /* silent */ }
+
+    return () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', onSWMessage);
+      }
+    };
+  }, [session?.user?.id, members, onDataChange]);
+
   // Compleanni: programma notifica per domani alle 9:00
   useEffect(() => {
     if (notificationPermission !== 'granted' || !session?.user?.id || !notificationsEnabled || !members || members.length === 0) return;
@@ -642,16 +738,38 @@ function showFollowUpGentleNotification(task) {
 
 // Promemoria URGENTE: task creato da me, scade DOMANI e nessuno l'ha presa.
 // Tono d'allarme, requireInteraction per assicurare visibilità.
+// Usa il Service Worker per supportare le actions "Lo faccio io" / "Sollecita"
+// (le Notification dirette non supportano `actions`).
 function showFollowUpUrgentNotification(task) {
   if (typeof Notification === 'undefined' || !('Notification' in window)) return;
   if (inQuietHours()) return;
-  const notification = new Notification(`⚠️ Scade domani — nessuno l'ha presa`, {
-    body: `"${task.title}" sta per scadere. Vuoi farla tu o sollecitare qualcuno?`,
+
+  const title = `⚠️ Scade domani — nessuno l'ha presa`;
+  const body = `"${task.title}" sta per scadere.`;
+  const options = {
+    body,
     icon: '/icon.png', badge: '/icon.png',
     tag: `followup-urgent-${task.id}`,
     requireInteraction: true,
-  });
-  notification.addEventListener('click', () => { window.focus(); notification.close(); });
+    data: { taskId: task.id, kind: 'followup-urgent' },
+    actions: [
+      { action: 'claim',  title: '✋ Lo faccio io' },
+      { action: 'remind', title: '🔔 Sollecita' },
+    ],
+  };
+
+  // Preferisci SW (supporta actions). Fallback alla Notification semplice.
+  if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+    navigator.serviceWorker.ready.then((reg) => {
+      try { reg.showNotification(title, options); } catch (e) {
+        try { new Notification(title, { ...options, actions: undefined }); } catch (_) {}
+      }
+    }).catch(() => {
+      try { new Notification(title, { ...options, actions: undefined }); } catch (_) {}
+    });
+  } else {
+    try { new Notification(title, { ...options, actions: undefined }); } catch (_) {}
+  }
 }
 
 function showBirthdayNotification(member) {
