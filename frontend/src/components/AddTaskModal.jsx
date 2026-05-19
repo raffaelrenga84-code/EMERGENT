@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
 import AISmartTaskHint from './AISmartTaskHint.jsx';
+import NativeDateInput from './NativeDateInput.jsx';
 
 function dateOffset(days) {
   const d = new Date();
@@ -340,7 +341,12 @@ export default function AddTaskModal({
                   data-testid="add-task-date-week"
                   style={chipStyle(isQuickActive(7))}>📅 {t('date_in_a_week')}</button>
               </div>
-              <DateField value={dueDate} onChange={setDueDate} />
+              <NativeDateInput
+                value={dueDate}
+                onChange={setDueDate}
+                placeholder={t('tap_choose_date')}
+                testid="add-task-date-picker-btn"
+              />
             </div>
 
             <div style={{ marginTop: 16 }}>
@@ -728,64 +734,3 @@ function MonthCalendarPicker({ selectedDays, onToggleDay, anchorDay = null }) {
   );
 }
 
-function DateField({ value, onChange }) {
-  const { t } = useT();
-  const ref = useRef(null);
-  // Su iOS/Safari webview `showPicker()` può fallire silenziosamente. Il
-  // pattern robusto cross-browser è racchiudere l'input nativo dentro una
-  // <label>: il tap sulla label apre il picker nativo SENZA bisogno di JS.
-  // Manteniamo `showPicker()` come "nice to have" su desktop per esperienza
-  // immediata.
-  const tryShowPicker = (e) => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof el.showPicker === 'function') {
-      try { el.showPicker(); e.preventDefault(); } catch (_) { /* lascia gestire la label */ }
-    }
-  };
-  const display = value
-    ? new Date(value + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-    : null;
-  return (
-    <div style={{ position: 'relative' }}>
-      <label
-        data-testid="add-task-date-picker-btn"
-        onClick={tryShowPicker}
-        style={{
-          width: '100%', padding: '14px 16px',
-          border: value ? '1.5px solid var(--ac)' : '1.5px solid var(--sm)',
-          borderRadius: 12,
-          background: value ? 'var(--ab)' : 'white',
-          color: value ? 'var(--ac)' : 'var(--km)',
-          fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
-          display: 'flex', alignItems: 'center', gap: 10,
-          boxSizing: 'border-box',
-        }}>
-        <span style={{ fontSize: 18 }}>📅</span>
-        <span style={{ flex: 1, textTransform: value ? 'capitalize' : 'none' }}>
-          {display || t('tap_choose_date')}
-        </span>
-        {value && (
-          <span role="button"
-            onClick={(e) => { e.stopPropagation(); e.preventDefault(); onChange(''); }}
-            style={{
-              padding: '2px 8px', borderRadius: 100,
-              background: 'white', border: '1px solid var(--sm)',
-              color: 'var(--km)', fontSize: 12, fontWeight: 600,
-              zIndex: 2, position: 'relative',
-            }} title="Rimuovi data">✕</span>
-        )}
-        <input ref={ref} type="date" value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          aria-label={t('tap_choose_date')}
-          style={{
-            position: 'absolute', left: 0, top: 0,
-            width: '100%', height: '100%',
-            opacity: 0, cursor: 'pointer',
-            zIndex: 1,
-          }}
-        />
-      </label>
-    </div>
-  );
-}
