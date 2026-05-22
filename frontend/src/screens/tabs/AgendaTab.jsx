@@ -227,6 +227,16 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
 
   // Conteggi totali (eventi + task)
   const todayCount = todayEvents.length + todayTasks.length;
+
+  // Assenze del giorno di riferimento (per render dentro la sezione "Oggi")
+  const refIso = `${referenceDay.getFullYear()}-${String(referenceDay.getMonth() + 1).padStart(2, '0')}-${String(referenceDay.getDate()).padStart(2, '0')}`;
+  const userId = session?.user?.id;
+  const todayAbsences = (absences || []).filter((a) => {
+    if (a.start_date > refIso || a.end_date < refIso) return false;
+    if (isAll) return true;
+    if (a.user_id === userId) return true;
+    return Array.isArray(a.visible_to_families) && a.visible_to_families.includes(familyId);
+  });
   const futureCount = futureEvents.length + futureTasks.length;
   const pastCount = pastEvents.length + pastTasks.length;
 
@@ -293,6 +303,8 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         month={viewMonth}
         events={filteredEvents}
         tasks={filteredTasks}
+        absences={absences}
+        familyId={isAll ? null : targetFamilyId}
         selectedDay={selectedDay}
         onSelectDay={(d) => setSelectedDay(selectedDay && sameDay(selectedDay, d) ? null : d)}
         onPrev={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
@@ -380,13 +392,29 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         <>
           <CollapsibleSection
             label={t('agenda_today')}
-            count={todayCount}
+            count={todayCount + todayAbsences.length}
             open={openSections.today}
             onToggle={() => toggle('today')}
             accent="var(--am)"
           >
+            {todayAbsences.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px 8px' }}>
+                {todayAbsences.map((a) => {
+                  const member = members.find((m) => m.user_id === a.user_id);
+                  const isMine = a.user_id === userId;
+                  return (
+                    <AbsenceCard key={`day-${a.id}`}
+                      absence={a}
+                      memberName={member?.name || a.member_name || 'Membro'}
+                      isMine={isMine} isOngoing={true}
+                      onClick={isMine ? () => { setEditingAbsence(a); setShowAbsence(true); } : undefined}
+                    />
+                  );
+                })}
+              </div>
+            )}
             {todayCount > 0 ? renderItems(todayEvents, todayTasks, false) : (
-              skippedForDay.length === 0 && <p style={{ padding: '0 22px 12px', color: 'var(--km)', fontSize: 13 }}>—</p>
+              skippedForDay.length === 0 && todayAbsences.length === 0 && <p style={{ padding: '0 22px 12px', color: 'var(--km)', fontSize: 13 }}>—</p>
             )}
             {skippedForDay.length > 0 && (
               <div style={{ padding: '4px 16px 8px' }}>
@@ -754,7 +782,7 @@ function ExportFamiliesPicker({ families, selected, onChange, t }) {
   );
 }
 
-function MonthGrid({ month, events, tasks = [], selectedDay, onSelectDay, onPrev, onNext }) {
+function MonthGrid({ month, events, tasks = [], absences = [], familyId = null, selectedDay, onSelectDay, onPrev, onNext }) {
   const { t } = useT();
   const weekdays = t('weekday_short');
   const months = t('months');
@@ -774,13 +802,13 @@ function MonthGrid({ month, events, tasks = [], selectedDay, onSelectDay, onPrev
   const today = new Date();
   const isToday = (d) => d && today.getFullYear() === year && today.getMonth() === m && today.getDate() === d;
 
-  // Eventi e task per giorno
+  // Eventi, task e ASSENZE per giorno
   const itemsByDay = {};
   events.forEach((e) => {
     const d = new Date(e.starts_at);
     if (d.getFullYear() === year && d.getMonth() === m) {
       const day = d.getDate();
-      if (!itemsByDay[day]) itemsByDay[day] = { events: 0, tasks: 0 };
+      if (!itemsByDay[day]) itemsByDay[day] = { events: 0, tasks: 0, absences: 0 };
       itemsByDay[day].events += 1;
     }
   });
@@ -789,10 +817,25 @@ function MonthGrid({ month, events, tasks = [], selectedDay, onSelectDay, onPrev
     const d = new Date(tk.due_date + 'T00:00:00');
     if (d.getFullYear() === year && d.getMonth() === m) {
       const day = d.getDate();
-      if (!itemsByDay[day]) itemsByDay[day] = { events: 0, tasks: 0 };
+      if (!itemsByDay[day]) itemsByDay[day] = { events: 0, tasks: 0, absences: 0 };
       itemsByDay[day].tasks += 1;
     }
   });
+  // Filtra assenze rilevanti a questa famiglia (o tutte se isAll/null)
+  const relevantAbsences = (absences || []).filter((a) => {
+    if (!familyId) return true; // isAll
+    return Array.isArray(a.visible_to_families) && a.visible_to_families.includes(familyId);
+  });
+  // Per ogni giorno del mese, marca se almeno un'assenza lo copre
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isoDay = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    for (const a of relevantAbsences) {
+      if (a.start_date <= isoDay && a.end_date >= isoDay) {
+        if (!itemsByDay[d]) itemsByDay[d] = { events: 0, tasks: 0, absences: 0 };
+        itemsByDay[d].absences += 1;
+      }
+    }
+  }
 
   return (
     <div className="month-grid-wrap">
@@ -809,7 +852,8 @@ function MonthGrid({ month, events, tasks = [], selectedDay, onSelectDay, onPrev
           const dayItems = d ? itemsByDay[d] : null;
           const eventCount = dayItems?.events || 0;
           const taskCount = dayItems?.tasks || 0;
-          const totalCount = eventCount + taskCount;
+          const absenceCount = dayItems?.absences || 0;
+          const totalCount = eventCount + taskCount + absenceCount;
           const hasItems = totalCount > 0;
           const isSelected = d && selectedDay && selectedDay.getFullYear() === year && selectedDay.getMonth() === m && selectedDay.getDate() === d;
           const today_b = isToday(d);
@@ -834,18 +878,29 @@ function MonthGrid({ month, events, tasks = [], selectedDay, onSelectDay, onPrev
                 cursor: d ? 'pointer' : 'default',
                 opacity: isPast && !hasItems ? 0.45 : 1,
                 transition: 'all 0.2s ease',
+                position: 'relative',
               }}>
+              {/* Strip ✈️ in alto se ci sono assenze in questo giorno */}
+              {absenceCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 2, right: 3,
+                  fontSize: 11, lineHeight: 1,
+                }}>✈️</span>
+              )}
               {d && <span className="month-day" style={{ fontSize: 14, fontWeight: 700, color: isPast ? 'var(--km)' : 'var(--k)' }}>{d}</span>}
               {hasItems && (
                 <div style={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap', width: '100%' }}>
-                  {/* Pallini blu per eventi, arancio per task */}
+                  {/* Pallini blu per eventi, arancio per task, viola per assenze */}
                   {Array.from({ length: Math.min(eventCount, 3) }).map((_, idx) => (
                     <span key={`e${idx}`} style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ac)' }} />
                   ))}
                   {Array.from({ length: Math.min(taskCount, 3) }).map((_, idx) => (
                     <span key={`t${idx}`} style={{ width: 6, height: 6, borderRadius: '50%', background: '#F39C12' }} />
                   ))}
-                  {totalCount > 6 && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ac)' }}>+</span>}
+                  {Array.from({ length: Math.min(absenceCount, 2) }).map((_, idx) => (
+                    <span key={`a${idx}`} style={{ width: 6, height: 6, borderRadius: '50%', background: '#7C3AED' }} />
+                  ))}
+                  {totalCount > 8 && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ac)' }}>+</span>}
                 </div>
               )}
             </button>
