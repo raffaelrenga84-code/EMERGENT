@@ -205,6 +205,7 @@ export const T = {
     wsync_next_sunday: 'Prima email: domenica sera',
     wsync_enabled_toast: 'Riceverai il calendario ogni domenica sera',
     wsync_disabled_toast: 'Sync settimanale disattivato',
+    agenda_absences: 'Assenze',
 
     // Expenses tab
     expenses_total: 'Totale', expenses_this_month: 'Questo mese',
@@ -711,6 +712,7 @@ export const T = {
     wsync_next_sunday: 'First email: Sunday evening',
     wsync_enabled_toast: 'You\'ll get your calendar every Sunday evening',
     wsync_disabled_toast: 'Weekly sync disabled',
+    agenda_absences: 'Absences',
 
     expenses_total: 'Total', expenses_this_month: 'This month',
     expenses_per_person: 'Per person', expenses_movements: 'Transactions',
@@ -1249,6 +1251,7 @@ export const T = {
     wsync_next_sunday: 'Premier email : dimanche soir',
     wsync_enabled_toast: 'Tu recevras ton calendrier chaque dimanche soir',
     wsync_disabled_toast: 'Sync hebdomadaire désactivé',
+    agenda_absences: 'Absences',
 
     expenses_total: 'Total', expenses_this_month: 'Ce mois',
     expenses_per_person: 'Par personne', expenses_movements: 'Mouvements',
@@ -1780,6 +1783,7 @@ export const T = {
     wsync_next_sunday: 'Erste E-Mail: Sonntagabend',
     wsync_enabled_toast: 'Du erhältst deinen Kalender jeden Sonntagabend',
     wsync_disabled_toast: 'Wöchentliche Synchronisierung deaktiviert',
+    agenda_absences: 'Abwesenheiten',
 
     expenses_total: 'Gesamt', expenses_this_month: 'Diesen Monat',
     expenses_per_person: 'Pro Person', expenses_movements: 'Bewegungen',

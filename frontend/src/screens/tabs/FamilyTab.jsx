@@ -128,18 +128,27 @@ export default function FamilyTab({ family, members, session, families, activeFa
               {isExpanded && (
                 <>
                   <div className="list" style={{ borderTop: '1px solid var(--sm)' }}>
-                    {familyMembers.map((m) => (
-                      <MemberCard
-                        key={m.id}
-                        member={m}
-                        isMe={m.user_id === session.user.id}
-                        isOwner={m.user_id === f.created_by}
-                        otherFamilies={otherFamiliesFor(m, f.id)}
-                        onEdit={() => setEditingMember(m)}
-                        onRemove={() => removeMember(m)}
-                        onInvite={() => setShowFamilyInvite(f)}
-                      />
-                    ))}
+                    {familyMembers.map((m) => {
+                      const activeAbs = findActiveAbsence(absences, m.user_id);
+                      return (
+                        <MemberCard
+                          key={m.id}
+                          member={m}
+                          isMe={m.user_id === session.user.id}
+                          isOwner={m.user_id === f.created_by}
+                          otherFamilies={otherFamiliesFor(m, f.id)}
+                          activeAbsence={activeAbs}
+                          onEdit={() => setEditingMember(m)}
+                          onRemove={() => removeMember(m)}
+                          onInvite={() => setShowFamilyInvite(f)}
+                          onSetAbsence={
+                            m.user_id === session.user.id
+                              ? () => { setEditingAbsence(activeAbs); setShowAbsence(true); }
+                              : null
+                          }
+                        />
+                      );
+                    })}
                   </div>
                   {/* Azione espansa: aggiungi membro (l'invito è già nel bottone sopra) */}
                   <div style={{
@@ -206,6 +215,19 @@ export default function FamilyTab({ family, members, session, families, activeFa
             profile={null}
             onClose={() => setShowJoinCode(false)}
             onJoined={() => { setShowJoinCode(false); onChanged && onChanged(); }}
+          />
+        )}
+
+        {showAbsence && (
+          <AbsenceModal
+            session={session}
+            profile={profile}
+            families={families}
+            tasks={tasks}
+            members={members}
+            editingAbsence={editingAbsence}
+            onClose={() => { setShowAbsence(false); setEditingAbsence(null); }}
+            onSaved={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
           />
         )}
       </>

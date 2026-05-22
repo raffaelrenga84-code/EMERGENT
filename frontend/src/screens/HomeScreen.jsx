@@ -187,8 +187,11 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
             me={me}
             isAll={isAll}
             families={families}
+            absences={absences}
+            session={session}
+            profile={profile}
             onSwitchFamily={setActiveFamily}
-            onChanged={refresh}
+            onChanged={() => { refresh(); refreshAbsences(); }}
           />
         )}
         {activeTab === 'spese' && (

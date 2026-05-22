@@ -7,6 +7,8 @@ import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import CalendarShareModal from '../../components/CalendarShareModal.jsx';
 import ExportAllCalendarsModal from '../../components/ExportAllCalendarsModal.jsx';
 import FamilySwitcher from '../../components/FamilySwitcher.jsx';
+import AbsenceModal from '../../components/AbsenceModal.jsx';
+import { absenceLabel, fmtAbsenceRange } from '../../lib/useAbsences.js';
 
 const TASK_CAT_EMOJI = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
@@ -110,13 +112,15 @@ function expandTasks(tasks) {
 }
 
 
-export default function AgendaTab({ familyId, families, events, tasks = [], members, me, isAll, onChanged, onSwitchFamily }) {
+export default function AgendaTab({ familyId, families, events, tasks = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily }) {
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
   const [selTask, setSelTask] = useState(null);
   const [selEvent, setSelEvent] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showExportAll, setShowExportAll] = useState(false);
+  const [editingAbsence, setEditingAbsence] = useState(null);
+  const [showAbsence, setShowAbsence] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1);
   });
@@ -437,6 +441,45 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
               {renderItems(pastEvents, pastTasks, true)}
             </CollapsibleSection>
           )}
+
+          {/* Sezione "✈️ Assenze": mostra solo quelle visibili a questa famiglia
+              (o tutte quelle dell'utente se isAll). Card cliccabili per le
+              proprie assenze → apre AbsenceModal in edit. */}
+          {(() => {
+            const userId = session?.user?.id;
+            const visibleAbsences = (absences || []).filter((a) => {
+              if (isAll) return true;
+              if (a.user_id === userId) return true;
+              return Array.isArray(a.visible_to_families) && a.visible_to_families.includes(familyId);
+            });
+            if (visibleAbsences.length === 0) return null;
+            const today = new Date().toISOString().slice(0, 10);
+            const inFuture = visibleAbsences.filter((a) => a.end_date >= today)
+              .sort((a, b) => a.start_date.localeCompare(b.start_date));
+            return inFuture.length > 0 ? (
+              <CollapsibleSection
+                label={`✈️ ${t('agenda_absences') || 'Assenze'}`}
+                count={inFuture.length}
+                open={false}
+                onToggle={() => { /* default collapsed */ }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px 8px' }}>
+                  {inFuture.map((a) => {
+                    const member = members.find((m) => m.user_id === a.user_id);
+                    const isMine = a.user_id === userId;
+                    const isOngoing = a.start_date <= today && a.end_date >= today;
+                    return (
+                      <AbsenceCard key={a.id}
+                        absence={a} memberName={member?.name || a.member_name || 'Membro'}
+                        isMine={isMine} isOngoing={isOngoing}
+                        onClick={isMine ? () => { setEditingAbsence(a); setShowAbsence(true); } : undefined}
+                      />
+                    );
+                  })}
+                </div>
+              </CollapsibleSection>
+            ) : null;
+          })()}
         </>
       )}
 
@@ -490,7 +533,82 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
           onChanged={onChanged}
         />
       )}
+
+      {showAbsence && (
+        <AbsenceModal
+          session={session}
+          profile={profile}
+          families={families}
+          tasks={tasks}
+          members={members}
+          editingAbsence={editingAbsence}
+          onClose={() => { setShowAbsence(false); setEditingAbsence(null); }}
+          onSaved={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
+        />
+      )}
     </>
+  );
+}
+
+// === ABSENCE CARD ===
+const ABSENCE_TONE = {
+  vacation: { icon: '🏖️', color: '#2E7D52', bg: 'rgba(46,125,82,0.10)' },
+  work:     { icon: '💼', color: '#2A6FDB', bg: 'rgba(42,111,219,0.10)' },
+  health:   { icon: '🏥', color: '#C0392B', bg: 'rgba(192,57,43,0.10)' },
+  other:    { icon: '✈️', color: '#7C3AED', bg: 'rgba(124,58,237,0.10)' },
+};
+
+function AbsenceCard({ absence, memberName, isMine, isOngoing, onClick }) {
+  const tone = ABSENCE_TONE[absence.reason] || ABSENCE_TONE.other;
+  const label = absenceLabel(absence);
+  const range = fmtAbsenceRange(absence);
+  return (
+    <button
+      type="button"
+      data-testid={`agenda-absence-card-${absence.id}`}
+      onClick={onClick}
+      disabled={!onClick}
+      style={{
+        textAlign: 'left', width: '100%',
+        padding: 12,
+        background: tone.bg,
+        border: `1.5px solid ${tone.color}`,
+        borderRadius: 14,
+        cursor: onClick ? 'pointer' : 'default',
+        display: 'flex', alignItems: 'flex-start', gap: 12,
+        fontFamily: 'inherit',
+      }}>
+      <span style={{ fontSize: 26, lineHeight: 1, marginTop: 1 }}>{tone.icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--k)' }}>{memberName}</span>
+          {isMine && (
+            <span style={{
+              padding: '1px 8px', borderRadius: 100,
+              background: 'white', border: `1px solid ${tone.color}`,
+              color: tone.color, fontSize: 10, fontWeight: 700,
+            }}>(tu)</span>
+          )}
+          {isOngoing && (
+            <span style={{
+              padding: '1px 8px', borderRadius: 100,
+              background: tone.color, color: 'white',
+              fontSize: 10, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.04em',
+            }}>● ora</span>
+          )}
+        </div>
+        <div style={{ fontSize: 13, color: tone.color, fontWeight: 600, marginTop: 2 }}>
+          {label} · {range}
+        </div>
+        {absence.note && (
+          <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 4 }}>{absence.note}</div>
+        )}
+      </div>
+      {isMine && (
+        <span style={{ color: tone.color, fontSize: 14, fontWeight: 700 }}>✏️</span>
+      )}
+    </button>
   );
 }
 
