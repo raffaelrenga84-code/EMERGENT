@@ -40,9 +40,9 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted })
   };
 
   const uploadPhoto = async () => {
-    if (!photoFile) return photoUrl; // se non e' cambiata
+    if (!photoFile) return photoUrl;
     const ext = photoFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const ts = Date.now(); // evita cache
+    const ts = Date.now();
     const filePath = `family-${family.id}/cover-${ts}.${ext}`;
     const { error: upErr } = await supabase.storage
       .from('family-photos').upload(filePath, photoFile, {
@@ -60,12 +60,13 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted })
     try {
       let finalPhotoUrl = photoUrl;
       if (photoFile) finalPhotoUrl = await uploadPhoto();
-      if (!photoPreview && photoUrl) finalPhotoUrl = null; // rimossa esplicitamente
+      if (!photoPreview && photoUrl) finalPhotoUrl = null;
       const { error } = await supabase.from('families')
         .update({ name: name.trim(), emoji, photo_url: finalPhotoUrl })
         .eq('id', family.id);
       if (error) throw error;
-      onSaved && onSaved();
+      // FIX: passa la famiglia aggiornata al padre così aggiorna lo stato
+      onSaved && onSaved({ ...family, name: name.trim(), emoji, photo_url: finalPhotoUrl });
     } catch (e2) {
       setErr(e2.message || 'Errore');
       setBusy(false);
