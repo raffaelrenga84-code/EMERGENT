@@ -146,6 +146,9 @@ export default function SwipeableRow({
             position: 'absolute', top: 0, right: 0, bottom: 0,
             display: 'flex', alignItems: 'stretch',
             zIndex: 1,
+            // Nascoste a riposo per evitare bleeding ai bordi (sub-pixel
+            // rendering / border-radius su iOS). Visibili solo durante swipe.
+            visibility: dx === 0 ? 'hidden' : 'visible',
           }}>
           {rightActions.map((a) => (
             <button
@@ -183,6 +186,7 @@ export default function SwipeableRow({
             position: 'absolute', top: 0, left: 0, bottom: 0,
             display: 'flex', alignItems: 'stretch',
             zIndex: 1,
+            visibility: dx === 0 ? 'hidden' : 'visible',
           }}>
           <button
             type="button"
