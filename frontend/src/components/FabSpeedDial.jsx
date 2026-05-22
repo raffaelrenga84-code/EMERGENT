@@ -56,13 +56,15 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
           }} />
       )}
 
-      {/* Menu actions — alte abbastanza da non sovrapporsi al FAB rosso "×" */}
+      {/* Menu actions — devono stare SOPRA al FAB rosso "×".
+          FAB CSS: bottom:92px, height:64px → top FAB a 156px dal fondo.
+          Le pill iniziano a 172px (16px di gap) + safe-area iOS. */}
       {open && (
         <div
           style={{
             position: 'absolute',
             right: 16,
-            bottom: 'calc(80px + 56px + 16px + env(safe-area-inset-bottom, 0px))',
+            bottom: 'calc(172px + env(safe-area-inset-bottom, 0px))',
             display: 'flex', flexDirection: 'column',
             gap: 10, alignItems: 'flex-end',
             pointerEvents: 'auto',
