@@ -130,8 +130,8 @@ export default function SwipeableRow({
         userSelect: 'none',
         touchAction: 'pan-y',
         WebkitTapHighlightColor: 'transparent',
-        marginBottom: 12,        /* sostituisce il margin della .tc figlia */
-        borderRadius: 20,        /* clipping coerente con il border-radius della card */
+        marginBottom: 12,
+        borderRadius: 20,
       }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
@@ -218,6 +218,8 @@ export default function SwipeableRow({
           willChange: 'transform',
           position: 'relative',
           zIndex: 2,
+          background: '#F7F5F0',  /* FIX: sfondo solido per coprire i bottoni sotto */
+          borderRadius: 20,
         }}
         onClickCapture={(e) => {
           // Se la riga è aperta (swiped), il click chiude lo swipe
