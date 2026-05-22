@@ -81,7 +81,20 @@ export default function FamilyTab({ family, members, session, families, activeFa
                   background: 'transparent', border: 'none', cursor: 'pointer',
                   textAlign: 'left',
                 }}>
-                <span style={{ fontSize: 28 }}>{f.emoji}</span>
+                {/* FIX: mostra foto se disponibile, altrimenti emoji */}
+                {f.photo_url ? (
+                  <img
+                    src={f.photo_url}
+                    alt={f.name}
+                    style={{
+                      width: 40, height: 40, borderRadius: 10,
+                      objectFit: 'cover', flexShrink: 0,
+                      border: '1.5px solid var(--sm)',
+                    }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 28 }}>{f.emoji}</span>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{f.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>
@@ -172,8 +185,8 @@ export default function FamilyTab({ family, members, session, families, activeFa
           <EditFamilyModal
             family={editingFamilyAll}
             onClose={() => setEditingFamilyAll(null)}
-            onSaved={() => { setEditingFamilyAll(null); onChanged(); }}
-            onDeleted={() => { setEditingFamilyAll(null); onChanged(); }}
+            onSaved={() => { setEditingFamilyAll(null); onChanged && onChanged(); }}
+            onDeleted={() => { setEditingFamilyAll(null); onChanged && onChanged(); }}
           />
         )}
 
@@ -181,7 +194,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
           <EditMemberModal
             member={editingMember}
             onClose={() => setEditingMember(null)}
-            onSaved={() => { setEditingMember(null); onChanged(); }}
+            onSaved={() => { setEditingMember(null); onChanged && onChanged(); }}
           />
         )}
 
@@ -189,7 +202,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
           <AddMemberModal
             familyId={addMemberToFamily.id}
             onClose={() => setAddMemberToFamily(null)}
-            onCreated={() => { setAddMemberToFamily(null); onChanged(); }}
+            onCreated={() => { setAddMemberToFamily(null); onChanged && onChanged(); }}
           />
         )}
 
@@ -380,7 +393,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
         <AddMemberModal
           familyId={family.id}
           onClose={() => setShowAdd(false)}
-          onCreated={() => { setShowAdd(false); onChanged(); }}
+          onCreated={() => { setShowAdd(false); onChanged && onChanged(); }}
         />
       )}
 
@@ -388,7 +401,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
         <EditMemberModal
           member={editingMember}
           onClose={() => setEditingMember(null)}
-          onSaved={() => { setEditingMember(null); onChanged(); }}
+          onSaved={() => { setEditingMember(null); onChanged && onChanged(); }}
         />
       )}
 
@@ -396,8 +409,8 @@ export default function FamilyTab({ family, members, session, families, activeFa
         <EditFamilyModal
           family={family}
           onClose={() => setEditingFamily(false)}
-          onSaved={() => { setEditingFamily(false); onChanged(); }}
-          onDeleted={() => { setEditingFamily(false); onChanged(); }}
+          onSaved={() => { setEditingFamily(false); onChanged && onChanged(); }}
+          onDeleted={() => { setEditingFamily(false); onChanged && onChanged(); }}
         />
       )}
 
