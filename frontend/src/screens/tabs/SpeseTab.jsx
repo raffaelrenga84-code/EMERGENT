@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
 import AddExpenseModal from '../../components/AddExpenseModal.jsx';
+import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 
 export default function SpeseTab({ familyId, families = [], expenses, tasks, members, me, onChanged, pendingTask, onClearPendingTask }) {
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
+  const [prefillData, setPrefillData] = useState(null); // dati pre-popolati da "ripeti ultima"
   const [shares, setShares] = useState([]);
 
   useEffect(() => {
@@ -161,18 +163,52 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
         </>
       )}
 
-      <button className="fab" onClick={() => setShowAdd(true)}>+</button>
+      <FabSpeedDial
+        testid="spese-fab"
+        actions={[
+          {
+            id: 'expense',
+            icon: '💶',
+            label: t('fab_new_expense') || 'Nuova spesa',
+            onClick: () => { setPrefillData(null); setShowAdd(true); },
+            testid: 'spese-fab-new-expense',
+          },
+          ...(expenses.length > 0 ? [{
+            id: 'repeat',
+            icon: '🔁',
+            label: t('fab_repeat_last') || 'Ripeti ultima spesa',
+            onClick: () => {
+              // Trova l'ultima spesa creata (DESC by created_at) e pre-popola
+              const last = [...expenses].sort((a, b) =>
+                new Date(b.created_at || b.paid_at || 0) - new Date(a.created_at || a.paid_at || 0)
+              )[0];
+              if (!last) return;
+              setPrefillData({
+                amount: last.amount,
+                description: last.description,
+                category: last.category,
+                family_id: last.family_id,
+                paid_by: last.paid_by,
+                task_id: null, // non riproduco il collegamento al task
+              });
+              setShowAdd(true);
+            },
+            testid: 'spese-fab-repeat-last',
+          }] : []),
+        ]}
+      />
 
       {showAdd && (
         <AddExpenseModal
-          familyId={pendingTask?.family_id || familyId}
+          familyId={pendingTask?.family_id || prefillData?.family_id || familyId}
           families={families}
           members={members}
-          defaultPaidBy={me?.id}
+          defaultPaidBy={prefillData?.paid_by || me?.id}
           authorMemberId={me?.id}
           prefilledTask={pendingTask}
-          onClose={() => { setShowAdd(false); onClearPendingTask && onClearPendingTask(); }}
-          onCreated={() => { setShowAdd(false); onClearPendingTask && onClearPendingTask(); onChanged(); }}
+          prefilledExpense={prefillData}
+          onClose={() => { setShowAdd(false); setPrefillData(null); onClearPendingTask && onClearPendingTask(); }}
+          onCreated={() => { setShowAdd(false); setPrefillData(null); onClearPendingTask && onClearPendingTask(); onChanged(); }}
         />
       )}
     </>

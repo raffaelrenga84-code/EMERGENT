@@ -2,11 +2,15 @@ import { useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 
-export default function AddExpenseModal({ familyId, families = [], members, defaultPaidBy, authorMemberId, prefilledTask = null, onClose, onCreated }) {
+export default function AddExpenseModal({ familyId, families = [], members, defaultPaidBy, authorMemberId, prefilledTask = null, prefilledExpense = null, onClose, onCreated }) {
   const { t } = useT();
-  const [selectedFamily, setSelectedFamily] = useState(prefilledTask?.family_id || familyId || (families.length > 0 ? families[0].id : ''));
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState(prefilledTask ? `Pagamento: ${prefilledTask.title}` : '');
+  const [selectedFamily, setSelectedFamily] = useState(prefilledTask?.family_id || prefilledExpense?.family_id || familyId || (families.length > 0 ? families[0].id : ''));
+  const [amount, setAmount] = useState(prefilledExpense?.amount ? String(prefilledExpense.amount) : '');
+  const [description, setDescription] = useState(
+    prefilledTask
+      ? `Pagamento: ${prefilledTask.title}`
+      : (prefilledExpense?.description || '')
+  );
   const [paidBy, setPaidBy] = useState(defaultPaidBy || members[0]?.id || '');
   const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
   const [splitMode, setSplitMode] = useState('equal'); // 'equal' | 'custom'
