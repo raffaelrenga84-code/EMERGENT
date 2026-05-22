@@ -339,10 +339,10 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
       }} data-testid="bacheca-quick-filters">
         {[
           { id: 'todo',     label: t('filter_todo')     || '📋 Da fare',    count: todos.length },
-          { id: 'urgent',   label: t('filter_urgent')   || '🚨 Urgenti',    count: tasks.filter((x) => x.priority === 'high').length },
+          { id: 'urgent',   label: t('filter_urgent')   || '🚨 Urgenti',    count: todos.filter((x) => (x.priority === 'high') || x.urgent).length },
           { id: 'mine',     label: t('filter_mine')     || '👤 Solo mie',   count: myTasks.length },
           { id: 'followup', label: t('filter_followup') || '👁️ Da seguire', count: followUpTasks.length },
-          { id: 'all',      label: t('filter_all')      || '🌍 Tutte',      count: tasks.length },
+          { id: 'all',      label: t('filter_all')      || '🌍 Tutte',      count: todos.length },
         ].map((f) => {
           const active = quickFilter === f.id;
           return (
