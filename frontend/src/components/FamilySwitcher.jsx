@@ -19,8 +19,25 @@ export default function FamilySwitcher({ families = [], activeFamily, isAll, onS
   const hasMultiple = families.length > 1;
 
   const current = isAll
-    ? { emoji: '🌍', name: t('all_families_chip').replace(/^🌍\s?/, '') }
-    : families.find((f) => f.id === activeFamily) || { emoji: '👥', name: '—' };
+    ? { emoji: '🌍', name: t('all_families_chip').replace(/^🌍\s?/, ''), photo_url: null }
+    : families.find((f) => f.id === activeFamily) || { emoji: '👥', name: '—', photo_url: null };
+
+  const AvatarIcon = ({ size }) => (
+    current.photo_url ? (
+      <img
+        src={current.photo_url}
+        alt=""
+        style={{
+          width: size, height: size,
+          borderRadius: '50%',
+          objectFit: 'cover',
+          border: '1.5px solid var(--sm)',
+          flexShrink: 0,
+        }} />
+    ) : (
+      <span style={{ fontSize: size * 0.92, lineHeight: 1 }}>{current.emoji}</span>
+    )
+  );
 
   const trigger = variant === 'title' ? (
     <button
@@ -30,10 +47,11 @@ export default function FamilySwitcher({ families = [], activeFamily, isAll, onS
       style={{
         background: 'transparent', border: 'none', padding: 0,
         textAlign: 'left', cursor: hasMultiple ? 'pointer' : 'default',
-        display: 'inline-flex', alignItems: 'center', gap: 8,
+        display: 'inline-flex', alignItems: 'center', gap: 10,
       }}>
+      <AvatarIcon size={36} />
       <h1 style={{ display: 'inline-flex', alignItems: 'center', gap: 8, margin: 0 }}>
-        {current.emoji} {current.name}
+        {current.name}
         {hasMultiple && (
           <span style={{ fontSize: 18, color: 'var(--km)', fontWeight: 600 }}>▾</span>
         )}
@@ -55,7 +73,7 @@ export default function FamilySwitcher({ families = [], activeFamily, isAll, onS
         cursor: hasMultiple ? 'pointer' : 'default',
         boxShadow: '0 2px 6px rgba(28,22,17,0.05)',
       }}>
-      <span style={{ fontSize: 18 }}>{current.emoji}</span>
+      <AvatarIcon size={20} />
       <span>{current.name}</span>
       {hasMultiple && (
         <span style={{ fontSize: 14, color: 'var(--km)', marginLeft: 4 }}>▾</span>
@@ -110,6 +128,7 @@ export default function FamilySwitcher({ families = [], activeFamily, isAll, onS
               <FamSheetItem key={f.id}
                 active={activeFamily === f.id}
                 icon={f.emoji}
+                photoUrl={f.photo_url}
                 label={f.name}
                 onClick={() => { onSwitch(f.id); setOpen(false); }}
                 testid={`${testidPrefix}-item-${f.id}`}
@@ -130,7 +149,7 @@ export default function FamilySwitcher({ families = [], activeFamily, isAll, onS
   );
 }
 
-function FamSheetItem({ active, icon, label, hint, onClick, testid }) {
+function FamSheetItem({ active, icon, photoUrl, label, hint, onClick, testid }) {
   return (
     <button
       type="button"
@@ -145,7 +164,16 @@ function FamSheetItem({ active, icon, label, hint, onClick, testid }) {
         cursor: 'pointer',
         textAlign: 'left',
       }}>
-      <span style={{ fontSize: 26 }}>{icon}</span>
+      {photoUrl ? (
+        <img src={photoUrl} alt=""
+          style={{
+            width: 38, height: 38, borderRadius: '50%',
+            objectFit: 'cover', flexShrink: 0,
+            border: '1.5px solid var(--sm)',
+          }} />
+      ) : (
+        <span style={{ fontSize: 26 }}>{icon}</span>
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--k)' }}>{label}</div>
         {hint && <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>{hint}</div>}
