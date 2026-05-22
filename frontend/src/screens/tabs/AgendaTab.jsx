@@ -306,7 +306,12 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         absences={absences}
         familyId={isAll ? null : targetFamilyId}
         selectedDay={selectedDay}
-        onSelectDay={(d) => setSelectedDay(selectedDay && sameDay(selectedDay, d) ? null : d)}
+        onSelectDay={(d) => {
+          const same = selectedDay && sameDay(selectedDay, d);
+          setSelectedDay(same ? null : d);
+          // Apri auto la sezione "Oggi" così l'utente vede subito eventi/assenze del giorno
+          if (!same) setOpenSections((s) => ({ ...s, today: true }));
+        }}
         onPrev={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
         onNext={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
       />
