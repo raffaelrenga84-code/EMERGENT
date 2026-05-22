@@ -49,12 +49,15 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
 
   return (
     <div ref={rootRef} style={{ position: 'fixed', bottom: 0, right: 0, left: 0, zIndex: 900, pointerEvents: 'none' }}>
-      {/* Menu actions */}
+      {/* Menu actions — posizione alta abbastanza da non essere coperte
+          dal FAB rosso "×". Il FAB nativo `.fab` ha altezza ~56px e bottom
+          ~80px (~136px dal fondo); le pill devono iniziare a bottom >= 152px. */}
       {open && (
         <div
           style={{
             position: 'absolute',
-            right: 20, bottom: 100,
+            right: 20,
+            bottom: 'calc(80px + 56px + 16px + env(safe-area-inset-bottom, 0px))',
             display: 'flex', flexDirection: 'column',
             gap: 12, alignItems: 'flex-end',
             pointerEvents: 'auto',
