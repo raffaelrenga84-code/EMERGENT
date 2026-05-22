@@ -4,15 +4,9 @@ import { useEffect, useRef, useState } from 'react';
  * FabSpeedDial — bottone + flottante che apre un mini-menu radiale.
  *
  * Props:
- *  - actions: [{ id, icon, label, onClick, testid }]
+ *  - actions: [{ id, icon, label, onClick, testid, color }]
  *  - testid: string per il root FAB
  *  - className: override className del FAB (default 'fab')
- *
- * Comportamento:
- *  - Tap su + → apre menu (actions appaiono in cascata animata sopra)
- *  - Tap fuori → chiude
- *  - Tap su un'azione → onClick + chiude
- *  - Se passi solo 1 action → degrada a bottone normale (no menu)
  */
 export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', className = 'fab' }) {
   const [open, setOpen] = useState(false);
@@ -48,20 +42,30 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
   }
 
   return (
-    <div ref={rootRef} style={{ position: 'fixed', bottom: 0, right: 0, left: 0, zIndex: 900, pointerEvents: 'none' }}>
-      {/* Menu actions — posizione alta abbastanza da non essere coperte
-          dal FAB rosso "×". Il FAB nativo `.fab` ha altezza ~56px e bottom
-          ~80px (~136px dal fondo); le pill devono iniziare a bottom >= 152px. */}
+    <div ref={rootRef} style={{ position: 'fixed', bottom: 0, right: 0, zIndex: 900 }}>
+
+      {/* Backdrop semi-trasparente quando aperto */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(28,22,17,0.2)',
+            backdropFilter: 'blur(2px)',
+            zIndex: -1,
+          }} />
+      )}
+
+      {/* Menu actions — alte abbastanza da non sovrapporsi al FAB rosso "×" */}
       {open && (
         <div
           style={{
             position: 'absolute',
-            right: 20,
+            right: 16,
             bottom: 'calc(80px + 56px + 16px + env(safe-area-inset-bottom, 0px))',
             display: 'flex', flexDirection: 'column',
-            gap: 12, alignItems: 'flex-end',
+            gap: 10, alignItems: 'flex-end',
             pointerEvents: 'auto',
-            maxWidth: 'calc(100vw - 32px)',
           }}>
           {actions.map((a, idx) => (
             <button
@@ -69,42 +73,35 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
               data-testid={a.testid}
               onClick={() => { a.onClick?.(); setOpen(false); }}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-                padding: '10px 14px 10px 10px',
+                display: 'inline-flex', alignItems: 'center', gap: 12,
+                padding: '10px 16px 10px 10px',
                 background: 'white',
-                border: '1px solid var(--sm)',
+                border: '1px solid rgba(229,225,216,0.8)',
                 borderRadius: 100,
-                boxShadow: '0 6px 18px rgba(28,22,17,0.18)',
-                fontSize: 14, fontWeight: 700, color: 'var(--k)',
+                boxShadow: '0 8px 24px rgba(28,22,17,0.14)',
+                fontSize: 15, fontWeight: 700, color: 'var(--k)',
                 cursor: 'pointer', whiteSpace: 'nowrap',
-                maxWidth: 'calc(100vw - 40px)',
-                animation: `fammy-fab-pop 220ms cubic-bezier(.2,.8,.3,1) ${idx * 40}ms both`,
+                animation: `fammy-fab-pop 220ms cubic-bezier(.2,.8,.3,1) ${idx * 50}ms both`,
+                minWidth: 180,
               }}>
+              {/* Cerchio icona più grande e leggibile */}
               <span style={{
-                width: 32, height: 32, borderRadius: '50%',
+                width: 42, height: 42, borderRadius: '50%',
                 background: a.color || 'var(--ac)',
-                color: 'white', display: 'inline-flex',
+                color: 'white',
+                display: 'inline-flex',
                 alignItems: 'center', justifyContent: 'center',
-                fontSize: 16, fontWeight: 700, flexShrink: 0,
+                fontSize: 20,
+                flexShrink: 0,
+                boxShadow: `0 4px 10px ${(a.color || 'var(--ac)')}44`,
               }}>{a.icon}</span>
-              <span style={{
-                overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>{a.label}</span>
+              <span style={{ letterSpacing: '-0.01em' }}>{a.label}</span>
             </button>
           ))}
         </div>
       )}
-      {/* Backdrop semi-trasparente quando aperto */}
-      {open && (
-        <div
-          onClick={() => setOpen(false)}
-          style={{
-            position: 'fixed', inset: 0,
-            background: 'rgba(28,22,17,0.15)',
-            zIndex: -1,
-            pointerEvents: 'auto',
-          }} />
-      )}
+
+      {/* FAB principale */}
       <button
         className={className}
         onClick={() => setOpen((v) => !v)}
@@ -112,7 +109,6 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
         style={{
           transform: open ? 'rotate(45deg)' : 'rotate(0)',
           transition: 'transform 220ms cubic-bezier(.2,.8,.3,1)',
-          pointerEvents: 'auto',
         }}>
         +
       </button>
