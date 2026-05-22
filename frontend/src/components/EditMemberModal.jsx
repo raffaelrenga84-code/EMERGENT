@@ -65,31 +65,42 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
     if (!name.trim()) return;
     setBusy(true); setErr('');
 
-    const tryUpdate = async (withBirth) => {
+    const tryUpdate = async (withBirth, withAvatarUrl = true) => {
       const payload = {
         name: name.trim(),
         role: finalRole,
         avatar_color: color,
         avatar_letter: emoji || name.trim().charAt(0).toUpperCase(),
-        avatar_url: avatarUrl || null,
       };
+      if (withAvatarUrl) payload.avatar_url = avatarUrl || null;
       if (withBirth) payload.birth_date = birthDate || null;
-      return supabase.from('members').update(payload).eq('id', member.id);
+      // .select() per detettare RLS che blocca silenziosamente (rows vuote)
+      return supabase.from('members').update(payload).eq('id', member.id).select();
     };
 
-    let { error } = await tryUpdate(true);
+    let { data, error } = await tryUpdate(true, true);
 
-    // Se Supabase non ha (ancora) la colonna birth_date, riprova senza e avvisa.
+    // 1) Schema vecchio: manca avatar_url
+    if (error && /avatar_url/i.test(error.message)) {
+      const retry = await tryUpdate(true, false);
+      data = retry.data; error = retry.error;
+      if (!error) setErr(t('schema_missing_avatar_url') || 'Esegui fammy-photo-permissions.sql per attivare le foto profilo.');
+    }
+    // 2) Schema vecchio: manca birth_date
     if (error && /birth_date/i.test(error.message)) {
-      const second = await tryUpdate(false);
-      if (!second.error) {
-        error = null;
-        setErr(t('schema_missing_birthdate'));
-        // continuiamo: il resto del membro è stato salvato
-      }
+      const retry = await tryUpdate(false, true);
+      data = retry.data; error = retry.error;
+      if (!error) setErr(t('schema_missing_birthdate'));
     }
 
     if (error) { setErr(error.message); setBusy(false); return; }
+
+    // RLS può bloccare silenziosamente: 0 righe modificate = errore di permesso
+    if (!data || data.length === 0) {
+      setErr('Permesso negato. Esegui fammy-photo-permissions.sql su Supabase per permettere ai membri di modificare il proprio profilo.');
+      setBusy(false);
+      return;
+    }
 
     // Crea (o aggiorna) l'evento compleanno solo se la data è cambiata davvero
     if (birthDate && birthDate !== member.birth_date) {

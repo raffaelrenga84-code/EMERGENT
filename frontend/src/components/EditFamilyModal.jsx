@@ -61,11 +61,22 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted })
       let finalPhotoUrl = photoUrl;
       if (photoFile) finalPhotoUrl = await uploadPhoto();
       if (!photoPreview && photoUrl) finalPhotoUrl = null; // rimossa esplicitamente
-      const { error } = await supabase.from('families')
+      // Usiamo .select() per ottenere le righe aggiornate. Se RLS blocca
+      // l'update (es. il SQL `fammy-photo-permissions.sql` non è stato
+      // ancora eseguito), riceviamo data=[] senza error → check esplicito.
+      const { data, error } = await supabase.from('families')
         .update({ name: name.trim(), emoji, photo_url: finalPhotoUrl })
-        .eq('id', family.id);
+        .eq('id', family.id)
+        .select();
       if (error) throw error;
-      onSaved && onSaved();
+      if (!data || data.length === 0) {
+        throw new Error('Permesso negato. Esegui lo script SQL fammy-photo-permissions.sql su Supabase per permettere a tutti i membri di modificare la famiglia.');
+      }
+      window.dispatchEvent(new CustomEvent('fammy_toast', {
+        detail: { text: '✅ Famiglia aggiornata', tone: 'success' },
+      }));
+      setBusy(false);
+      onSaved && onSaved({ ...family, name: name.trim(), emoji, photo_url: finalPhotoUrl });
     } catch (e2) {
       setErr(e2.message || 'Errore');
       setBusy(false);
