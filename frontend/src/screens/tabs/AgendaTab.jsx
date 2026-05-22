@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
 import AddEventModal from '../../components/AddEventModal.jsx';
+import AddTaskModal from '../../components/AddTaskModal.jsx';
 import EventDetailModal from '../../components/EventDetailModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import CalendarShareModal from '../../components/CalendarShareModal.jsx';
 import ExportAllCalendarsModal from '../../components/ExportAllCalendarsModal.jsx';
 import FamilySwitcher from '../../components/FamilySwitcher.jsx';
+import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
 import { absenceLabel, fmtAbsenceRange } from '../../lib/useAbsences.js';
 
@@ -115,6 +117,7 @@ function expandTasks(tasks) {
 export default function AgendaTab({ familyId, families, events, tasks = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily }) {
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
   const [selTask, setSelTask] = useState(null);
   const [selEvent, setSelEvent] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -483,7 +486,14 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         </>
       )}
 
-      <button className="fab" onClick={() => setShowAdd(true)}>+</button>
+      <FabSpeedDial
+        testid="agenda-fab"
+        actions={[
+          { id: 'event',   icon: '📅', label: t('fab_new_event')   || 'Nuovo evento',   onClick: () => setShowAdd(true),     testid: 'agenda-fab-new-event' },
+          { id: 'task',    icon: '📋', label: t('fab_new_task')    || 'Nuovo incarico', onClick: () => setShowAddTask(true), testid: 'agenda-fab-new-task' },
+          { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza',  onClick: () => setShowAbsence(true), testid: 'agenda-fab-new-absence' },
+        ]}
+      />
 
       {showAdd && (
         <AddEventModal
@@ -493,6 +503,18 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
           authorMemberId={me?.id}
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); onChanged(); }}
+        />
+      )}
+
+      {showAddTask && (
+        <AddTaskModal
+          familyId={targetFamilyId}
+          families={families}
+          members={members}
+          authorMemberId={me?.id}
+          absences={absences}
+          onClose={() => setShowAddTask(false)}
+          onCreated={() => { setShowAddTask(false); onChanged(); }}
         />
       )}
 

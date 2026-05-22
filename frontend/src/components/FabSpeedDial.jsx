@@ -48,7 +48,7 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
   }
 
   return (
-    <div ref={rootRef} style={{ position: 'fixed', bottom: 0, right: 0, zIndex: 900 }}>
+    <div ref={rootRef} style={{ position: 'fixed', bottom: 0, right: 0, left: 0, zIndex: 900, pointerEvents: 'none' }}>
       {/* Menu actions */}
       {open && (
         <div
@@ -58,6 +58,7 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
             display: 'flex', flexDirection: 'column',
             gap: 12, alignItems: 'flex-end',
             pointerEvents: 'auto',
+            maxWidth: 'calc(100vw - 32px)',
           }}>
           {actions.map((a, idx) => (
             <button
@@ -66,13 +67,14 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
               onClick={() => { a.onClick?.(); setOpen(false); }}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 10,
-                padding: '10px 16px',
+                padding: '10px 14px 10px 10px',
                 background: 'white',
                 border: '1px solid var(--sm)',
                 borderRadius: 100,
                 boxShadow: '0 6px 18px rgba(28,22,17,0.18)',
                 fontSize: 14, fontWeight: 700, color: 'var(--k)',
                 cursor: 'pointer', whiteSpace: 'nowrap',
+                maxWidth: 'calc(100vw - 40px)',
                 animation: `fammy-fab-pop 220ms cubic-bezier(.2,.8,.3,1) ${idx * 40}ms both`,
               }}>
               <span style={{
@@ -80,9 +82,11 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
                 background: a.color || 'var(--ac)',
                 color: 'white', display: 'inline-flex',
                 alignItems: 'center', justifyContent: 'center',
-                fontSize: 16, fontWeight: 700,
+                fontSize: 16, fontWeight: 700, flexShrink: 0,
               }}>{a.icon}</span>
-              <span>{a.label}</span>
+              <span style={{
+                overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{a.label}</span>
             </button>
           ))}
         </div>
@@ -95,6 +99,7 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
             position: 'fixed', inset: 0,
             background: 'rgba(28,22,17,0.15)',
             zIndex: -1,
+            pointerEvents: 'auto',
           }} />
       )}
       <button
@@ -104,6 +109,7 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
         style={{
           transform: open ? 'rotate(45deg)' : 'rotate(0)',
           transition: 'transform 220ms cubic-bezier(.2,.8,.3,1)',
+          pointerEvents: 'auto',
         }}>
         +
       </button>
