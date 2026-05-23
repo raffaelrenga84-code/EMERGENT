@@ -35,8 +35,19 @@ export default function ToastListener() {
     const next = queue[0];
     setQueue((q) => q.slice(1));
     setActive(next);
-    const id = window.setTimeout(() => setActive(null), 3500);
-    return () => window.clearTimeout(id);
+    // Auto-dismiss: usiamo sia setTimeout (preferibile, tipico) sia un
+    // fallback basato su `expiresAt` per quando la tab è in background
+    // e setTimeout viene throttled (iOS PWA).
+    const expiresAt = Date.now() + 3500;
+    const tick = () => {
+      if (Date.now() >= expiresAt) {
+        setActive(null);
+      } else {
+        timer = window.setTimeout(tick, 500);
+      }
+    };
+    let timer = window.setTimeout(tick, 3500);
+    return () => window.clearTimeout(timer);
   }, [queue, active]);
 
   if (!active) return null;
@@ -52,6 +63,7 @@ export default function ToastListener() {
     <div
       role="status"
       data-testid="fammy-toast"
+      onClick={() => setActive(null)}
       style={{
         position: 'fixed',
         bottom: 'calc(74px + env(safe-area-inset-bottom, 0px))',
@@ -68,8 +80,13 @@ export default function ToastListener() {
         textAlign: 'center',
         lineHeight: 1.35,
         animation: 'fammy-toast-in 200ms ease-out',
+        cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', gap: 10,
       }}>
-      {active.text}
+      <span style={{ flex: 1 }}>{active.text}</span>
+      <span aria-hidden="true" style={{
+        fontSize: 14, opacity: 0.75, fontWeight: 700,
+      }}>✕</span>
     </div>
   );
 }

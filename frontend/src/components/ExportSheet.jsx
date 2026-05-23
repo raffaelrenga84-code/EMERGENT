@@ -18,13 +18,14 @@ export default function ExportSheet({
   events = [], tasks = [], filterEvent, filterTask,
 }) {
   const { t } = useT();
-  const [selectedFamilies, setSelectedFamilies] = useState(families.map((f) => f.id));
+  // Default: NESSUNA famiglia selezionata. L'utente sceglie esplicitamente
+  // cosa esportare, evitando export massivi indesiderati.
+  const [selectedFamilies, setSelectedFamilies] = useState([]);
 
   if (!open) return null;
 
   const toggleFamily = (fid) => {
     if (selectedFamilies.includes(fid)) {
-      if (selectedFamilies.length === 1) return;
       setSelectedFamilies((prev) => prev.filter((x) => x !== fid));
     } else {
       setSelectedFamilies((prev) => [...prev, fid]);
@@ -32,6 +33,7 @@ export default function ExportSheet({
   };
 
   const setAll = () => setSelectedFamilies(families.map((f) => f.id));
+  const clearAll = () => setSelectedFamilies([]);
 
   const handleExport = (provider) => {
     const allowedFamilyIds = isAll && selectedFamilies.length < families.length
@@ -72,20 +74,23 @@ export default function ExportSheet({
       }, 600);
       window.dispatchEvent(new CustomEvent('fammy_toast', {
         detail: {
-          text: '📅 Calendario scaricato. Aprilo dalla pagina di Google Calendar che si è appena aperta.',
+          text: t('export_toast_google') || '📅 File scaricato',
           tone: 'info',
         },
       }));
     } else {
       window.dispatchEvent(new CustomEvent('fammy_toast', {
         detail: {
-          text: '📲 Calendario scaricato. Apri il file per aggiungerlo al tuo iPhone.',
+          text: t('export_toast_apple') || '📲 Calendario scaricato',
           tone: 'success',
         },
       }));
     }
     onClose();
   };
+
+  const canExport = !isAll || selectedFamilies.length > 0;
+  const disabledReason = !canExport ? (t('export_pick_at_least_one') || 'Seleziona almeno una famiglia') : '';
 
   return (
     <div
@@ -151,15 +156,26 @@ export default function ExportSheet({
               marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <span>📦 {t('export_pick_families') || 'Famiglie da esportare'}</span>
-              {selectedFamilies.length < families.length && (
-                <button type="button" onClick={setAll}
-                  data-testid="export-families-all"
-                  style={{
-                    background: 'transparent', border: 'none', padding: 0,
-                    color: 'var(--ac)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    textTransform: 'none', letterSpacing: 0,
-                  }}>{t('export_select_all') || 'Tutte'}</button>
-              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {selectedFamilies.length < families.length && (
+                  <button type="button" onClick={setAll}
+                    data-testid="export-families-all"
+                    style={{
+                      background: 'transparent', border: 'none', padding: 0,
+                      color: 'var(--ac)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                      textTransform: 'none', letterSpacing: 0,
+                    }}>{t('export_select_all') || 'Tutte'}</button>
+                )}
+                {selectedFamilies.length > 0 && (
+                  <button type="button" onClick={clearAll}
+                    data-testid="export-families-clear"
+                    style={{
+                      background: 'transparent', border: 'none', padding: 0,
+                      color: 'var(--km)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                      textTransform: 'none', letterSpacing: 0,
+                    }}>{t('export_clear_all') || 'Nessuna'}</button>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {families.map((f) => {
@@ -188,14 +204,19 @@ export default function ExportSheet({
           type="button"
           data-testid="agenda-export-iphone-btn"
           onClick={() => handleExport('apple')}
+          disabled={!canExport}
+          title={disabledReason}
           style={{
-            background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
+            background: canExport
+              ? 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)'
+              : 'var(--sm)',
             color: 'white', border: 'none',
             padding: '14px 18px', borderRadius: 14,
             fontSize: 15, fontWeight: 700,
-            boxShadow: '0 6px 18px rgba(193,98,75,0.28)',
+            boxShadow: canExport ? '0 6px 18px rgba(193,98,75,0.28)' : 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-            cursor: 'pointer',
+            cursor: canExport ? 'pointer' : 'not-allowed',
+            opacity: canExport ? 1 : 0.6,
           }}>
           <span style={{ fontSize: 20 }}>📲</span>
           <span>{t('export_to_iphone') || 'Aggiungi a iPhone'}</span>
@@ -206,18 +227,30 @@ export default function ExportSheet({
           type="button"
           data-testid="agenda-export-google-btn"
           onClick={() => handleExport('google')}
+          disabled={!canExport}
+          title={disabledReason}
           style={{
             background: 'white',
-            color: 'var(--k)',
+            color: canExport ? 'var(--k)' : 'var(--km)',
             padding: '14px 18px', borderRadius: 14,
             fontSize: 15, fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
             border: '1.5px solid var(--sm)',
-            cursor: 'pointer',
+            cursor: canExport ? 'pointer' : 'not-allowed',
+            opacity: canExport ? 1 : 0.6,
           }}>
           <span style={{ fontSize: 20 }}>📅</span>
           <span>{t('export_to_google') || 'Aggiungi a Google Calendar'}</span>
         </button>
+
+        {!canExport && (
+          <p style={{
+            margin: '0', fontSize: 12, color: 'var(--km)',
+            textAlign: 'center', fontStyle: 'italic',
+          }} data-testid="export-hint-pick-family">
+            ↑ {disabledReason}
+          </p>
+        )}
       </div>
     </div>
   );
