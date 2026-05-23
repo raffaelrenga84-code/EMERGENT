@@ -36,6 +36,7 @@ export default function TaskDetailModal({
   const [linkedExpenses, setLinkedExpenses] = useState([]);
   const [lightbox, setLightbox] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
+  const [didAutoOpen, setDidAutoOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showDelegate, setShowDelegate] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -47,7 +48,16 @@ export default function TaskDetailModal({
       const { data: commentsData } = await supabase
         .from('task_responses').select('*')
         .eq('task_id', realTaskId).order('created_at');
-      if (!cancelled) setComments(commentsData || []);
+      if (!cancelled) {
+        setComments(commentsData || []);
+        // Auto-apri il tab "Chat" se ci sono già messaggi reali (non system),
+        // così l'utente vede subito la conversazione invece dei dettagli.
+        const hasRealMessage = (commentsData || []).some((c) => c.type !== 'system');
+        if (hasRealMessage && !didAutoOpen) {
+          setActiveTab('thread');
+          setDidAutoOpen(true);
+        }
+      }
 
       const { data: assigneeData } = await supabase
         .from('task_assignees').select('member_id').eq('task_id', realTaskId);
@@ -367,19 +377,67 @@ export default function TaskDetailModal({
         </div>
       )}
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
-          <span style={{ fontSize: 32 }}>{CAT_EMOJI[task.category] || '📌'}</span>
-          <h2 style={{ flex: 1 }}>{title}</h2>
+        {/* HEADER COMPATTO: emoji + titolo + 3 icone (Modifica, Elimina, Chiudi) */}
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 6,
+        }}>
+          <span style={{ fontSize: 30, flexShrink: 0, marginTop: 2 }}>{CAT_EMOJI[task.category] || '📌'}</span>
+          <h2 style={{ flex: 1, margin: 0, lineHeight: 1.2 }} data-testid="task-detail-title">{title}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <button
+              type="button"
+              data-testid="task-detail-edit-icon"
+              onClick={() => {
+                if (isRecurringInstance && occurrenceDate) {
+                  setShowRecurringChoice('edit');
+                  return;
+                }
+                onClosed();
+                if (typeof onEdit === 'function') onEdit(task);
+              }}
+              title={t('td_edit')}
+              aria-label={t('td_edit')}
+              style={iconBtnStyle}>
+              ✏️
+            </button>
+            {canDelete && (
+              <button
+                type="button"
+                data-testid="task-detail-delete-icon"
+                onClick={requestRemove}
+                disabled={busy}
+                title={t('td_delete_btn')}
+                aria-label={t('td_delete_btn')}
+                style={{ ...iconBtnStyle, color: 'var(--rd)' }}>
+                🗑
+              </button>
+            )}
+            <button
+              type="button"
+              data-testid="task-detail-close-icon"
+              onClick={onClose}
+              title={t('td_close')}
+              aria-label={t('td_close')}
+              style={iconBtnStyle}>
+              ✕
+            </button>
+          </div>
         </div>
-        {task.note && <p className="modal-sub">{task.note}</p>}
-        {task.due_date && (
-          <p className="modal-sub">
-            📅 {new Date(task.due_date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
-            {task.due_time && <span> · 🕐 {task.due_time}</span>}
+        {task.note && <p className="modal-sub" style={{ marginTop: 0 }}>{task.note}</p>}
+        {(task.due_date || task.location) && (
+          <p className="modal-sub" style={{
+            marginTop: 0, marginBottom: 8,
+            display: 'flex', flexWrap: 'wrap', gap: '4px 12px',
+            fontSize: 13, color: 'var(--km)',
+          }}>
+            {task.due_date && (
+              <span>
+                📅 {new Date(task.due_date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+                {task.due_time && <span> · 🕐 {task.due_time}</span>}
+              </span>
+            )}
+            {task.location && <span>📍 {task.location}</span>}
           </p>
-        )}
-        {task.location && (
-          <p className="modal-sub">📍 {task.location}</p>
         )}
 
         {/* Tab orizzontali: Dettagli / Thread / Allegati */}
@@ -539,45 +597,205 @@ export default function TaskDetailModal({
           </div>
         )}
 
-        {/* ====== TAB: THREAD ====== */}
+        {/* ====== TAB: CHAT ====== */}
         {activeTab === 'thread' && (
           <div data-testid="task-detail-pane-thread">
-            <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 8 }}>
+            {/* Header chat: riepilogo "Chat con X persone" + chip avatar */}
+            <div style={{
+              padding: '10px 12px', marginBottom: 10,
+              background: 'var(--ab)', borderRadius: 12,
+              border: '1px solid var(--sm)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'var(--ac)', color: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, flexShrink: 0,
+              }}>💬</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--k)' }}>
+                  {t('td_chat_with_n') || 'Chat con'}{' '}
+                  {assignees.length > 0
+                    ? assignees.map((a) => a.name?.split(' ')[0]).join(', ')
+                    : (otherMembers.length > 0
+                        ? otherMembers.slice(0, 3).map((m) => m.name?.split(' ')[0]).join(', ')
+                        : '—')}
+                </div>
+                {assignees.length === 0 && otherMembers.length > 0 && (
+                  <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2, fontStyle: 'italic' }}>
+                    {t('td_chat_only_you') || 'Solo tu vedrai questa conversazione finché qualcuno non ti risponderà.'}
+                  </div>
+                )}
+              </div>
+              {assignees.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  {assignees.slice(0, 4).map((a, idx) => (
+                    <div key={a.id}
+                      title={a.name}
+                      style={{
+                        width: 26, height: 26, borderRadius: '50%',
+                        background: a.avatar_color || '#1C1611',
+                        color: 'white', fontSize: 11, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: '2px solid white',
+                        marginLeft: idx === 0 ? 0 : -8,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                        zIndex: 4 - idx,
+                      }}>
+                      {a.avatar_letter || (a.name || '?').charAt(0).toUpperCase()}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Lista messaggi (stile chat con bubble) */}
+            <div style={{
+              maxHeight: 360, overflowY: 'auto', marginBottom: 10,
+              display: 'flex', flexDirection: 'column', gap: 8,
+              padding: '4px 2px',
+            }}
+              data-testid="task-chat-list">
               {comments.length === 0 && (
                 <div style={{
                   padding: '32px 16px', textAlign: 'center',
                   color: 'var(--km)', fontSize: 13,
                 }}>
-                  <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
-                  {t('td_no_comments')}
+                  <div style={{ fontSize: 40, marginBottom: 8 }}>💬</div>
+                  <div style={{ fontWeight: 600, color: 'var(--k)', marginBottom: 4 }}>
+                    {t('td_no_comments')}
+                  </div>
                 </div>
               )}
               {comments.map((c) => {
                 const author = members.find((m) => m.id === c.author_id);
                 const isSystem = c.type === 'system';
-                return (
-                  <div key={c.id} className="card"
-                    style={{
-                      marginBottom: 6, padding: 10,
-                      background: isSystem ? 'var(--ab)' : 'white',
-                      borderLeft: isSystem ? '3px solid var(--ac)' : 'none',
-                    }}>
-                    <div style={{ fontSize: 12, color: 'var(--km)', marginBottom: 2 }}>
-                      <strong>{author?.name || t('td_someone')}</strong> · {new Date(c.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      {isSystem && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>· {t('td_system_label') || 'sistema'}</span>}
+                const isMine = !isSystem && me?.id && c.author_id === me.id;
+
+                if (isSystem) {
+                  return (
+                    <div key={c.id} style={{
+                      alignSelf: 'center', maxWidth: '85%',
+                      padding: '6px 12px', borderRadius: 100,
+                      background: 'var(--ab)', border: '1px solid var(--sm)',
+                      fontSize: 11, color: 'var(--km)',
+                      textAlign: 'center', fontStyle: 'italic',
+                    }} data-testid={`task-chat-msg-system-${c.id}`}>
+                      {c.text} · {new Date(c.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </div>
-                    <div style={{ fontSize: 14 }}>{c.text}</div>
+                  );
+                }
+
+                return (
+                  <div key={c.id} style={{
+                    display: 'flex', gap: 8,
+                    flexDirection: isMine ? 'row-reverse' : 'row',
+                    alignItems: 'flex-end',
+                  }} data-testid={`task-chat-msg-${c.id}`}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: '50%',
+                      background: author?.avatar_color || '#1C1611',
+                      color: 'white', fontSize: 11, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      {author?.avatar_letter || (author?.name || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{
+                      maxWidth: '75%',
+                      padding: '8px 12px',
+                      borderRadius: 16,
+                      background: isMine ? 'var(--ac)' : 'white',
+                      color: isMine ? 'white' : 'var(--k)',
+                      border: isMine ? 'none' : '1px solid var(--sm)',
+                      borderBottomRightRadius: isMine ? 4 : 16,
+                      borderBottomLeftRadius: isMine ? 16 : 4,
+                      boxShadow: '0 1px 2px rgba(28,22,17,0.06)',
+                    }}>
+                      {!isMine && (
+                        <div style={{
+                          fontSize: 10, fontWeight: 700, marginBottom: 2,
+                          color: author?.avatar_color || 'var(--ac)',
+                        }}>
+                          {author?.name?.split(' ')[0] || t('td_someone')}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 14, lineHeight: 1.35, wordBreak: 'break-word' }}>
+                        {c.text}
+                      </div>
+                      <div style={{
+                        fontSize: 10, opacity: 0.65, marginTop: 4,
+                        textAlign: isMine ? 'right' : 'left',
+                      }}>
+                        {new Date(c.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input className="input" placeholder={t('td_comment_ph')}
+
+            {/* Quick replies (visibili sempre, sopra il composer) */}
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8,
+            }} data-testid="task-chat-quick-replies">
+              {[
+                t('td_quick_reply_ok') || '👍 Tutto ok',
+                t('td_quick_reply_done') || '✅ Fatto',
+                t('td_quick_reply_q') || '❓ Domanda',
+              ].map((qr) => (
+                <button key={qr} type="button"
+                  onClick={() => setNewComment((prev) => prev ? `${prev} ${qr}` : qr)}
+                  data-testid={`task-chat-qr-${qr.slice(0, 8)}`}
+                  style={{
+                    padding: '6px 12px', borderRadius: 100,
+                    border: '1px solid var(--sm)', background: 'white',
+                    color: 'var(--km)', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}>
+                  {qr}
+                </button>
+              ))}
+            </div>
+
+            {/* Composer chat: input rounded + bottone send circolare */}
+            <div style={{
+              display: 'flex', gap: 8, alignItems: 'center',
+              padding: '8px 10px',
+              background: 'white', border: '1.5px solid var(--sm)',
+              borderRadius: 100,
+              boxShadow: '0 2px 6px rgba(28,22,17,0.04)',
+            }}>
+              <input
+                style={{
+                  flex: 1, border: 'none', outline: 'none',
+                  background: 'transparent',
+                  fontSize: 14, padding: '6px 8px',
+                  color: 'var(--k)',
+                }}
+                placeholder={t('td_comment_ph')}
                 value={newComment} onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') addComment(); }}
                 data-testid="task-comment-input" />
-              <button className="btn" onClick={addComment} disabled={busy || !newComment.trim()}
-                data-testid="task-comment-send">{t('td_send')}</button>
+              <button
+                type="button"
+                onClick={addComment}
+                disabled={busy || !newComment.trim()}
+                data-testid="task-comment-send"
+                aria-label={t('td_send')}
+                style={{
+                  width: 38, height: 38, borderRadius: '50%',
+                  border: 'none',
+                  background: newComment.trim() ? 'var(--ac)' : 'var(--sm)',
+                  color: 'white', fontSize: 16,
+                  cursor: newComment.trim() ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'background 0.15s ease',
+                }}>
+                ➤
+              </button>
             </div>
           </div>
         )}
@@ -681,27 +899,18 @@ export default function TaskDetailModal({
               style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8 }} />
           </div>
         )}
-
-        <div className="row" style={{ marginTop: 24 }}>
-          <button className="btn secondary" onClick={onClose}>{t('td_close')}</button>
-          <button className="btn secondary" onClick={() => {
-            if (isRecurringInstance && occurrenceDate) {
-              setShowRecurringChoice('edit');
-              return;
-            }
-            onClosed();
-            if (typeof onEdit === 'function') onEdit(task);
-          }}>
-            {t('td_edit')}
-          </button>
-          {canDelete && (
-            <button className="btn danger" onClick={requestRemove} disabled={busy}>{t('td_delete_btn')}</button>
-          )}
-        </div>
       </div>
     </div>
   );
 }
+
+const iconBtnStyle = {
+  width: 36, height: 36, borderRadius: 10,
+  border: '1px solid var(--sm)', background: 'white',
+  fontSize: 16, cursor: 'pointer', padding: 0,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  transition: 'background 0.15s ease',
+};
 
 function primaryBtnStyle(busy) {
   return {
