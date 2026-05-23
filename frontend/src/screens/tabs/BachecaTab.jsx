@@ -378,11 +378,11 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
       {/* Lista task: prima le mie, poi le altre (no più sotto-sezioni:
           i filtri rapidi qui sopra forniscono già il filtering UX) */}
       {(visibleMyTasks.length + visibleOtherTasks.length) === 0 ? (
-        <p style={{ padding: '24px 22px', color: 'var(--km)', fontSize: 13, textAlign: 'center' }}>
-          {quickFilter === 'mine'
-            ? t('no_mine_tasks')
-            : (t('no_tasks_filter') || '— Nessun risultato con questo filtro —')}
-        </p>
+        <FilterEmptyState
+          filter={quickFilter}
+          onResetFilter={() => setQuickFilter('todo')}
+          t={t}
+        />
       ) : (
         renderTaskList([...visibleMyTasks, ...visibleOtherTasks])
       )}
@@ -882,4 +882,46 @@ function groupDonesByDay(dones, t) {
     buckets.get(key).items.push(task);
   }
   return Array.from(buckets.values()).sort((a, b) => b.sortKey - a.sortKey);
+}
+
+
+/**
+ * FilterEmptyState — empty state visivo per quando un filtro rapido non
+ * mostra risultati. Contestualizza il messaggio in base al filtro attivo
+ * e offre un'azione di reset rapido + un suggerimento utile.
+ */
+function FilterEmptyState({ filter, onResetFilter, t }) {
+  const config = {
+    mine:    { emoji: '☕', h: t('empty_mine_h')    || 'Niente per te oggi',         p: t('empty_mine_p')    || 'Goditi la pausa! Quando ti assegneranno qualcosa lo vedrai qui.' },
+    urgent:  { emoji: '🌿', h: t('empty_urgent_h')  || 'Nessuna urgenza',            p: t('empty_urgent_p')  || 'Respiro profondo: niente è urgente in questo momento.' },
+    followup:{ emoji: '👀', h: t('empty_followup_h')|| 'Nulla da seguire',           p: t('empty_followup_p')|| 'Tieni d\'occhio i task degli altri marcandoli "Da seguire" 👁️.' },
+    today:   { emoji: '🍃', h: t('empty_today_h')   || 'Giornata libera',            p: t('empty_today_p')   || 'Nessun incarico in scadenza oggi. Approfitta per riposare.' },
+    todo:    { emoji: '✨', h: t('empty_todo_h')    || 'Tutto fatto!',               p: t('empty_todo_p')    || 'Non c\'è niente da fare. Hai sistemato tutto come un campione.' },
+  };
+  const { emoji, h, p } = config[filter] || config.todo;
+  return (
+    <div className="empty" data-testid={`bacheca-empty-${filter}`} style={{
+      padding: '36px 22px 12px', textAlign: 'center',
+    }}>
+      <div style={{
+        fontSize: 64, marginBottom: 14,
+        display: 'inline-block',
+      }}>{emoji}</div>
+      <h3 style={{ marginBottom: 6 }}>{h}</h3>
+      <p style={{ color: 'var(--km)', fontSize: 14, lineHeight: 1.5, maxWidth: 320, margin: '0 auto' }}>{p}</p>
+      {filter !== 'todo' && (
+        <button
+          type="button"
+          data-testid="bacheca-empty-reset"
+          onClick={onResetFilter}
+          style={{
+            marginTop: 18, padding: '8px 18px', borderRadius: 100,
+            border: '1.5px solid var(--sm)', background: 'white',
+            color: 'var(--ac)', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+          }}>
+          ← {t('empty_back_to_todo') || 'Vedi tutti i da fare'}
+        </button>
+      )}
+    </div>
+  );
 }

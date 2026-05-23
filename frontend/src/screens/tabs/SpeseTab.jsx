@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
 import AddExpenseModal from '../../components/AddExpenseModal.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
+import PartialPaymentModal from '../../components/PartialPaymentModal.jsx';
 
 export default function SpeseTab({ familyId, families = [], expenses, tasks, members, me, onChanged, pendingTask, onClearPendingTask }) {
   const { t } = useT();
@@ -10,6 +11,8 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
   const [prefillData, setPrefillData] = useState(null); // dati pre-popolati da "ripeti ultima"
   const [shares, setShares] = useState([]);
   const [showArchive, setShowArchive] = useState(false);
+  // Pagamento parziale: {expense, share, member} oppure null
+  const [payingShare, setPayingShare] = useState(null);
 
   useEffect(() => {
     if (pendingTask) setShowAdd(true);
@@ -121,24 +124,59 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
                 const m = members.find((x) => x.id === s.member_id);
                 if (!m) return null;
                 const isPayer = s.member_id === e.paid_by;
+                const paid = Number(s.paid_amount || 0);
+                const amt = Number(s.amount || 0);
+                const remaining = Math.max(0, amt - paid);
+                const isPartiallyPaid = !isPayer && !s.settled && paid > 0;
+                const pct = amt > 0 ? Math.min(100, Math.round((paid / amt) * 100)) : 0;
                 return (
-                  <div key={s.member_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, opacity: s.settled ? 0.5 : 1 }}>
+                  <div key={s.member_id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
+                    opacity: s.settled ? 0.55 : 1, flexWrap: 'wrap',
+                  }}>
                     <Avatar m={m} small />
-                    <span style={{ flex: 1, textDecoration: s.settled ? 'line-through' : 'none' }}>
+                    <span style={{ flex: 1, minWidth: 0, textDecoration: s.settled ? 'line-through' : 'none' }}>
                       {m.name} {isPayer && <em style={{ color: 'var(--km)' }}>(ha pagato)</em>}
                     </span>
-                    <span style={{ fontWeight: 600 }}>€ {Number(s.amount).toFixed(2)}</span>
-                    {!isPayer && (
-                      <button onClick={() => settleShare(e.id, s.member_id, !s.settled)}
+                    {isPartiallyPaid ? (
+                      <span style={{ fontWeight: 600, fontSize: 11, color: 'var(--km)' }}>
+                        € {paid.toFixed(2)} / {amt.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span style={{ fontWeight: 600 }}>€ {amt.toFixed(2)}</span>
+                    )}
+                    {!isPayer && !s.settled && (
+                      <button onClick={() => setPayingShare({ expense: e, share: s, member: m })}
+                        data-testid={`expense-add-payment-${e.id}-${s.member_id}`}
                         style={{
-                          padding: '4px 10px', borderRadius: 100, border: '1px solid',
-                          borderColor: s.settled ? 'var(--gn)' : 'var(--sm)',
-                          background: s.settled ? 'var(--gnB)' : 'white',
-                          color: s.settled ? 'var(--gn)' : 'var(--km)',
+                          padding: '4px 10px', borderRadius: 100,
+                          border: '1px solid var(--ac)',
+                          background: 'white', color: 'var(--ac)',
                           fontSize: 10, fontWeight: 700, cursor: 'pointer',
                         }}>
-                        {s.settled ? t('expenses_share_unsettle') : t('expenses_share_settle')}
+                        💰 {t('payment_add_short') || 'Aggiungi pagamento'}
                       </button>
+                    )}
+                    {!isPayer && s.settled && (
+                      <button onClick={() => settleShare(e.id, s.member_id, false)}
+                        style={{
+                          padding: '4px 10px', borderRadius: 100, border: '1px solid var(--gn)',
+                          background: 'var(--gnB)', color: 'var(--gn)',
+                          fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                        }}>
+                        {t('expenses_share_unsettle')}
+                      </button>
+                    )}
+                    {isPartiallyPaid && (
+                      <div style={{
+                        flexBasis: '100%', height: 4, borderRadius: 2,
+                        background: 'var(--sm)', marginTop: 2, overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          width: `${pct}%`, height: '100%',
+                          background: 'var(--ac)', transition: 'width 0.3s ease',
+                        }} />
+                      </div>
                     )}
                   </div>
                 );
@@ -284,6 +322,17 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
           prefilledExpense={prefillData}
           onClose={() => { setShowAdd(false); setPrefillData(null); onClearPendingTask && onClearPendingTask(); }}
           onCreated={() => { setShowAdd(false); setPrefillData(null); onClearPendingTask && onClearPendingTask(); onChanged(); }}
+        />
+      )}
+
+      {payingShare && (
+        <PartialPaymentModal
+          expense={payingShare.expense}
+          share={payingShare.share}
+          member={payingShare.member}
+          meId={me?.id}
+          onClose={() => setPayingShare(null)}
+          onSaved={() => { setPayingShare(null); onChanged(); }}
         />
       )}
     </>
