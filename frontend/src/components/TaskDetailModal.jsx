@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
@@ -37,6 +37,9 @@ export default function TaskDetailModal({
   const [lightbox, setLightbox] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
   const [didAutoOpen, setDidAutoOpen] = useState(false);
+  // Numero di messaggi nuovi arrivati mentre il tab Chat NON è attivo.
+  // Reset a 0 appena l'utente passa al tab Chat.
+  const [unreadCount, setUnreadCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [showDelegate, setShowDelegate] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -99,6 +102,43 @@ export default function TaskDetailModal({
     })();
     return () => { cancelled = true; };
   }, [task.id, members]);
+
+  // Realtime: ascolta nuovi messaggi su questo task. Se il tab attivo non è
+  // 'thread' e il messaggio non è mio né di sistema → incrementa unreadCount
+  // (badge "● novità" sul tab Chat).
+  useEffect(() => {
+    if (!realTaskId) return;
+    const channel = supabase
+      .channel(`task-responses-${realTaskId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'task_responses',
+        filter: `task_id=eq.${realTaskId}`,
+      }, (payload) => {
+        const newMsg = payload.new;
+        if (!newMsg) return;
+        setComments((prev) => {
+          if (prev.some((c) => c.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+        const isMine = me?.id && newMsg.author_id === me.id;
+        const isSystem = newMsg.type === 'system';
+        if (!isMine && !isSystem) {
+          // Solo se NON sono già nel tab Chat lo conto come "non letto"
+          setUnreadCount((n) => (activeTabRef.current === 'thread' ? 0 : n + 1));
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [realTaskId, me?.id]);
+
+  // Ref per leggere activeTab dentro il callback realtime senza re-subscribe
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
+  // Reset unread quando l'utente entra nel tab Chat
+  useEffect(() => {
+    if (activeTab === 'thread' && unreadCount > 0) setUnreadCount(0);
+  }, [activeTab, unreadCount]);
 
   // Cambio stato: chiude il modale automaticamente
   const updateStatus = async (s) => {
@@ -440,11 +480,11 @@ export default function TaskDetailModal({
           </p>
         )}
 
-        {/* Tab orizzontali: Dettagli / Thread / Allegati */}
+        {/* Tab orizzontali: Dettagli / Chat / Allegati */}
         <DetailTabs
           tabs={[
             { id: 'details', label: t('td_tab_details') || 'Dettagli', icon: '📋' },
-            { id: 'thread',  label: t('td_tab_thread')  || 'Thread',   icon: '💬', count: comments.length },
+            { id: 'thread',  label: t('td_tab_thread')  || 'Chat',     icon: '💬', count: comments.length, dot: unreadCount > 0 },
             { id: 'attach',  label: t('td_tab_attach')  || 'Allegati', icon: '📎', count: attachments.length + linkedExpenses.length },
           ]}
           active={activeTab}

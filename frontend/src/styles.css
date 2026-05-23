@@ -392,6 +392,10 @@ html[data-reduced-motion="true"] *::after {
 .spin.dark { border-color: rgba(28,22,17,.2); border-top-color: var(--k); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fammy-spin { to { transform: rotate(360deg); } }
+@keyframes fammy-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.75; }
+}
 
 
 /* =================================================================

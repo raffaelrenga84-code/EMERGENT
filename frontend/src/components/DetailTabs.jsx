@@ -64,6 +64,17 @@ export default function DetailTabs({ tabs, active, onChange, testidPrefix = 'det
                 textAlign: 'center',
               }}>{tab.count}</span>
             )}
+            {tab.dot && (
+              <span
+                data-testid={`${testidPrefix}-${tab.id}-dot`}
+                style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: '#C1624B',
+                  boxShadow: isActive ? '0 0 0 2px var(--k)' : '0 0 0 2px white',
+                  flexShrink: 0,
+                  animation: 'fammy-pulse 1.6s ease-in-out infinite',
+                }} />
+            )}
           </button>
         );
       })}
