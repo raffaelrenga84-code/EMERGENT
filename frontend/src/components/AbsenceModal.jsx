@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
 import NativeDateInput from './NativeDateInput.jsx';
+import ImportScheduleModal from './ImportScheduleModal.jsx';
 
 const REASONS = [
   { id: 'vacation', icon: '🏖️', label_it: 'Vacanza',  label_en: 'Vacation', label_fr: 'Vacances', label_de: 'Urlaub' },
@@ -44,6 +45,8 @@ export default function AbsenceModal({
   );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Stato per il modale di import da foto turno (solo in modalità "new")
+  const [showImport, setShowImport] = useState(false);
   // Strategia per le ricorrenze: 'skip' | 'reassign'
   const [conflictAction, setConflictAction] = useState('skip');
   const [reassignTo, setReassignTo] = useState(null);
@@ -147,6 +150,22 @@ export default function AbsenceModal({
           <h2 style={{ flex: 1, margin: 0, fontSize: 18 }} data-testid="absence-modal-title">
             {isEdit ? (t('absence_edit_h') || 'Modifica assenza') : (t('absence_new_h') || 'Nuova assenza')}
           </h2>
+          {!isEdit && (
+            <button
+              type="button"
+              onClick={() => setShowImport(true)}
+              data-testid="absence-open-import"
+              title={t('imp_h') || 'Importa da foto turno'}
+              style={{
+                padding: '8px 12px', borderRadius: 100,
+                border: '1.5px solid var(--ac)', background: 'white',
+                color: 'var(--ac)', fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', whiteSpace: 'nowrap',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}>
+              📸 {t('imp_open_btn_short') || 'Da foto turno'}
+            </button>
+          )}
         </div>
 
         <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -296,6 +315,19 @@ export default function AbsenceModal({
           </div>
         </form>
       </div>
+
+      {showImport && (
+        <ImportScheduleModal
+          session={session}
+          profile={profile}
+          families={families}
+          onClose={() => setShowImport(false)}
+          onSaved={() => {
+            setShowImport(false);
+            onSaved?.({ _bulkImported: true });
+          }}
+        />
+      )}
     </div>
   );
 }

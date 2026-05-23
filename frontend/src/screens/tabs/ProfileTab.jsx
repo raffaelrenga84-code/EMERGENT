@@ -12,6 +12,7 @@ import PricingScreen from '../sub/PricingScreen.jsx';
 import ThemeScreen from '../sub/ThemeScreen.jsx';
 import AccessibilityScreen from '../sub/AccessibilityScreen.jsx';
 import DataPrivacyScreen from '../sub/DataPrivacyScreen.jsx';
+import ImportScheduleModal from '../../components/ImportScheduleModal.jsx';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
@@ -26,6 +27,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [color, setColor] = useState(profile?.avatar_color || '#1C1611');
   const [busy, setBusy] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const [showImportSchedule, setShowImportSchedule] = useState(false);
 
   if (view === 'plans') return <PricingScreen onBack={() => setView('main')} />;
   if (view === 'theme') return <ThemeScreen onBack={() => setView('main')} />;
@@ -351,6 +353,28 @@ export default function ProfileTab({ session, profile, families = [], members = 
         </p>
       </div>
 
+      {/* Strumenti — funzioni "smart" non quotidiane (import, export, …) */}
+      <div className="profile-section">
+        <div className="profile-label" style={{ marginBottom: 8 }}>🛠️ {t('profile_tools_h') || 'Strumenti'}</div>
+        <button
+          type="button"
+          className="btn full secondary"
+          onClick={() => setShowImportSchedule(true)}
+          data-testid="profile-import-schedule-btn"
+          style={{ textAlign: 'left', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 22 }}>📸</span>
+          <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--k)' }}>
+              {t('imp_open_btn') || 'Importa assenze da foto turno'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>
+              {t('profile_tools_import_hint') || 'Voli, training e reperibilità riconosciuti dall\'AI'}
+            </div>
+          </div>
+          <span style={{ color: 'var(--km)', fontSize: 18 }}>›</span>
+        </button>
+      </div>
+
       {/* Riguarda il tour */}
       <div className="profile-section">
         <div className="profile-label" style={{ marginBottom: 8 }}>🎓 {t('profile_tour_label')}</div>
@@ -373,6 +397,16 @@ export default function ProfileTab({ session, profile, families = [], members = 
 
       {showTour && (
         <OnboardingTour onClose={() => setShowTour(false)} />
+      )}
+
+      {showImportSchedule && (
+        <ImportScheduleModal
+          session={session}
+          profile={profile}
+          families={families}
+          onClose={() => setShowImportSchedule(false)}
+          onSaved={() => { setShowImportSchedule(false); onChanged && onChanged(); }}
+        />
       )}
     </div>
   );
