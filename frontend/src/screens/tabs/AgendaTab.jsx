@@ -293,19 +293,41 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
 
   return (
     <>
-      {/* Family chip switcher inline cliccabile. Include 'Tutte' quando >1 famiglia.
+      {/* Header agenda: family switcher a sinistra + pulsante export a destra.
           Sticky in alto durante lo scroll così su mobile resta sempre raggiungibile,
           con tap target più comodo per le dita (min 36px di altezza). */}
-      {families && families.length > 1 && (
-        <FamilySwitcher
-          families={families}
-          activeFamily={isAll ? 'all' : targetFamilyId}
-          isAll={isAll}
-          onSwitch={onSwitchFamily}
-          testidPrefix="agenda-family"
-          variant="pill"
-        />
-      )}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 8, padding: '10px 16px 6px',
+      }}>
+        {families && families.length > 1 ? (
+          <FamilySwitcher
+            families={families}
+            activeFamily={isAll ? 'all' : targetFamilyId}
+            isAll={isAll}
+            onSwitch={onSwitchFamily}
+            testidPrefix="agenda-family"
+            variant="pill"
+          />
+        ) : <span />}
+        <button
+          type="button"
+          data-testid="agenda-export-btn"
+          onClick={() => setShowExportSheet(true)}
+          title={t('export_sheet_title') || 'Esporta calendario'}
+          aria-label={t('export_sheet_title') || 'Esporta calendario'}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 100,
+            background: 'white', border: '1.5px solid var(--sm)',
+            color: 'var(--ac)', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', boxShadow: '0 2px 6px rgba(28,22,17,0.05)',
+            whiteSpace: 'nowrap', flexShrink: 0,
+          }}>
+          <span style={{ fontSize: 14 }}>📥</span>
+          <span>{t('export_btn_short') || 'Esporta'}</span>
+        </button>
+      </div>
 
       <MonthGrid
         month={viewMonth}
@@ -534,6 +556,16 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
           onChanged={onChanged}
         />
       )}
+
+      <ExportSheet
+        open={showExportSheet}
+        onClose={() => setShowExportSheet(false)}
+        families={families || []}
+        isAll={isAll}
+        targetFamily={targetFamily}
+        events={expandedEvents}
+        tasks={dueTasks}
+      />
 
       {showAbsence && (
         <AbsenceModal
@@ -899,12 +931,15 @@ function MonthGrid({ month, events, tasks = [], absences = [], familyId = null, 
         </div>
       )}
       {/* Legenda mini */}
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8, fontSize: 11, color: 'var(--km)' }}>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8, fontSize: 11, color: 'var(--km)', flexWrap: 'wrap' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ac)' }} /> Eventi
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F39C12' }} /> Incarichi
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7C3AED' }} /> ✈️ Assenze
         </span>
       </div>
     </div>

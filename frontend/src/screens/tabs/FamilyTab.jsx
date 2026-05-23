@@ -32,6 +32,10 @@ export default function FamilyTab({ family, members, session, families, activeFa
   const [editingFamilyAll, setEditingFamilyAll] = useState(null);
   const [addMemberToFamily, setAddMemberToFamily] = useState(null); // family object da vista Tutte
   const [showJoinCode, setShowJoinCode] = useState(false);
+  // "Solo a me": nella vista Tutte filtra le famiglie a quelle in cui ho una
+  // membership e mostra solo la MIA member card per ognuna. Comodo per vedere
+  // "in quali famiglie sono e con che ruolo/foto" in un colpo d'occhio.
+  const [onlyMine, setOnlyMine] = useState(false);
 
   const toggleFamilyExpanded = (familyId) => {
     setExpandedFamilies((prev) => ({ ...prev, [familyId]: !prev[familyId] }));
@@ -58,14 +62,42 @@ export default function FamilyTab({ family, members, session, families, activeFa
   };
 
   if (isAll) {
+    // Filtro "Solo a me": include solo le famiglie dove ho una membership
+    // e tiene solo la MIA member card per ognuna.
+    const visibleFamilies = onlyMine
+      ? families.filter((f) => members.some((m) => m.family_id === f.id && m.user_id === session.user.id))
+      : families;
+
     return (
       <>
-        <div style={{ padding: '0 22px 8px' }}>
+        <div style={{
+          padding: '0 22px 8px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 8,
+        }}>
           <div className="sh-l" style={{ padding: 0 }}>{t('nav_family')}</div>
+          <button
+            type="button"
+            data-testid="family-only-mine-toggle"
+            onClick={() => setOnlyMine((v) => !v)}
+            style={{
+              padding: '6px 12px', borderRadius: 100, border: '1.5px solid',
+              borderColor: onlyMine ? 'var(--k)' : 'var(--sm)',
+              background: onlyMine ? 'var(--k)' : 'white',
+              color: onlyMine ? 'white' : 'var(--km)',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              whiteSpace: 'nowrap',
+            }}>
+            {onlyMine ? '✓ Solo a me' : '👤 Solo a me'}
+          </button>
         </div>
 
-        {families.map((f) => {
-          const familyMembers = members.filter((m) => m.family_id === f.id);
+        {visibleFamilies.map((f) => {
+          const familyMembersAll = members.filter((m) => m.family_id === f.id);
+          const familyMembers = onlyMine
+            ? familyMembersAll.filter((m) => m.user_id === session.user.id)
+            : familyMembersAll;
           const isExpanded = expandedFamilies[f.id] || false;
           const isFamilyOwner = f.created_by === session.user.id;
           return (
@@ -93,7 +125,12 @@ export default function FamilyTab({ family, members, session, families, activeFa
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{f.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>
-                    {familyMembers.length} {familyMembers.length === 1 ? t('member_one_label') : t('member_many_label')}
+                    {familyMembersAll.length} {familyMembersAll.length === 1 ? t('member_one_label') : t('member_many_label')}
+                    {onlyMine && familyMembersAll.length > familyMembers.length && (
+                      <span style={{ marginLeft: 6, color: 'var(--ac)', fontWeight: 600 }}>
+                        · 👤 {t('only_me_chip') || 'solo io'}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <span style={{

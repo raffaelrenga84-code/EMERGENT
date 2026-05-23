@@ -1,5 +1,41 @@
 # FAMMY — Family Organization App (Iterazione 15)
 
+## Iterazione 15.1 (23 maggio 2026, sera) — UX Agenda + Tab Famiglia
+
+### Bottone Export in alto a destra in Agenda
+Spostato l'export del calendario in un pulsante **📥 Esporta** in alto a destra,
+in linea con il `FamilySwitcher`. Apre l'esistente `ExportSheet` (bottom-sheet)
+che permette di:
+- Scegliere quali famiglie includere (chip toggle, solo in modalità "Tutte")
+- Esportare con **📲 Aggiungi a iPhone** (download .ics + toast informativo)
+- Esportare con **📅 Aggiungi a Google Calendar** (download .ics + apre Google Calendar Import in nuova tab)
+
+### Legenda calendario — aggiunta "✈️ Assenze" con colore viola
+La legenda mini sotto il calendario mostrava solo `● Eventi · ● Incarichi` ma
+i pallini viola delle assenze (#7C3AED) erano già renderizzati senza legenda.
+Aggiunta la voce `● ✈️ Assenze` con `flex-wrap` per piccoli schermi.
+
+### Filtro "👤 Solo a me" nel tab Famiglia (vista Tutte)
+Toggle accanto al titolo "Famiglie" che, quando attivo, mostra:
+- Solo le famiglie in cui ho una membership
+- Espandendo una famiglia, solo la MIA `MemberCard` (non gli altri membri)
+- Counter totale conservato + chip indicativo `· 👤 solo io` accanto al count
+
+Utile per chi appartiene a 3+ famiglie e vuole vedere "in che famiglie sono e
+con che ruolo/foto" in un colpo d'occhio.
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — header con pulsante Export + mount `ExportSheet` + legenda assenze
+- ✏️ `/app/frontend/src/screens/tabs/FamilyTab.jsx` — toggle "Solo a me" + filtro famiglie/membri
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — `export_btn_short`, `only_me_chip` × 4 lingue
+
+### Testing
+- Lint: ✅
+- Smoke test screenshot: ✅
+- Verifica funzionale richiede login (Google OAuth) → test manuale dell'utente
+
+---
+
 ## Iterazione 15 (23 maggio 2026) — Foto Famiglia/Membro instant refresh + Agenda labels + SQL idempotency
 
 ### Bug fix #1 — Foto famiglia mostrata in FamilySwitcher ma NON nella lista "Tutte" del tab Famiglia
