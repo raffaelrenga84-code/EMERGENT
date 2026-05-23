@@ -20,7 +20,7 @@ function translateRole(role, t) {
   return translated === key ? role : translated;
 }
 
-export default function FamilyTab({ family, members, session, families, activeFamily, isAll, absences = [], profile, tasks = [], onSwitchFamily, onNewFamily, onChanged }) {
+export default function FamilyTab({ family, members, session, families, activeFamily, isAll, absences = [], profile, tasks = [], onSwitchFamily, onNewFamily, onChanged, onFamilyUpdated, onMemberUpdated }) {
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -81,7 +81,15 @@ export default function FamilyTab({ family, members, session, families, activeFa
                   background: 'transparent', border: 'none', cursor: 'pointer',
                   textAlign: 'left',
                 }}>
-                <span style={{ fontSize: 28 }}>{f.emoji}</span>
+                {f.photo_url ? (
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                    background: `url(${f.photo_url}) center/cover no-repeat`,
+                    border: '1.5px solid var(--sm)',
+                  }} data-testid={`family-list-photo-${f.id}`} />
+                ) : (
+                  <span style={{ fontSize: 28 }}>{f.emoji}</span>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{f.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>
@@ -181,7 +189,11 @@ export default function FamilyTab({ family, members, session, families, activeFa
           <EditFamilyModal
             family={editingFamilyAll}
             onClose={() => setEditingFamilyAll(null)}
-            onSaved={() => { setEditingFamilyAll(null); onChanged(); }}
+            onSaved={(updated) => {
+              if (updated && onFamilyUpdated) onFamilyUpdated(updated);
+              setEditingFamilyAll(null);
+              onChanged();
+            }}
             onDeleted={() => { setEditingFamilyAll(null); onChanged(); }}
           />
         )}
@@ -190,7 +202,11 @@ export default function FamilyTab({ family, members, session, families, activeFa
           <EditMemberModal
             member={editingMember}
             onClose={() => setEditingMember(null)}
-            onSaved={() => { setEditingMember(null); onChanged(); }}
+            onSaved={(updated) => {
+              if (updated && onMemberUpdated) onMemberUpdated(updated);
+              setEditingMember(null);
+              onChanged();
+            }}
           />
         )}
 
@@ -410,7 +426,11 @@ export default function FamilyTab({ family, members, session, families, activeFa
         <EditMemberModal
           member={editingMember}
           onClose={() => setEditingMember(null)}
-          onSaved={() => { setEditingMember(null); onChanged(); }}
+          onSaved={(updated) => {
+            if (updated && onMemberUpdated) onMemberUpdated(updated);
+            setEditingMember(null);
+            onChanged();
+          }}
         />
       )}
 
@@ -418,7 +438,11 @@ export default function FamilyTab({ family, members, session, families, activeFa
         <EditFamilyModal
           family={family}
           onClose={() => setEditingFamily(false)}
-          onSaved={() => { setEditingFamily(false); onChanged(); }}
+          onSaved={(updated) => {
+            if (updated && onFamilyUpdated) onFamilyUpdated(updated);
+            setEditingFamily(false);
+            onChanged();
+          }}
           onDeleted={() => { setEditingFamily(false); onChanged(); }}
         />
       )}

@@ -281,6 +281,16 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
     ));
   };
 
+  // Etichette dinamiche: se l'utente ha selezionato un giorno DIVERSO da oggi,
+  // i bucket "Oggi/Futuri/Passati" diventano "📌 <data> / Dopo / Prima di".
+  const isViewingOtherDay = selectedDay && !sameDay(selectedDay, today);
+  const fmtSel = selectedDay
+    ? selectedDay.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })
+    : '';
+  const todayLabel = isViewingOtherDay ? `📌 ${fmtSel}` : t('agenda_today');
+  const futureLabel = isViewingOtherDay ? `🗓️ ${t('agenda_after_label') || 'Dopo'} ${fmtSel}` : t('agenda_future');
+  const pastLabel = isViewingOtherDay ? `⏪ ${t('agenda_before_label') || 'Prima di'} ${fmtSel}` : t('agenda_past');
+
   return (
     <>
       {/* Family chip switcher inline cliccabile. Include 'Tutte' quando >1 famiglia.
@@ -347,7 +357,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
       ) : (
         <>
           <CollapsibleSection
-            label={t('agenda_today')}
+            label={todayLabel}
             count={todayCount + todayAbsences.length}
             open={openSections.today}
             onToggle={() => toggle('today')}
@@ -408,7 +418,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
           </CollapsibleSection>
 
           <CollapsibleSection
-            label={t('agenda_future')}
+            label={futureLabel}
             count={futureCount}
             open={openSections.future}
             onToggle={() => toggle('future')}
@@ -418,7 +428,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
 
           {pastCount > 0 && (
             <CollapsibleSection
-              label={t('agenda_past')}
+              label={pastLabel}
               count={pastCount}
               open={openSections.past}
               onToggle={() => toggle('past')}

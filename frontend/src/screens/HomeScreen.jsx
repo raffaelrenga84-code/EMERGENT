@@ -18,7 +18,7 @@ import AIAssistantDrawer from '../components/AIAssistantDrawer.jsx';
 import AddTaskModal from '../components/AddTaskModal.jsx';
 import AddEventModal from '../components/AddEventModal.jsx';
 
-export default function HomeScreen({ session, profile, families, onRefresh }) {
+export default function HomeScreen({ session, profile, families, onRefresh, onFamilyUpdated }) {
   const { t } = useT();
   const [activeFamily, setActiveFamily] = useState('all');
   const [activeTab, setActiveTab] = useState('bacheca');
@@ -117,6 +117,14 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
 
   const refresh = () => setRefreshKey((k) => k + 1);
   const refreshAll = () => { refresh(); onRefresh && onRefresh(); };
+
+  // Optimistic update locale per i membri (mantiene l'array `members` aggiornato
+  // istantaneamente quando si cambia foto/colore/emoji a un membro). Il successivo
+  // refresh re-fetcha da Supabase per garantire eventual consistency.
+  const updateMemberLocally = (updated) => {
+    if (!updated || !updated.id) return;
+    setMembers((prev) => prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
+  };
 
   // Pull-to-refresh: tira giù il dito in cima a qualsiasi tab → re-fetch
   const { indicator: pullIndicator } = usePullToRefresh(() => { refreshAll(); refreshAbsences(); });
@@ -220,6 +228,8 @@ export default function HomeScreen({ session, profile, families, onRefresh }) {
             tasks={tasks}
             onSwitchFamily={setActiveFamily}
             onNewFamily={() => setShowNewFamily(true)}
+            onFamilyUpdated={onFamilyUpdated}
+            onMemberUpdated={updateMemberLocally}
             onChanged={() => { refreshAll(); refreshAbsences(); }}
           />
         )}

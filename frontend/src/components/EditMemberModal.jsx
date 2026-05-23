@@ -102,6 +102,8 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
       return;
     }
 
+    const updatedMember = data[0];
+
     // Crea (o aggiorna) l'evento compleanno solo se la data è cambiata davvero
     if (birthDate && birthDate !== member.birth_date) {
       const eventData = createBirthdayEventData({ ...member, name: name.trim(), birth_date: birthDate });
@@ -119,7 +121,7 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
       }
     }
 
-    onSaved && onSaved();
+    onSaved && onSaved(updatedMember);
   };
 
   return (

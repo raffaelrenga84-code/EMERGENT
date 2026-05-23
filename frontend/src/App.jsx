@@ -97,6 +97,14 @@ export default function App() {
 
   const refresh = () => setRefreshKey((k) => k + 1);
 
+  // Optimistic update — sostituisce la famiglia aggiornata nello state
+  // senza aspettare il round-trip a Supabase. Garantisce che la foto/emoji/nome
+  // si veda subito in FamilySwitcher, FamilyTab e ovunque legga `families`.
+  const updateFamilyLocally = (updated) => {
+    if (!updated || !updated.id) return;
+    setFamilies((prev) => prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)));
+  };
+
   const lang = profile?.language || detectBrowserLang();
 
   let content;
@@ -123,7 +131,7 @@ export default function App() {
   } else {
     content = (
       <div className="app-shell">
-        <HomeScreen session={session} profile={profile} families={families} onRefresh={refresh} />
+        <HomeScreen session={session} profile={profile} families={families} onRefresh={refresh} onFamilyUpdated={updateFamilyLocally} />
       </div>
     );
   }

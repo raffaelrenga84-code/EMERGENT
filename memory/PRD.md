@@ -1,3 +1,57 @@
+# FAMMY — Family Organization App (Iterazione 15)
+
+## Iterazione 15 (23 maggio 2026) — Foto Famiglia/Membro instant refresh + Agenda labels + SQL idempotency
+
+### Bug fix #1 — Foto famiglia mostrata in FamilySwitcher ma NON nella lista "Tutte" del tab Famiglia
+**Root cause**: `FamilyTab.jsx` riga 84 renderizzava `<span>{f.emoji}</span>` senza
+controllare `f.photo_url`. La foto era salvata correttamente in DB e visibile
+nel FamilySwitcher, ma la lista delle famiglie continuava a mostrare l'emoji.
+
+**Fix**: aggiunto rendering condizionale con `f.photo_url` → div 40×40 con
+`background-image`, fallback emoji se la foto manca.
+
+### Bug fix #2 — SQL `fammy-photo-permissions.sql` non idempotente
+**Root cause**: mancava `drop policy if exists "Family members can update family photo"`
+prima del `create policy`, causando `ERROR 42710: policy already exists` se
+lo script veniva rieseguito.
+
+**Fix**: aggiunto il `drop policy if exists` mancante.
+
+### Bug fix #3 — Agenda "Oggi" mostra elementi del giorno selezionato
+**Root cause**: quando l'utente seleziona un giorno DIVERSO da oggi nel calendario,
+i bucket "Oggi/Futuri/Passati" usano `referenceDay = selectedDay` ma le label
+restavano statiche ("📍 Oggi"). Risultato: "Oggi" mostrava elementi del 29 mag
+mentre today è 23 mag.
+
+**Fix**: nuove label dinamiche:
+- `selectedDay && !sameDay(selectedDay, today)` → `📌 {data} / 🗓️ Dopo il {data} / ⏪ Prima del {data}`
+- altrimenti → label originali (Oggi/Futuri/Passati)
+- Nuove i18n keys `agenda_after_label`, `agenda_before_label` × 4 lingue (IT/EN/FR/DE)
+
+### Feature — Lifting ottimistico dello state per foto famiglia/membro
+Anche se il re-fetch da Supabase funziona, lo state lifting istantaneo
+elimina ogni latenza percepita post-salvataggio. Flow:
+
+1. `EditFamilyModal.onSaved({...family, photo_url})` → `FamilyTab` → `HomeScreen.onFamilyUpdated` → `App.updateFamilyLocally(updated)` → `setFamilies(prev => prev.map(...))` ✅
+2. `EditMemberModal.onSaved(updatedMember)` (ritorna `data[0]` da `.update().select()`) → `FamilyTab` → `HomeScreen.updateMemberLocally(updated)` → `setMembers(prev => prev.map(...))` ✅
+3. Dopo lo state lift, viene comunque chiamato `onChanged()` per il refresh completo da DB (eventual consistency).
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/FamilyTab.jsx` — riga 84: foto famiglia + props `onFamilyUpdated/onMemberUpdated` + propagazione `onSaved(updated)`
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — etichette dinamiche bucket
+- ✏️ `/app/frontend/src/screens/HomeScreen.jsx` — `updateMemberLocally` + forwarding `onFamilyUpdated`
+- ✏️ `/app/frontend/src/App.jsx` — `updateFamilyLocally` + propagazione
+- ✏️ `/app/frontend/src/components/EditMemberModal.jsx` — `onSaved(updatedMember)` (da `data[0]`)
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — `agenda_after_label`, `agenda_before_label` × 4 lingue
+- ✏️ `/app/frontend/fammy-photo-permissions.sql` — `drop policy if exists` mancante
+
+### Testing
+- Lint: tutti i file ✅
+- Smoke test screenshot: login screen renders correctly ✅
+- Verifica funzionale richiede login (Google OAuth) → test manuale dell'utente
+
+---
+
 # FAMMY — Family Organization App (Iterazione 14)
 
 ## Iterazione 14.1 (19 maggio 2026, sera) — Hotfix Bacheca

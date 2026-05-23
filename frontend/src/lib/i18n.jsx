@@ -231,6 +231,7 @@ export const T = {
     // Agenda tab
     agenda_upcoming: 'Prossimi', agenda_past: 'Passati',
     agenda_today: '📍 Oggi', agenda_future: '🗓️ Futuri',
+    agenda_after_label: 'Dopo il', agenda_before_label: 'Prima del',
     agenda_empty_h: 'Nessun evento ancora',
     agenda_empty_p: 'Aggiungi visite mediche, cene, compleanni e altri appuntamenti della famiglia.',
     agenda_delete_confirm: 'Eliminare questo evento?',
@@ -743,6 +744,7 @@ export const T = {
 
     agenda_upcoming: 'Upcoming', agenda_past: 'Past',
     agenda_today: '📍 Today', agenda_future: '🗓️ Upcoming',
+    agenda_after_label: 'After', agenda_before_label: 'Before',
     agenda_empty_h: 'No events yet',
     agenda_empty_p: 'Add doctor appointments, dinners, birthdays and other family events.',
     agenda_delete_confirm: 'Delete this event?',
@@ -1289,6 +1291,7 @@ export const T = {
 
     agenda_upcoming: 'À venir', agenda_past: 'Passés',
     agenda_today: "📍 Aujourd'hui", agenda_future: '🗓️ À venir',
+    agenda_after_label: 'Après le', agenda_before_label: 'Avant le',
     agenda_empty_h: 'Aucun événement pour le moment',
     agenda_empty_p: 'Ajoute des rendez-vous médicaux, dîners, anniversaires et autres événements.',
     agenda_delete_confirm: 'Supprimer cet événement ?',
@@ -1828,6 +1831,7 @@ export const T = {
 
     agenda_upcoming: 'Kommend', agenda_past: 'Vergangen',
     agenda_today: '📍 Heute', agenda_future: '🗓️ Kommend',
+    agenda_after_label: 'Nach dem', agenda_before_label: 'Vor dem',
     agenda_empty_h: 'Noch keine Termine',
     agenda_empty_p: 'Füge Arzttermine, Essen, Geburtstage und weitere Familientermine hinzu.',
     agenda_delete_confirm: 'Diesen Termin löschen?',

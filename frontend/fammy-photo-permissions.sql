@@ -39,6 +39,7 @@ values ('family-photos', 'family-photos', true)
 on conflict (id) do nothing;
 
 drop policy if exists "Family members can upload family photo" on storage.objects;
+drop policy if exists "Family members can update family photo" on storage.objects;
 drop policy if exists "Family members can delete family photo" on storage.objects;
 drop policy if exists "Anyone can read family photo" on storage.objects;
 
