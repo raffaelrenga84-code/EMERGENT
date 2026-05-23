@@ -9,6 +9,7 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
   const [showAdd, setShowAdd] = useState(false);
   const [prefillData, setPrefillData] = useState(null); // dati pre-popolati da "ripeti ultima"
   const [shares, setShares] = useState([]);
+  const [showArchive, setShowArchive] = useState(false);
 
   useEffect(() => {
     if (pendingTask) setShowAdd(true);
@@ -25,14 +26,29 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
     return () => { cancelled = true; };
   }, [expenses]);
 
-  const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-  const totalThisMonth = expenses
-    .filter((e) => {
-      const d = new Date(e.paid_at || e.created_at);
-      const now = new Date();
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    })
-    .reduce((s, e) => s + Number(e.amount || 0), 0);
+  // Una spesa è "saldata" quando tutte le quote dei non-pagatori sono settled.
+  // Le spese senza shares (vecchio formato, senza split) sono considerate
+  // "movimenti attivi" e restano in lista principale.
+  const isExpenseSettled = (exp) => {
+    const expShares = shares.filter((s) => s.expense_id === exp.id);
+    if (expShares.length === 0) return false;
+    const debtors = expShares.filter((s) => s.member_id !== exp.paid_by);
+    if (debtors.length === 0) return true; // solo il pagatore → tecnicamente saldata
+    return debtors.every((s) => s.settled);
+  };
+
+  const activeExpenses = expenses.filter((e) => !isExpenseSettled(e));
+  const settledExpenses = expenses.filter((e) => isExpenseSettled(e))
+    .sort((a, b) => new Date(b.paid_at || b.created_at) - new Date(a.paid_at || a.created_at));
+
+  // Totali "questo mese" sui due bucket per dare contesto
+  const inThisMonth = (e) => {
+    const d = new Date(e.paid_at || e.created_at);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  };
+  const totalThisMonth = expenses.filter(inThisMonth).reduce((s, e) => s + Number(e.amount || 0), 0);
+  const totalOpenThisMonth = activeExpenses.filter(inThisMonth).reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const balances = computeBalances(expenses, shares, members);
 
@@ -53,14 +69,100 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
 
   const sharesForExpense = (expenseId) => shares.filter((s) => s.expense_id === expenseId);
 
+  // Render della singola card spesa. Estratto in funzione per riusarla sia
+  // nella lista "Movimenti" attivi sia dentro "Archivio".
+  const renderExpenseCard = (e) => {
+    const payer = members.find((m) => m.id === e.paid_by);
+    const expShares = sharesForExpense(e.id);
+    const settled = isExpenseSettled(e);
+    return (
+      <div key={e.id} className="card" style={{
+        marginBottom: 8,
+        opacity: settled ? 0.82 : 1,
+        background: settled ? 'var(--gnB)' : 'white',
+        border: settled ? '1px solid #B8DAC7' : undefined,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {settled && (
+                <span style={{
+                  fontSize: 10, fontWeight: 800,
+                  padding: '2px 7px', borderRadius: 100,
+                  background: 'var(--gn)', color: 'white',
+                  letterSpacing: '0.04em',
+                }} data-testid={`expense-settled-badge-${e.id}`}>
+                  ✓ {(t('expenses_settled_label') || 'saldata').toUpperCase()}
+                </span>
+              )}
+              <span>{e.description || t('addexpense_h')}</span>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>
+              {payer ? `${t('expenses_paid_by_short')} ${payer.name}` : ''} · {fmtDate(e.paid_at || e.created_at)}
+            </div>
+          </div>
+          <div style={{ fontWeight: 700, fontFamily: 'var(--fs)', fontSize: 16 }}>
+            € {Number(e.amount).toFixed(2)}
+          </div>
+          {(!e.created_by || e.created_by === me?.id) && (
+            <button onClick={() => removeExpense(e.id)}
+              style={{ background: 'none', border: 'none', color: 'var(--km)', fontSize: 16, padding: 4 }}
+              title="Elimina (solo creatore)">✕</button>
+          )}
+        </div>
+
+        {expShares.length > 0 && (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--sm)' }}>
+            <div style={{ fontSize: 11, color: 'var(--km)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>
+              {t('expenses_owed_by')}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {expShares.map((s) => {
+                const m = members.find((x) => x.id === s.member_id);
+                if (!m) return null;
+                const isPayer = s.member_id === e.paid_by;
+                return (
+                  <div key={s.member_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, opacity: s.settled ? 0.5 : 1 }}>
+                    <Avatar m={m} small />
+                    <span style={{ flex: 1, textDecoration: s.settled ? 'line-through' : 'none' }}>
+                      {m.name} {isPayer && <em style={{ color: 'var(--km)' }}>(ha pagato)</em>}
+                    </span>
+                    <span style={{ fontWeight: 600 }}>€ {Number(s.amount).toFixed(2)}</span>
+                    {!isPayer && (
+                      <button onClick={() => settleShare(e.id, s.member_id, !s.settled)}
+                        style={{
+                          padding: '4px 10px', borderRadius: 100, border: '1px solid',
+                          borderColor: s.settled ? 'var(--gn)' : 'var(--sm)',
+                          background: s.settled ? 'var(--gnB)' : 'white',
+                          color: s.settled ? 'var(--gn)' : 'var(--km)',
+                          fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                        }}>
+                        {s.settled ? t('expenses_share_unsettle') : t('expenses_share_settle')}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <div style={{ padding: '8px 16px 0' }}>
         <div className="card" style={{ background: 'var(--k)', color: 'white', textAlign: 'center', padding: 24 }}>
-          <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 4 }}>{t('expenses_total')}</div>
-          <div style={{ fontSize: 32, fontWeight: 700, fontFamily: 'var(--fs)' }}>€ {total.toFixed(2)}</div>
+          <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 4 }}>
+            💸 {t('expenses_open_h') || 'Da saldare'}
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 700, fontFamily: 'var(--fs)' }}>€ {totalOpenThisMonth.toFixed(2)}</div>
           <div style={{ fontSize: 13, opacity: 0.7, marginTop: 8 }}>
             {t('expenses_this_month')}: € {totalThisMonth.toFixed(2)}
+            {settledExpenses.length > 0 && (
+              <span style={{ marginLeft: 8 }}>· ✅ {settledExpenses.length} {t('expenses_settled_label') || 'saldate'}</span>
+            )}
           </div>
         </div>
       </div>
@@ -97,69 +199,42 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
         </div>
       ) : (
         <>
-          <div className="sh"><span className="sh-l">{t('expenses_movements')}</span><span className="sh-c">{expenses.length}</span></div>
-          <div className="list">
-            {expenses.map((e) => {
-              const payer = members.find((m) => m.id === e.paid_by);
-              const expShares = sharesForExpense(e.id);
-              return (
-                <div key={e.id} className="card" style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600 }}>{e.description || t('addexpense_h')}</div>
-                      <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>
-                        {payer ? `${t('expenses_paid_by_short')} ${payer.name}` : ''} · {fmtDate(e.paid_at || e.created_at)}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 700, fontFamily: 'var(--fs)', fontSize: 16 }}>
-                      € {Number(e.amount).toFixed(2)}
-                    </div>
-                    {(!e.created_by || e.created_by === me?.id) && (
-                      <button onClick={() => removeExpense(e.id)}
-                        style={{ background: 'none', border: 'none', color: 'var(--km)', fontSize: 16, padding: 4 }}
-                        title="Elimina (solo creatore)">✕</button>
-                    )}
-                  </div>
+          {activeExpenses.length > 0 && (
+            <>
+              <div className="sh"><span className="sh-l">{t('expenses_movements')}</span><span className="sh-c">{activeExpenses.length}</span></div>
+              <div className="list">
+                {activeExpenses.map((e) => renderExpenseCard(e))}
+              </div>
+            </>
+          )}
 
-                  {expShares.length > 0 && (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--sm)' }}>
-                      <div style={{ fontSize: 11, color: 'var(--km)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>
-                        {t('expenses_owed_by')}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {expShares.map((s) => {
-                          const m = members.find((x) => x.id === s.member_id);
-                          if (!m) return null;
-                          const isPayer = s.member_id === e.paid_by;
-                          return (
-                            <div key={s.member_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, opacity: s.settled ? 0.5 : 1 }}>
-                              <Avatar m={m} small />
-                              <span style={{ flex: 1, textDecoration: s.settled ? 'line-through' : 'none' }}>
-                                {m.name} {isPayer && <em style={{ color: 'var(--km)' }}>(ha pagato)</em>}
-                              </span>
-                              <span style={{ fontWeight: 600 }}>€ {Number(s.amount).toFixed(2)}</span>
-                              {!isPayer && (
-                                <button onClick={() => settleShare(e.id, s.member_id, !s.settled)}
-                                  style={{
-                                    padding: '4px 10px', borderRadius: 100, border: '1px solid',
-                                    borderColor: s.settled ? 'var(--gn)' : 'var(--sm)',
-                                    background: s.settled ? 'var(--gnB)' : 'white',
-                                    color: s.settled ? 'var(--gn)' : 'var(--km)',
-                                    fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                                  }}>
-                                  {s.settled ? t('expenses_share_unsettle') : t('expenses_share_settle')}
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {activeExpenses.length === 0 && settledExpenses.length > 0 && (
+            <div style={{
+              padding: '32px 22px 12px', textAlign: 'center',
+              color: 'var(--km)',
+            }} data-testid="all-settled-banner">
+              <div style={{ fontSize: 40, marginBottom: 6 }}>✨</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--k)', marginBottom: 4 }}>
+                {t('expenses_all_settled_h') || 'Tutto in pari!'}
+              </div>
+              <p style={{ fontSize: 13, margin: 0, lineHeight: 1.4 }}>
+                {t('expenses_all_settled_p') || 'Non ci sono spese da saldare in questo momento. Trova le spese passate nell\'archivio qui sotto.'}
+              </p>
+            </div>
+          )}
+
+          {settledExpenses.length > 0 && (
+            <SettledArchive
+              expenses={settledExpenses}
+              members={members}
+              shares={shares}
+              me={me}
+              open={showArchive}
+              onToggle={() => setShowArchive((v) => !v)}
+              renderExpenseCard={renderExpenseCard}
+              t={t}
+            />
+          )}
         </>
       )}
 
@@ -254,4 +329,52 @@ function Avatar({ m, small }) {
 function fmtDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/**
+ * SettledArchive — sezione collassabile in fondo a SpeseTab che raggruppa
+ * tutte le spese saldate. Default chiusa (utente già "ha gestito" quelle spese).
+ * All'apertura mostra il totale archiviato + lista delle card spesa.
+ */
+function SettledArchive({ expenses, members, shares, me, open, onToggle, renderExpenseCard, t }) {
+  const totalArchive = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  return (
+    <div style={{ marginTop: 20, marginBottom: 4 }} data-testid="expenses-archive-section">
+      <button
+        type="button"
+        onClick={onToggle}
+        data-testid="expenses-archive-toggle"
+        className="collapsible-header"
+        style={{
+          borderLeft: '4px solid var(--gn)',
+          paddingLeft: 16,
+          background: open ? 'var(--gnB)' : 'transparent',
+        }}>
+        <span className="collapsible-arrow" style={{ transform: open ? 'rotate(90deg)' : 'rotate(0)' }}>›</span>
+        <span className="collapsible-label" style={{ fontWeight: 600, fontSize: 14, color: 'var(--gn)' }}>
+          ✅ {t('expenses_archive_h') || 'Archivio · Saldate'}
+        </span>
+        <span className="collapsible-count" style={{
+          fontWeight: 700, fontSize: 12,
+          background: 'var(--gn)', color: 'white',
+        }}>{expenses.length}</span>
+      </button>
+      {open && (
+        <>
+          <div style={{
+            padding: '8px 22px 4px', fontSize: 12, color: 'var(--km)',
+            display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
+          }}>
+            <span>{t('expenses_archive_hint') || 'Spese chiuse: nessuno deve più nulla.'}</span>
+            <span style={{ fontWeight: 700, color: 'var(--gn)' }}>
+              {t('expenses_archive_total') || 'Totale archiviato'}: € {totalArchive.toFixed(2)}
+            </span>
+          </div>
+          <div className="list">
+            {expenses.map((e) => renderExpenseCard(e))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }

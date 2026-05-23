@@ -40,6 +40,8 @@ export default function TaskDetailModal({
   // Numero di messaggi nuovi arrivati mentre il tab Chat NON è attivo.
   // Reset a 0 appena l'utente passa al tab Chat.
   const [unreadCount, setUnreadCount] = useState(0);
+  // Idem per il tab Allegati (nuovi allegati / spese collegate)
+  const [unreadAttach, setUnreadAttach] = useState(0);
   const [busy, setBusy] = useState(false);
   const [showDelegate, setShowDelegate] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -134,6 +136,50 @@ export default function TaskDetailModal({
   // Ref per leggere activeTab dentro il callback realtime senza re-subscribe
   const activeTabRef = useRef(activeTab);
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
+  // Realtime: ascolta nuovi allegati e spese linkate. Badge unread su tab Allegati.
+  useEffect(() => {
+    if (!realTaskId) return;
+    const attCh = supabase
+      .channel(`task-attachments-${realTaskId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'task_attachments',
+        filter: `task_id=eq.${realTaskId}`,
+      }, (payload) => {
+        const att = payload.new;
+        if (!att) return;
+        setAttachments((prev) => prev.some((a) => a.id === att.id) ? prev : [...prev, att]);
+        const isMine = me?.id && att.uploaded_by === me.id;
+        if (!isMine) {
+          setUnreadAttach((n) => (activeTabRef.current === 'attach' ? 0 : n + 1));
+        }
+      })
+      .subscribe();
+    const expCh = supabase
+      .channel(`task-expenses-link-${realTaskId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'expenses',
+        filter: `task_id=eq.${realTaskId}`,
+      }, (payload) => {
+        const exp = payload.new;
+        if (!exp) return;
+        setLinkedExpenses((prev) => prev.some((e) => e.id === exp.id) ? prev : [...prev, exp]);
+        const isMine = me?.id && exp.created_by === me.id;
+        if (!isMine) {
+          setUnreadAttach((n) => (activeTabRef.current === 'attach' ? 0 : n + 1));
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(attCh);
+      supabase.removeChannel(expCh);
+    };
+  }, [realTaskId, me?.id]);
+
+  // Reset unread quando l'utente entra nel tab Allegati
+  useEffect(() => {
+    if (activeTab === 'attach' && unreadAttach > 0) setUnreadAttach(0);
+  }, [activeTab, unreadAttach]);
 
   // Reset unread quando l'utente entra nel tab Chat
   useEffect(() => {
@@ -485,7 +531,7 @@ export default function TaskDetailModal({
           tabs={[
             { id: 'details', label: t('td_tab_details') || 'Dettagli', icon: '📋' },
             { id: 'thread',  label: t('td_tab_thread')  || 'Chat',     icon: '💬', count: comments.length, dot: unreadCount > 0 },
-            { id: 'attach',  label: t('td_tab_attach')  || 'Allegati', icon: '📎', count: attachments.length + linkedExpenses.length },
+            { id: 'attach',  label: t('td_tab_attach')  || 'Allegati', icon: '📎', count: attachments.length + linkedExpenses.length, dot: unreadAttach > 0 },
           ]}
           active={activeTab}
           onChange={setActiveTab}
