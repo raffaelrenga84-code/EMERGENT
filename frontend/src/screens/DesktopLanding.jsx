@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { useT } from '../lib/i18n.jsx';
 
+const LANG_LABELS = [
+  { code: 'it', flag: '🇮🇹', label: 'IT' },
+  { code: 'en', flag: '🇬🇧', label: 'EN' },
+  { code: 'fr', flag: '🇫🇷', label: 'FR' },
+  { code: 'de', flag: '🇩🇪', label: 'DE' },
+];
+
 /**
  * DesktopLanding — landing page mostrata solo a chi visita FAMMY da desktop
  * senza essere loggato. FAMMY è un'app pensata per mobile (PWA installabile),
@@ -12,9 +19,12 @@ import { useT } from '../lib/i18n.jsx';
  *  - viewport width >= 1024
  *  - touch === false (no tablet)
  *  - pointer === fine (mouse)
+ *
+ * Lingua: rilevata automaticamente da navigator.language tramite l'I18nProvider
+ * di App.jsx. L'utente può forzarla con i flag in alto a destra.
  */
 export default function DesktopLanding({ onContinueAnyway }) {
-  const { t } = useT();
+  const { t, lang, setLang } = useT();
   const appUrl = window.location.origin;
   const [showQR, setShowQR] = useState(false);
 
@@ -28,7 +38,45 @@ export default function DesktopLanding({ onContinueAnyway }) {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '40px 24px',
+        position: 'relative',
       }}>
+      {/* Language switcher in alto a destra. La lingua iniziale è già auto-
+          rilevata da navigator.language; questo permette comunque l'override
+          manuale (es. browser in inglese, ma l'utente preferisce l'italiano). */}
+      <div style={{
+        position: 'absolute', top: 20, right: 24,
+        display: 'flex', gap: 6,
+        background: 'white', padding: '6px 8px',
+        borderRadius: 100, border: '1px solid var(--sm)',
+        boxShadow: '0 2px 8px rgba(28,22,17,0.05)',
+        zIndex: 10,
+      }} data-testid="dl-lang-switcher">
+        {LANG_LABELS.map((l) => {
+          const active = lang === l.code;
+          return (
+            <button
+              key={l.code}
+              type="button"
+              onClick={() => setLang(l.code)}
+              data-testid={`dl-lang-${l.code}`}
+              aria-label={l.label}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '4px 10px', borderRadius: 100,
+                border: 'none',
+                background: active ? 'var(--k)' : 'transparent',
+                color: active ? 'white' : 'var(--km)',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                letterSpacing: '0.03em',
+                transition: 'background 0.15s, color 0.15s',
+              }}>
+              <span style={{ fontSize: 13, lineHeight: 1 }}>{l.flag}</span>
+              <span>{l.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(280px, 480px) minmax(280px, 360px)',
