@@ -6,6 +6,7 @@ import EventDetailModal from '../../components/EventDetailModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import CalendarShareModal from '../../components/CalendarShareModal.jsx';
 import ExportAllCalendarsModal from '../../components/ExportAllCalendarsModal.jsx';
+import ExportSheet from '../../components/ExportSheet.jsx';
 import FamilySwitcher from '../../components/FamilySwitcher.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
@@ -122,6 +123,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const [showExportAll, setShowExportAll] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState(null);
   const [showAbsence, setShowAbsence] = useState(false);
+  const [showExportSheet, setShowExportSheet] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1);
   });
@@ -129,10 +131,6 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const [openSections, setOpenSections] = useState({ today: false, future: false, past: false });
   const [onlyMine, setOnlyMine] = useState(true);
   const [eventAssignees, setEventAssignees] = useState([]);
-  // Quando siamo in "Tutte le famiglie": permette di selezionare quali
-  // famiglie includere nell'export del calendario telefono. Di default tutte.
-  const [exportFamilies, setExportFamilies] = useState(null); // null = init lazy
-  const [showExportPicker, setShowExportPicker] = useState(false);
 
   // Carica gli assegnatari di eventi per il filtro "Solo a me"
   useEffect(() => {
@@ -337,53 +335,6 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
               {filteredEvents.length + filteredTasks.length} risultat{(filteredEvents.length + filteredTasks.length) === 1 ? 'o' : 'i'}
             </span>
           )}
-        </div>
-      )}
-
-      {targetFamily && (
-        <div style={{ padding: '4px 16px 12px', display: 'flex', gap: 8, flexDirection: 'column' }}>
-          {/* Picker famiglie quando siamo in "Tutte le famiglie" — l'utente
-              può scegliere quali esportare nel calendario del telefono. */}
-          {isAll && families.length > 1 && (
-            <ExportFamiliesPicker
-              families={families}
-              selected={exportFamilies === null ? families.map((f) => f.id) : exportFamilies}
-              onChange={setExportFamilies}
-              t={t}
-            />
-          )}
-
-          {/* PULSANTE 1: Apple Calendar (.ics) */}
-          <button
-            className="btn full"
-            data-testid="agenda-export-iphone-btn"
-            onClick={() => exportToCalendar({ provider: 'apple', events, tasks, families, targetFamily, isAll, exportFamilies, filterEvent, filterTask })}
-            style={{
-              background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
-              color: 'white', border: 'none',
-              padding: '12px 18px', borderRadius: 14,
-              fontSize: 14, fontWeight: 700,
-              boxShadow: '0 6px 18px rgba(193,98,75,0.28)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}>
-            <span style={{ fontSize: 18 }}>📲</span>
-            <span>{t('export_to_iphone') || 'Aggiungi a iPhone'}</span>
-          </button>
-
-          {/* PULSANTE 2: Google Calendar */}
-          <button
-            className="btn full secondary"
-            data-testid="agenda-export-google-btn"
-            onClick={() => exportToCalendar({ provider: 'google', events, tasks, families, targetFamily, isAll, exportFamilies, filterEvent, filterTask })}
-            style={{
-              padding: '12px 18px', borderRadius: 14,
-              fontSize: 14, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              border: '1.5px solid var(--sm)',
-            }}>
-            <span style={{ fontSize: 18 }}>📅</span>
-            <span>{t('export_to_google') || 'Aggiungi a Google Calendar'}</span>
-          </button>
         </div>
       )}
 
