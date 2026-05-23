@@ -13,6 +13,33 @@ import InviteAcceptScreen from './screens/InviteAcceptScreen.jsx';
 import CookieConsentBanner, { getConsent } from './components/CookieConsentBanner.jsx';
 import PrivacyPolicyModal from './components/PrivacyPolicyModal.jsx';
 import ToastListener from './components/ToastListener.jsx';
+import DesktopLanding from './screens/DesktopLanding.jsx';
+
+// Riconosce un device "desktop puro" (no touch, mouse, schermo grande).
+// Tablet / iPad rimangono mobile-mode perché supportano touch.
+// Combiniamo viewport + user-agent + pointer per evitare falsi positivi
+// (es. Playwright headless che riporta pointer:fine anche con viewport mobile).
+function isDesktopDevice() {
+  if (typeof window === 'undefined') return false;
+  // Override esplicito via querystring per testing: ?desktop=1 / ?mobile=1
+  const qs = new URLSearchParams(window.location.search);
+  if (qs.get('mobile') === '1') return false;
+  if (qs.get('desktop') === '1') return true;
+  // User-agent mobile → sempre mobile, anche su viewport ridimensionata
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPod|Android.*Mobile|Mobile.*Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+    return false;
+  }
+  // iPad recenti mandano UA macOS: distinguiamo via touch
+  if (/iPad|Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1) {
+    return false;
+  }
+  if (window.innerWidth < 768) return false;
+  const wideViewport = window.innerWidth >= 1024;
+  const finePointer = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+  const noTouch = !('ontouchstart' in window) && (navigator.maxTouchPoints || 0) === 0;
+  return wideViewport && finePointer && noTouch;
+}
 
 // Applica preferenze utente (tema + accessibilità) al primo render
 applyTheme(getCurrentTheme());
@@ -37,6 +64,13 @@ export default function App() {
   // dopo aver ricevuto la session. Evita il "flash" di WelcomeScreen per utenti
   // esistenti mentre families e' ancora in caricamento.
   const [dataLoaded, setDataLoaded] = useState(false);
+  // Desktop landing: mostra la pagina marketing solo per utenti NON loggati
+  // su un device desktop. L'utente può sempre forzare l'accesso "desktop"
+  // tramite il link in fondo alla landing (salvato in localStorage).
+  const [forceDesktop, setForceDesktop] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('fammy_force_desktop') === '1'
+  );
+  const isDesktop = isDesktopDevice();
 
   // Salva avatar Google + registra Push subscription
   useGoogleAvatar(session, profile);
@@ -125,7 +159,18 @@ export default function App() {
       </div>
     );
   } else if (!session) {
-    content = <div className="app-shell"><LoginScreen /></div>;
+    // Desktop landing solo se: PC, NON loggato, NON c'è invite token, e
+    // l'utente non ha già forzato il bypass.
+    if (isDesktop && !forceDesktop && !inviteToken) {
+      content = (
+        <DesktopLanding onContinueAnyway={() => {
+          localStorage.setItem('fammy_force_desktop', '1');
+          setForceDesktop(true);
+        }} />
+      );
+    } else {
+      content = <div className="app-shell"><LoginScreen /></div>;
+    }
   } else if (families.length === 0) {
     content = <div className="app-shell"><WelcomeScreen session={session} profile={profile} onCreated={refresh} /></div>;
   } else {

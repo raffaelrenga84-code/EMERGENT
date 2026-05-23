@@ -430,12 +430,12 @@ function NotificationToggle({ enabled, onChange }) {
 function TestPushButton({ session }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [msgTone, setMsgTone] = useState('info'); // 'info' | 'success' | 'warn' | 'error'
 
   const sendTest = async () => {
     if (!session?.user?.id) return;
-    setBusy(true); setMsg('');
+    setBusy(true); setMsg(''); setMsgTone('info');
     try {
-      // Recupera il token utente per autenticare la chiamata
       const { data: { session: s } } = await supabase.auth.getSession();
       const token = s?.access_token;
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -453,20 +453,52 @@ function TestPushButton({ session }) {
           tag: 'test-push',
         }),
       });
-      const data = await res.json();
+
+      // Edge Function non deployata: Supabase Gateway risponde 404
+      if (res.status === 404) {
+        setMsg('La funzione push non è ancora attiva sul server. Continueremo a mostrarti gli avvisi mentre l\'app è aperta.');
+        setMsgTone('info');
+        return;
+      }
+
+      let data = {};
+      try { data = await res.json(); } catch { /* non-JSON response */ }
+
       if (data.sent && data.sent > 0) {
         setMsg(`✅ Inviata a ${data.sent} dispositiv${data.sent === 1 ? 'o' : 'i'}.`);
+        setMsgTone('success');
       } else if (data.reason === 'no_subscriptions') {
-        setMsg('⚠️ Nessuna subscription registrata. Ricarica la pagina dopo aver concesso il permesso notifiche.');
+        setMsg('Nessun dispositivo registrato. Ricarica la pagina dopo aver concesso il permesso notifiche.');
+        setMsgTone('warn');
+      } else if (!res.ok) {
+        setMsg('Notifiche push in arrivo — per ora ricevi gli avvisi in app.');
+        setMsgTone('info');
       } else {
-        setMsg(`⚠️ ${data.error || 'Nessuna notifica inviata.'} Verifica che le Edge Function siano deployate.`);
+        setMsg(data.error || 'Nessuna notifica inviata.');
+        setMsgTone('warn');
       }
     } catch (e) {
-      setMsg(`❌ Errore: ${e.message}`);
+      // Network error / function non raggiungibile: messaggio educato
+      const isNetwork = e && (e.name === 'TypeError' || /load failed|failed to fetch/i.test(e.message || ''));
+      if (isNetwork) {
+        setMsg('Push non disponibili al momento. Riceverai comunque gli avvisi in app.');
+        setMsgTone('info');
+      } else {
+        setMsg(`Errore: ${e.message}`);
+        setMsgTone('error');
+      }
     } finally {
       setBusy(false);
     }
   };
+
+  const toneStyles = {
+    success: { bg: 'var(--gnB)', color: 'var(--gn)', icon: '✅' },
+    warn:    { bg: '#FFF6E5',   color: '#9A6300',  icon: '⚠️' },
+    error:   { bg: '#FDECEC',   color: '#A93B2B',  icon: '❌' },
+    info:    { bg: 'var(--ab)', color: 'var(--km)', icon: 'ℹ️' },
+  };
+  const tone = toneStyles[msgTone] || toneStyles.info;
 
   return (
     <div style={{
@@ -479,7 +511,17 @@ function TestPushButton({ session }) {
         style={{ fontSize: 13, padding: '10px 14px' }}>
         {busy ? <span className="spin dark" /> : '🔔 Invia notifica di test'}
       </button>
-      {msg && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--km)', lineHeight: 1.4 }}>{msg}</div>}
+      {msg && (
+        <div style={{
+          marginTop: 8, padding: '8px 10px', borderRadius: 8,
+          background: tone.bg, color: tone.color,
+          fontSize: 12, fontWeight: 600, lineHeight: 1.4,
+          display: 'flex', alignItems: 'flex-start', gap: 6,
+        }} data-testid="profile-test-push-msg">
+          <span style={{ flexShrink: 0 }}>{tone.icon}</span>
+          <span>{msg}</span>
+        </div>
+      )}
     </div>
   );
 }

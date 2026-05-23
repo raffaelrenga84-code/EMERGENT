@@ -22,6 +22,9 @@ export default function WeeklyEmailSyncToggle({ session }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  // true se la tabella user_preferences non esiste in DB (migration mancante).
+  // In quel caso mostriamo un messaggio educato invece dell'errore tecnico.
+  const [tableMissing, setTableMissing] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -34,7 +37,17 @@ export default function WeeklyEmailSyncToggle({ session }) {
         .maybeSingle();
       if (cancelled) return;
       if (error && error.code !== 'PGRST116') {
-        setErr(error.message);
+        // PGRST205 = table not found in schema cache
+        // 42P01 = relation does not exist
+        if (
+          error.code === 'PGRST205' ||
+          error.code === '42P01' ||
+          (error.message || '').toLowerCase().includes('could not find the table')
+        ) {
+          setTableMissing(true);
+        } else {
+          setErr(error.message);
+        }
       } else if (data) {
         setEnabled(!!data.weekly_email_sync);
         setLastSentAt(data.weekly_email_last_sent_at);
@@ -45,7 +58,7 @@ export default function WeeklyEmailSyncToggle({ session }) {
   }, [userId]);
 
   const toggle = async () => {
-    if (!userId) return;
+    if (!userId || tableMissing) return;
     setSaving(true); setErr('');
     const next = !enabled;
     const { error } = await supabase
@@ -55,7 +68,14 @@ export default function WeeklyEmailSyncToggle({ session }) {
         weekly_email_sync: next,
       }, { onConflict: 'user_id' });
     if (error) {
-      setErr(error.message);
+      if (
+        error.code === 'PGRST205' || error.code === '42P01' ||
+        (error.message || '').toLowerCase().includes('could not find the table')
+      ) {
+        setTableMissing(true);
+      } else {
+        setErr(error.message);
+      }
     } else {
       setEnabled(next);
       window.dispatchEvent(new CustomEvent('fammy_toast', {
@@ -77,6 +97,10 @@ export default function WeeklyEmailSyncToggle({ session }) {
       </div>
     );
   }
+
+  // Migration mancante: non mostriamo nulla. La funzionalità si renderizza
+  // automaticamente non appena l'utente esegue fammy-weekly-sync.sql.
+  if (tableMissing) return null;
 
   return (
     <div
