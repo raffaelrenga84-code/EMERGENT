@@ -1,32 +1,122 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT, LANGS } from '../lib/i18n.jsx';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal.jsx';
+import DesktopLanding from './DesktopLanding.jsx'; // mantenuto intatto
 
-export default function LoginScreen() {
-  const { t, lang, setLang } = useT();
-  const [errorMsg, setErrorMsg] = useState('');
-  const [showPrivacy, setShowPrivacy] = useState(false);
+// Lista paesi estesa
+const COUNTRIES = [
+  { code: 'IT', prefix: '+39', flag: '🇮🇹', label: 'Italia' },
+  { code: 'GB', prefix: '+44', flag: '🇬🇧', label: 'Regno Unito' },
+  { code: 'US', prefix: '+1',  flag: '🇺🇸', label: 'USA' },
+  { code: 'AU', prefix: '+61', flag: '🇦🇺', label: 'Australia' },
+  { code: 'DE', prefix: '+49', flag: '🇩🇪', label: 'Germania' },
+  { code: 'FR', prefix: '+33', flag: '🇫🇷', label: 'Francia' },
+  { code: 'ES', prefix: '+34', flag: '🇪🇸', label: 'Spagna' },
+  { code: 'PT', prefix: '+351', flag: '🇵🇹', label: 'Portogallo' },
+  { code: 'NL', prefix: '+31', flag: '🇳🇱', label: 'Paesi Bassi' },
+  { code: 'BE', prefix: '+32', flag: '🇧🇪', label: 'Belgio' },
+  { code: 'CH', prefix: '+41', flag: '🇨🇭', label: 'Svizzera' },
+  { code: 'AT', prefix: '+43', flag: '🇦🇹', label: 'Austria' },
+  { code: 'SE', prefix: '+46', flag: '🇸🇪', label: 'Svezia' },
+  { code: 'NO', prefix: '+47', flag: '🇳🇴', label: 'Norvegia' },
+  { code: 'DK', prefix: '+45', flag: '🇩🇰', label: 'Danimarca' },
+  { code: 'FI', prefix: '+358', flag: '🇫🇮', label: 'Finlandia' },
+  { code: 'IE', prefix: '+353', flag: '🇮🇪', label: 'Irlanda' },
+  { code: 'PL', prefix: '+48', flag: '🇵🇱', label: 'Polonia' },
+  { code: 'CZ', prefix: '+420', flag: '🇨🇿', label: 'Repubblica Ceca' },
+  { code: 'HU', prefix: '+36', flag: '🇭🇺', label: 'Ungheria' },
+  { code: 'RO', prefix: '+40', flag: '🇷🇴', label: 'Romania' },
+  { code: 'GR', prefix: '+30', flag: '🇬🇷', label: 'Grecia' },
+  { code: 'TR', prefix: '+90', flag: '🇹🇷', label: 'Turchia' },
+  { code: 'BR', prefix: '+55', flag: '🇧🇷', label: 'Brasile' },
+  { code: 'MX', prefix: '+52', flag: '🇲🇽', label: 'Messico' },
+  { code: 'AR', prefix: '+54', flag: '🇦🇷', label: 'Argentina' },
+  { code: 'ZA', prefix: '+27', flag: '🇿🇦', label: 'Sudafrica' },
+  { code: 'IN', prefix: '+91', flag: '🇮🇳', label: 'India' },
+  { code: 'JP', prefix: '+81', flag: '🇯🇵', label: 'Giappone' },
+  { code: 'KR', prefix: '+82', flag: '🇰🇷', label: 'Corea del Sud' },
+  { code: 'CN', prefix: '+86', flag: '🇨🇳', label: 'Cina' },
+  { code: 'NZ', prefix: '+64', flag: '🇳🇿', label: 'Nuova Zelanda' }
+];
 
-  const loginWithProvider = async (provider) => {
-    setErrorMsg('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: window.location.origin },
-    });
-    if (error) setErrorMsg(error.message);
+const LANG_TO_COUNTRY = { it: 'IT', en: 'GB', 'en-US': 'US', 'en-AU': 'AU', de: 'DE', fr: 'FR' };
+
+function detectCountryIso() {
+  if (typeof navigator === 'undefined') return 'IT';
+  const lang = navigator.language || navigator.userLanguage || 'it';
+  if (LANG_TO_COUNTRY[lang]) return LANG_TO_COUNTRY[lang];
+  const base = lang.split('-')[0];
+  return LANG_TO_COUNTRY[base] || 'IT';
+}
+
+/* ---------- PhoneStep: inserimento numero e invio OTP ---------- */
+function PhoneStep({ onSent, t, lang, setLang }) {
+  const [countryCode, setCountryCode] = useState(detectCountryIso());
+  const [phone, setPhone] = useState(''); // solo numero locale (senza prefisso)
+  const [channel, setChannel] = useState('whatsapp'); // preselezionato WhatsApp
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const country = COUNTRIES.find((c) => c.code === countryCode) || COUNTRIES[0];
+
+  const buildFullPhone = (rawInput) => {
+    const raw = (rawInput || '').trim();
+    if (!raw) return null;
+    if (raw.startsWith('+')) {
+      const cleaned = '+' + raw.replace(/[^\d]/g, '');
+      return cleaned;
+    }
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return null;
+    return `${country.prefix}${digits}`;
+  };
+
+  const handleSend = async () => {
+    setError('');
+    const fullPhone = buildFullPhone(phone);
+    if (!fullPhone) {
+      setError('Inserisci un numero valido.');
+      return;
+    }
+    const digitsOnly = fullPhone.replace(/[^\d]/g, '');
+    if (digitsOnly.length < 7) {
+      setError('Inserisci un numero valido.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error: err } = await supabase.auth.signInWithOtp({
+        phone: fullPhone,
+        options: { data: { channel }, shouldCreateUser: true },
+      });
+      if (err) {
+        setError(err.message || 'Errore invio codice');
+      } else {
+        onSent(fullPhone);
+      }
+    } catch (e) {
+      setError(e?.message || 'Errore imprevisto');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="login-wrap">
+    <>
       <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 4 }}>
         {LANGS.map((l) => (
-          <button key={l.id} onClick={() => setLang(l.id)}
+          <button
+            key={l.id}
+            onClick={() => setLang(l.id)}
             style={{
               background: 'none', border: 'none', fontSize: 18, padding: 6,
               opacity: lang === l.id ? 1 : 0.4, cursor: 'pointer',
             }}
-            title={l.label}>
+            title={l.label}
+            aria-label={`Seleziona lingua ${l.label}`}
+          >
             {l.flag}
           </button>
         ))}
@@ -36,62 +126,238 @@ export default function LoginScreen() {
       <h1 className="login-h">FAMMY</h1>
       <p className="login-s" style={{ whiteSpace: 'pre-line' }}>{t('app_tagline')}</p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <button type="button" className="oauth-btn" onClick={() => loginWithProvider('google')}
-          data-testid="login-with-google"
-          style={{ padding: '12px 16px', fontSize: 14 }}>
-          <GoogleIcon />
-          <span>{t('login_with_google')}</span>
-        </button>
-
-        <button
-          type="button"
-          className="oauth-btn"
-          data-testid="login-with-apple"
-          onClick={() => loginWithProvider('apple')}
+      {/* Country select compact (tendina più piccola) */}
+      <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--km)', textTransform: 'uppercase', marginRight: 6 }}>
+          {t('login_country') || 'Paese'}
+        </label>
+        <select
+          value={countryCode}
+          onChange={(e) => setCountryCode(e.target.value)}
           style={{
-            padding: '12px 16px', fontSize: 14,
-            background: '#000', color: '#fff', border: '1px solid #000',
-            width: '100%',
+            width: 160,
+            padding: '8px 10px',
+            borderRadius: 10,
+            border: '1.5px solid var(--sm)',
+            background: 'var(--ab)',
+            fontSize: 13,
+            color: 'var(--k)'
           }}
+          aria-label="Seleziona paese"
         >
-          <AppleIcon />
-          <span>{t('login_with_apple')}</span>
-        </button>
+          {COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.flag} {c.label} ({c.prefix})
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Warning anti-doppione: evita che lo stesso utente crei due account
-          (uno con Google su gmail, uno con Apple su iCloud). */}
-      <div style={{
-        marginTop: 14, padding: '10px 14px', borderRadius: 12,
-        background: 'var(--amB)', border: '1px solid var(--am)',
-        display: 'flex', alignItems: 'flex-start', gap: 8,
-      }}>
-        <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
-        <span style={{ fontSize: 12, color: 'var(--k)', lineHeight: 1.4 }}>
-          {t('login_warn_dup')}
-        </span>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--km)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+          {t('login_phone') || 'Numero di cellulare'}
+        </label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {/* Prefisso mostrato una sola volta */}
+          <div style={{ padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--sm)', background: 'var(--ab)', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {country.flag} {country.prefix}
+          </div>
+
+          {/* Input: solo numero locale, placeholder senza prefisso */}
+          <input
+            type="tel"
+            inputMode="numeric"
+            placeholder={t('phone_local_placeholder') || '333 123 4567'}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--sm)', background: 'var(--ab)', fontSize: 15, color: 'var(--k)' }}
+            aria-label="Numero di telefono"
+          />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--km)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+          {t('login_channel') || 'Ricevi il codice via'}
+        </label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => setChannel('sms')}
+            style={{
+              flex: 1, padding: '10px 8px', borderRadius: 12, cursor: 'pointer',
+              fontSize: 13, fontWeight: 700,
+              border: channel === 'sms' ? '2px solid var(--ac)' : '1.5px solid var(--sm)',
+              background: channel === 'sms' ? 'var(--acB, #FFF5EE)' : 'var(--ab)',
+              color: channel === 'sms' ? 'var(--ac)' : 'var(--km)',
+            }}
+          >
+            SMS
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setChannel('whatsapp')}
+            style={{
+              flex: 1, padding: '10px 8px', borderRadius: 12, cursor: 'pointer',
+              fontSize: 13, fontWeight: 700,
+              border: channel === 'whatsapp' ? '2px solid var(--ac)' : '1.5px solid var(--sm)',
+              background: channel === 'whatsapp' ? 'var(--acB, #FFF5EE)' : 'var(--ab)',
+              color: channel === 'whatsapp' ? 'var(--ac)' : 'var(--km)',
+            }}
+          >
+            WhatsApp
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleSend}
+        disabled={loading}
+        style={{ width: '100%', padding: '13px 16px', borderRadius: 14, background: loading ? 'var(--sm)' : 'var(--ac)', color: 'white', border: 'none', fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer' }}
+      >
+        {loading ? 'Invio...' : (t('login_send_code') || 'Invia codice')}
+      </button>
+
+      {error && <div className="login-msg error" style={{ marginTop: 10 }}>{error}</div>}
+    </>
+  );
+}
+
+/* ---------- OtpStep: inserimento codice e verifica ---------- */
+function OtpStep({ phone, onBack, t }) {
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [seconds, setSeconds] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+
+  useEffect(() => {
+    if (seconds <= 0) { setCanResend(true); return; }
+    const id = setTimeout(() => setSeconds((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [seconds]);
+
+  const handleChange = (val, idx) => {
+    const next = [...otp];
+    next[idx] = val.slice(-1);
+    setOtp(next);
+    if (val && idx < 5) {
+      document.getElementById(`otp-${idx + 1}`)?.focus();
+    }
+  };
+
+  const verify = async () => {
+    const token = otp.join('');
+    if (token.length !== 6) { setError('Inserisci tutte e 6 le cifre.'); return; }
+    setError(''); setLoading(true);
+    try {
+      const { error: err } = await supabase.auth.verifyOtp?.({ phone, token, type: 'sms' }) || { error: null };
+      setLoading(false);
+      if (err) setError(err.message);
+    } catch (e) {
+      setLoading(false);
+      setError(e?.message || 'Errore verifica OTP');
+    }
+  };
+
+  const resend = async () => {
+    setCanResend(false); setSeconds(60); setError('');
+    await supabase.auth.signInWithOtp({ phone });
+  };
+
+  return (
+    <>
+      <button type="button" onClick={onBack} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--km)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 12 }}>
+        {t('back') || 'Indietro'}
+      </button>
+
+      <div className="login-logo" />
+      <h1 className="login-h" style={{ fontSize: 22 }}>{t('login_otp_title') || 'Inserisci il codice'}</h1>
+      <p className="login-s">{t('login_otp_sent_to') || 'Codice inviato a'} <strong>{phone}</strong></p>
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', margin: '20px 0' }}>
+        {otp.map((v, i) => (
+          <input
+            key={i}
+            id={`otp-${i}`}
+            type="text"
+            inputMode="numeric"
+            maxLength={1}
+            value={v}
+            onChange={(e) => handleChange(e.target.value, i)}
+            onKeyDown={(e) => { if (e.key === 'Backspace' && !v && i > 0) document.getElementById(`otp-${i - 1}`)?.focus(); }}
+            style={{ width: 44, height: 52, textAlign: 'center', fontSize: 22, fontWeight: 700, borderRadius: 12, border: v ? '2px solid var(--ac)' : '1.5px solid var(--sm)', background: 'var(--ab)', color: 'var(--k)' }}
+          />
+        ))}
+      </div>
+
+      <div style={{ textAlign: 'center', marginBottom: 16, fontSize: 13, color: 'var(--km)' }}>
+        {canResend
+          ? <button type="button" onClick={resend} style={{ background: 'none', border: 'none', color: 'var(--ac)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('login_resend') || 'Rinvia codice'}</button>
+          : <span>{t('login_resend_in') || 'Rinvia tra'} <strong>{seconds}s</strong></span>
+        }
+      </div>
+
+      <button type="button" onClick={verify} disabled={loading} style={{ width: '100%', padding: '13px 16px', borderRadius: 14, background: loading ? 'var(--sm)' : 'var(--ac)', color: 'white', border: 'none', fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer' }}>
+        {loading ? 'Verifica...' : (t('login_verify') || 'Verifica')}
+      </button>
+
+      {error && <div className="login-msg error" style={{ marginTop: 10 }}>{error}</div>}
+    </>
+  );
+}
+
+/* ---------- Componente principale LoginScreen ---------- */
+export default function LoginScreen() {
+  const { t, lang, setLang } = useT();
+  const [step, setStep] = useState('phone'); // 'phone' | 'otp'
+  const [phone, setPhone] = useState('');
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSent = (fullPhone) => {
+    setPhone(fullPhone);
+    setStep('otp');
+  };
+
+  const loginWithProvider = useCallback(async (provider) => {
+    setErrorMsg('');
+    try {
+      const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: redirectTo ? { redirectTo } : undefined,
+      });
+      if (error) setErrorMsg(error.message || 'Errore login');
+    } catch (e) {
+      setErrorMsg(e?.message || 'Errore imprevisto');
+    }
+  }, []);
+
+  return (
+    <div className="login-wrap" style={{ display: 'flex', flexDirection: 'column' }}>
+      {step === 'phone' && <PhoneStep t={t} lang={lang} setLang={setLang} onSent={handleSent} />}
+
+      {step === 'otp' && <OtpStep phone={phone} t={t} onBack={() => setStep('phone')} />}
+
+      <div style={{ marginTop: 12 }}>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button type="button" onClick={() => loginWithProvider('google')} className="oauth-btn" style={{ padding: '12px 16px', fontSize: 14 }}>
+            <GoogleIcon /> <span>{t('login_with_google')}</span>
+          </button>
+        </div>
       </div>
 
       {errorMsg && <div className="login-msg error" style={{ marginTop: 12 }}>{errorMsg}</div>}
 
-      <p style={{
-        position: 'absolute', bottom: 20, left: 0, right: 0, textAlign: 'center',
-        fontSize: 12, color: 'var(--km)', padding: '0 24px', lineHeight: 1.5,
-      }}>
+      <p style={{ position: 'absolute', bottom: 20, left: 0, right: 0, textAlign: 'center', fontSize: 12, color: 'var(--km)', padding: '0 24px', lineHeight: 1.5 }}>
         {t('login_legal_pre')}{' '}
-        <button
-          type="button"
-          onClick={() => setShowPrivacy(true)}
-          data-testid="login-open-privacy"
-          style={{
-            background: 'none', border: 'none', padding: 0, font: 'inherit',
-            color: 'var(--ac)', textDecoration: 'underline', cursor: 'pointer',
-          }}
-        >
+        <button type="button" onClick={() => setShowPrivacy(true)} data-testid="login-open-privacy" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--ac)', textDecoration: 'underline', cursor: 'pointer' }}>
           {t('privacy_h')}
-        </button>
-        .
+        </button>.
       </p>
 
       {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
@@ -99,6 +365,7 @@ export default function LoginScreen() {
   );
 }
 
+/* ---------- Icone ---------- */
 function AppleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
