@@ -179,7 +179,11 @@ begin
   exception when undefined_table then null;
   end;
 
-  -- Copia il phone su A se A non ne ha uno
+  -- Copia il phone su A se A non ne ha uno.
+  -- IMPORTANTE: prima azzeriamo il phone su B per evitare il violation
+  -- del unique index profiles_phone_idx (entrambi avrebbero lo stesso numero).
+  update public.profiles set phone = null where id = v_source;
+
   update public.profiles
     set phone = coalesce(public.profiles.phone, v_phone_b)
     where id = auth.uid();
