@@ -507,7 +507,6 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
       <FabSpeedDial
         testid="agenda-fab"
         actions={[
-          { id: 'event',   icon: '📅', label: t('fab_new_event')   || 'Nuovo evento',   onClick: () => setShowAdd(true),     testid: 'agenda-fab-new-event' },
           { id: 'task',    icon: '📋', label: t('fab_new_task')    || 'Nuovo incarico', onClick: () => setShowAddTask(true), testid: 'agenda-fab-new-task' },
           { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza',  onClick: () => setShowAbsence(true), testid: 'agenda-fab-new-absence' },
         ]}
