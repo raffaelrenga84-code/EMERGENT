@@ -145,7 +145,7 @@ export default function PhoneLoginModal({ onClose, prefillPhone = '' }) {
               />
             </div>
             <p style={{ marginTop: 6, fontSize: 11, color: 'var(--km)' }}>
-              {t('phone_hint') || 'Esempio: 333 1234567 (senza prefisso 0 iniziale).'}
+              {hintForCountry(countryCode, t)}
             </p>
 
             {err && (
@@ -166,6 +166,9 @@ export default function PhoneLoginModal({ onClose, prefillPhone = '' }) {
                 ? (t('phone_sending') || 'Invio in corso…')
                 : `📨 ${t('phone_send_btn') || 'Invia codice SMS'}`}
             </button>
+
+            {/* Recovery — "Hai cambiato numero?" */}
+            <PhoneRecoveryHint />
           </form>
         )}
 
@@ -256,3 +259,55 @@ export default function PhoneLoginModal({ onClose, prefillPhone = '' }) {
     </div>
   );
 }
+
+// Hint specifico per paese. Per la maggior parte dei paesi non aggiungiamo
+// note sulla "0 iniziale" (è una regola IT/UK, non globale). Restituiamo
+// quindi una hint generica e quella IT-specifica solo per +39 e +44.
+function hintForCountry(code, t) {
+  if (code === '+39') return t('phone_hint_it');
+  if (code === '+44') return t('phone_hint_uk');
+  if (code === '+1')  return t('phone_hint_us');
+  return t('phone_hint_generic');
+}
+
+/**
+ * PhoneRecoveryHint — sezione "Hai cambiato numero?" sotto al form SMS.
+ * Click → toggle pannello che spiega all'utente cosa fare per recuperare
+ * l'account (login con altro provider + update da Profilo, oppure email
+ * di supporto se non aveva collegato altri provider).
+ */
+function PhoneRecoveryHint() {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 12 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        data-testid="phone-recovery-toggle"
+        style={{
+          background: 'transparent', border: 'none',
+          color: 'var(--ac)', textDecoration: 'underline',
+          fontSize: 12, cursor: 'pointer', padding: 0,
+          fontWeight: 600,
+        }}>
+        🤔 {t('phone_recovery_link')}
+      </button>
+      {open && (
+        <div
+          data-testid="phone-recovery-box"
+          style={{
+            marginTop: 8, padding: 12, borderRadius: 12,
+            background: 'var(--ab)', border: '1px solid var(--sm)',
+            fontSize: 12, color: 'var(--k)', lineHeight: 1.5,
+          }}>
+          <strong>{t('phone_recovery_h')}</strong>
+          <div style={{ marginTop: 6, color: 'var(--km)' }}>
+            {t('phone_recovery_p')}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

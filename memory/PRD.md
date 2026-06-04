@@ -6,6 +6,40 @@
 
 ### Iterazione 16.3.3 — Auto-detect paese + search-bar nei prefissi
 
+### Iterazione 16.3.4 — Hint prefisso per paese + recovery numero
+
+#### Bug fix — Hint "senza prefisso 0 iniziale" mostrato anche per paesi non-IT
+Il vecchio testo era specifico per Italia. Adesso:
+- `+39` → "Esempio: 333 1234567 (senza prefisso 0 iniziale)."
+- `+44` → "Esempio: 7700 900123 (senza 0 iniziale)." (anche UK ha leading 0)
+- `+1` → "Esempio: 555 123 4567 (10 cifre)."
+- altri → "Inserisci il numero senza il prefisso internazionale." (generico)
+
+Helper `hintForCountry(code, t)` in PhoneLoginModal.
+
+#### Feature — "Hai cambiato numero?" (recovery)
+Sotto al bottone "Invia codice SMS" c'è un link sottile "🤔 Hai perso
+l'accesso al tuo numero?" che apre un pannello informativo:
+- Se l'utente aveva collegato Google → "Accedi con Google e aggiorna il
+  numero dal Profilo" (flow già esistente in `ProfilePhoneCard`)
+- Se solo telefono → email support `fammyapp@gmail.com`
+
+#### File modificati / nuovi
+- ✏️ `/app/frontend/src/components/PhoneLoginModal.jsx` — hint condizionale
+  + componente `PhoneRecoveryHint` interno
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 7 nuove key × 4 lingue:
+  `phone_hint_generic`, `phone_hint_it`, `phone_hint_uk`, `phone_hint_us`,
+  `phone_recovery_h`, `phone_recovery_p`, `phone_recovery_link`
+
+#### Testing
+- Lint: ✅
+- **Interactive Playwright**: ✅ paese cambiato ad Australia → hint diventa
+  generico ("Enter the number without the international prefix.");
+  recovery toggle funziona
+
+---
+
+
 #### Feature 1 — Auto-detect del paese
 - ➕ `/app/frontend/src/lib/detectCountry.js`: utility `detectCountryCode()`
   che restituisce il prefisso E.164 più probabile.
