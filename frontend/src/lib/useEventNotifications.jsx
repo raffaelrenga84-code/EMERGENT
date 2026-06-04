@@ -347,11 +347,16 @@ export function useEventNotifications(session, profile, families, events, taskAs
     };
 
     const handleAction = (action, data) => {
-      const taskId = data?.taskId;
+      // Supporta sia data.taskId (vecchio) sia data.task_id (nuovo, dal trigger DB)
+      const taskId = data?.taskId || data?.task_id;
       if (!taskId) return;
       if (action === 'claim')  return void claimTask(taskId);
       if (action === 'remind') return void remindTask(taskId);
-      // 'open' o default: focus su task (no-op qui, l'app è già focus)
+      // 'open' o default: apri direttamente il task (anche se l'app è già aperta).
+      // Dispatcho un evento globale che HomeScreen ascolta per aprire il modale.
+      window.dispatchEvent(new CustomEvent('fammy_open_task', {
+        detail: { taskId, kind: data?.kind || 'task' },
+      }));
     };
 
     // 1) Listener Service Worker (app già aperta al click della notifica)
@@ -365,13 +370,14 @@ export function useEventNotifications(session, profile, families, events, taskAs
     }
 
     // 2) Query param all'avvio (app aperta dal click di un'action button
-    //    quando non era già live)
+    //    quando non era già live, OPPURE click su notifica chat).
     try {
       const params = new URLSearchParams(window.location.search);
       const action = params.get('fammy_action');
       const taskId = params.get('task');
-      if (action && taskId) {
-        handleAction(action, { taskId });
+      if (taskId) {
+        // Se c'è solo `?task=...` senza action → trattalo come "open"
+        handleAction(action || 'open', { taskId });
         // pulisci l'URL
         const url = new URL(window.location.href);
         url.searchParams.delete('fammy_action');

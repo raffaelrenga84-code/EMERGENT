@@ -37,6 +37,24 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   // AI-driven prefill modals (opened when the AI assistant emits an ACTION)
   const [aiTaskPrefill, setAiTaskPrefill] = useState(null); // { title, category, due_date }
   const [aiEventPrefill, setAiEventPrefill] = useState(null); // { title, starts_at, location }
+  // Task da aprire automaticamente quando arriva da una push notification
+  // (Service Worker → window.dispatchEvent('fammy_open_task'))
+  const [openTaskId, setOpenTaskId] = useState(null);
+
+  // Ascolta notifiche push che chiedono di aprire un task specifico (chat).
+  // Cambia tab a Bacheca e setta openTaskId → BachecaTab lo intercetta e apre
+  // il TaskDetailModal su quel task.
+  useEffect(() => {
+    const handler = (e) => {
+      const taskId = e?.detail?.taskId;
+      if (!taskId) return;
+      setActiveTab('bacheca');
+      setActiveFamily('all');
+      setOpenTaskId(taskId);
+    };
+    window.addEventListener('fammy_open_task', handler);
+    return () => window.removeEventListener('fammy_open_task', handler);
+  }, []);
 
   // Helper: pick the family the AI-created item should land in.
   // Priority: currently-active family → first family the user belongs to.
@@ -184,6 +202,8 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             isAll={isAll}
             onChanged={() => { refresh(); refreshAbsences(); }}
             onOpenExpenseForTask={openExpenseForTask}
+            openTaskId={openTaskId}
+            onTaskOpened={() => setOpenTaskId(null)}
           />
         )}
         {activeTab === 'agenda' && (

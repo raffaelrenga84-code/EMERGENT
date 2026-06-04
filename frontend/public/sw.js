@@ -73,7 +73,13 @@ self.addEventListener('notificationclick', event => {
   // l'action al client. Default = 'open'.
   const action = event.action || 'open';
   const data = event.notification.data || {};
-  const targetUrl = '/';
+  // Priorità: data.url custom > task_id/taskId > default home
+  const customUrl = data.url || (
+    data.task_id || data.taskId
+      ? `/?task=${encodeURIComponent(data.task_id || data.taskId)}`
+      : null
+  );
+  const targetUrl = customUrl || '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
@@ -89,13 +95,9 @@ self.addEventListener('notificationclick', event => {
             return client.focus();
           }
         }
-        // Altrimenti apri nuova finestra: passa action via query param
-        // così il client può gestirla al boot.
+        // Altrimenti apri nuova finestra al target diretto
         if (clients.openWindow) {
-          const url = action !== 'open'
-            ? `${targetUrl}?fammy_action=${encodeURIComponent(action)}&task=${encodeURIComponent(data.taskId || '')}`
-            : targetUrl;
-          return clients.openWindow(url);
+          return clients.openWindow(targetUrl);
         }
       })
   );

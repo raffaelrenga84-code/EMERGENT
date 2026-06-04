@@ -56,7 +56,12 @@ export default function MergeAccountModal({ session, onClose, onMerged }) {
       }
       // Best effort cleanup: cancella eventuali richieste rimaste a metà.
       // Non bloccare se fallisce (RLS: utente potrebbe non avere righe da cancellare).
-      supabase.rpc('fammy_cancel_merge').catch(() => {});
+      // NB: supabase.rpc() in v2 ritorna un PostgrestBuilder thenable, NON un
+      // Promise nativo — serve .then() (con error handler nel secondo arg)
+      // per evitare "TypeError: .catch is not a function" in alcuni bundler.
+      try {
+        supabase.rpc('fammy_cancel_merge').then(() => {}, () => {});
+      } catch { /* ignore */ }
     };
   }, []);
 

@@ -12,7 +12,7 @@ import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
-export default function BachecaTab({ familyId, families, tasks, members, taskAssignees = [], absences = [], profile, me, session, isAll, onChanged, onOpenExpenseForTask }) {
+export default function BachecaTab({ familyId, families, tasks, members, taskAssignees = [], absences = [], profile, me, session, isAll, onChanged, onOpenExpenseForTask, openTaskId, onTaskOpened }) {
   const allMembers = members;
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
@@ -29,6 +29,18 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   // quando il filtro 'followup' è attivo: mini-timeline degli ultimi system msg.
   const [followUpHistory, setFollowUpHistory] = useState({});
   const family = families?.find((f) => f.id === familyId);
+
+  // Auto-apre il TaskDetailModal quando arriva una richiesta esterna (push
+  // notification cliccata → HomeScreen passa `openTaskId`). Una volta aperto,
+  // notifica al parent così non rifa l'auto-open al refresh successivo.
+  useEffect(() => {
+    if (!openTaskId) return;
+    const target = (tasks || []).find((tk) => tk.id === openTaskId);
+    if (target) {
+      setSelTask(target);
+      onTaskOpened && onTaskOpened();
+    }
+  }, [openTaskId, tasks, onTaskOpened]);
 
   const ST_LABEL = {
     todo: t('section_todo'), taken: 'In carico', done: 'Fatto', to_pay: 'Da pagare',
