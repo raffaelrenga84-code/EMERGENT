@@ -43,7 +43,28 @@
 
 
 html, body { background: var(--s); font-family: var(--fn); color: var(--k); -webkit-font-smoothing: antialiased; }
-body { min-height: 100vh; }
+body { min-height: 100vh; overflow-x: hidden; }
+
+/* Anti-overflow orizzontale: alcune pagine hanno chip lunghi, immagini wide
+   o tabelle che sforavano la viewport e creavano scroll laterale indesiderato.
+   Vincoliamo l'app-shell e tutti i suoi figli a stare dentro la viewport. */
+.app-shell { overflow-x: hidden; }
+.app-shell > *,
+.app-shell .modal,
+.app-shell .card,
+.app-shell .tc,
+.app-shell .list {
+  max-width: 100%;
+}
+/* Forza il word-break su testi lunghi (URL, email, codici invito, IBAN…) */
+.app-shell h1, .app-shell h2, .app-shell h3, .app-shell h4,
+.app-shell p, .app-shell .modal-sub, .app-shell .tc-title,
+.app-shell .profile-value, .app-shell .label, .app-shell button span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+/* Immagini fluide */
+.app-shell img { max-width: 100%; height: auto; }
 
 input, textarea, select { font-family: var(--fn); direction: ltr; }
 button { font-family: var(--fn); cursor: pointer; }
@@ -355,6 +376,57 @@ html[data-theme="dark"] .tc.other { background: #251A2A; }
 html[data-theme="dark"] .bnav { background: var(--sm); border-top-color: rgba(255,255,255,.08); }
 html[data-theme="dark"] .fam-chip.on,
 html[data-theme="dark"] .btn { background: var(--k); color: var(--s); }
+
+/* ------------------------------------------------------------------
+   Dark theme: rimedia ai background hardcoded "white" / "#fff" che
+   molti componenti React usano inline. Anche i bordi chiari e i
+   colori di testo che assumevano un fondo bianco.
+   Pattern matchati con attribute-selectors (case-insensitive). */
+html[data-theme="dark"] [style*="background: white"],
+html[data-theme="dark"] [style*="background:white"],
+html[data-theme="dark"] [style*="background: #fff"],
+html[data-theme="dark"] [style*="background:#fff"],
+html[data-theme="dark"] [style*="background-color: white"],
+html[data-theme="dark"] [style*="background-color:#fff"] {
+  background: var(--sm) !important;
+}
+html[data-theme="dark"] [style*="border: 1.5px solid var(--sm)"],
+html[data-theme="dark"] [style*="border: 1px solid var(--sm)"],
+html[data-theme="dark"] [style*="border:1.5px solid var(--sm)"],
+html[data-theme="dark"] [style*="border:1px solid var(--sm)"] {
+  border-color: var(--sd) !important;
+}
+/* Sfondi sand chiari → sfondi scuri */
+html[data-theme="dark"] [style*="background: var(--ab)"],
+html[data-theme="dark"] [style*="background:var(--ab)"] {
+  background: var(--sm) !important;
+}
+/* Sfondi "soft" colorati specifici (gnB, amB, rdB, puB) — preservali
+   ma li scuriamo un po' per restare leggibili sopra il dark bg. */
+html[data-theme="dark"] [style*="var(--gnB)"] { background: #1F2C1F !important; }
+html[data-theme="dark"] [style*="var(--amB)"] { background: #3A2E1A !important; }
+html[data-theme="dark"] [style*="var(--rdB)"] { background: #2E1818 !important; }
+html[data-theme="dark"] [style*="var(--puB)"] { background: #221F2C !important; }
+
+/* Toast / banner / pill di errore che usano hex chiari hardcoded */
+html[data-theme="dark"] [style*="background: #FDECEC"],
+html[data-theme="dark"] [style*="background:#FDECEC"] { background: #2E1818 !important; color: #E89898 !important; }
+html[data-theme="dark"] [style*="background: #FFF6E5"],
+html[data-theme="dark"] [style*="background:#FFF6E5"] { background: #2C2412 !important; color: #E8C272 !important; }
+
+/* Bottoni "ghost" / chip non attivi con sfondo bianco — testo va portato
+   a colore chiaro perché il browser lo lascerebbe scuro su scuro. */
+html[data-theme="dark"] button[style*="background: white"] {
+  color: var(--k) !important;
+}
+/* === High contrast on dark === */
+html[data-theme="dark"] .modal h2,
+html[data-theme="dark"] .modal-sub,
+html[data-theme="dark"] .empty h3,
+html[data-theme="dark"] label,
+html[data-theme="dark"] .profile-label,
+html[data-theme="dark"] .profile-value,
+html[data-theme="dark"] .sh-l { color: var(--k) !important; }
 
 /* High contrast */
 html[data-high-contrast="true"] {
