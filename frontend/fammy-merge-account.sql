@@ -36,6 +36,12 @@ drop policy if exists "merge_req_insert_self" on fammy_merge_requests;
 create policy "merge_req_insert_self" on fammy_merge_requests for insert
   to authenticated with check (source_user_id = auth.uid());
 
+drop policy if exists "merge_req_update_self" on fammy_merge_requests;
+create policy "merge_req_update_self" on fammy_merge_requests for update
+  to authenticated
+  using (source_user_id = auth.uid())
+  with check (source_user_id = auth.uid());
+
 drop policy if exists "merge_req_delete_own" on fammy_merge_requests;
 create policy "merge_req_delete_own" on fammy_merge_requests for delete
   to authenticated using (source_user_id = auth.uid() or target_user_id = auth.uid());

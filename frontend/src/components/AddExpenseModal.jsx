@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { toLocalYMD } from '../lib/dateUtils.js';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 
@@ -12,7 +13,7 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
       : (prefilledExpense?.description || '')
   );
   const [paidBy, setPaidBy] = useState(defaultPaidBy || members[0]?.id || '');
-  const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
+  const [paidAt, setPaidAt] = useState(toLocalYMD());
   const [splitMode, setSplitMode] = useState('equal'); // 'equal' | 'custom'
   const [splitMembers, setSplitMembers] = useState([]); // member.id array
   const [customAmounts, setCustomAmounts] = useState({}); // {member_id: number}

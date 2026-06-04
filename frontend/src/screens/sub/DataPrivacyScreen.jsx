@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toLocalYMD } from '../../lib/dateUtils.js';
 import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
 import PrivacyPolicyModal from '../../components/PrivacyPolicyModal.jsx';
@@ -87,7 +88,7 @@ export default function DataPrivacyScreen({ session, onBack }) {
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const dateStr = new Date().toISOString().slice(0, 10);
+      const dateStr = toLocalYMD();
       a.href = url;
       a.download = `fammy-data-${dateStr}.json`;
       document.body.appendChild(a);

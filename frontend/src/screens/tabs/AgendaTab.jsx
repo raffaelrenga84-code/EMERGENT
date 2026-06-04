@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toLocalYMD } from '../../lib/dateUtils.js';
 import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
 import AddEventModal from '../../components/AddEventModal.jsx';
@@ -473,7 +474,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
               return Array.isArray(a.visible_to_families) && a.visible_to_families.includes(familyId);
             });
             if (visibleAbsences.length === 0) return null;
-            const today = new Date().toISOString().slice(0, 10);
+            const today = toLocalYMD();
             const inFuture = visibleAbsences.filter((a) => a.end_date >= today)
               .sort((a, b) => a.start_date.localeCompare(b.start_date));
             return inFuture.length > 0 ? (

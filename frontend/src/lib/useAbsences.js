@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { toLocalYMD } from './dateUtils.js';
 import { supabase } from './supabase.js';
 
 /**
@@ -53,7 +54,7 @@ export function useAbsences(session, refreshKey = 0) {
  */
 export function findActiveAbsence(absences, userId, isoDate) {
   if (!absences || !userId) return null;
-  const today = isoDate || new Date().toISOString().slice(0, 10);
+  const today = isoDate || toLocalYMD();
   return absences.find((a) =>
     a.user_id === userId &&
     a.start_date <= today &&

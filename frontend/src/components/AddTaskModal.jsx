@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { toLocalYMD } from '../lib/dateUtils.js';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
@@ -169,7 +170,7 @@ export default function AddTaskModal({
     // Check assenze: se almeno un assegnatario sarà via nel periodo della
     // task, chiediamo conferma prima di salvare.
     if (assignees.length > 0 && absences && absences.length > 0) {
-      const checkDate = dueDate || new Date().toISOString().slice(0, 10);
+      const checkDate = dueDate || toLocalYMD();
       const busyMembers = [];
       for (const aId of assignees) {
         const m = members.find((mm) => mm.id === aId);
@@ -477,8 +478,8 @@ export default function AddTaskModal({
                             // periodo della task (oggi se nessuna due_date).
                             const overlap = findAbsenceOverlap(
                               absences, m.user_id,
-                              dueDate || new Date().toISOString().slice(0, 10),
-                              dueDate || new Date().toISOString().slice(0, 10),
+                              dueDate || toLocalYMD(),
+                              dueDate || toLocalYMD(),
                             );
                             return (
                               <button key={m.id} type="button"

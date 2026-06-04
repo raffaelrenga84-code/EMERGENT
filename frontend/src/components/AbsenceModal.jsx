@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toLocalYMD } from '../lib/dateUtils.js';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
@@ -31,7 +32,7 @@ export default function AbsenceModal({
 }) {
   const { t, lang } = useT();
   const isEdit = !!editingAbsence;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalYMD();
   const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })();
   const inAWeek = (() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); })();
 

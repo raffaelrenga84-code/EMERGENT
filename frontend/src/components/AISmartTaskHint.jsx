@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { toLocalYMD } from '../lib/dateUtils.js';
 import { Sparkles } from 'lucide-react';
 import { aiClient } from '../lib/aiClient.js';
 import { useT } from '../lib/i18n.jsx';
@@ -48,7 +49,7 @@ export default function AISmartTaskHint({ title, onApply, currentCategory }) {
     timer.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = toLocalYMD();
         const res = await aiClient.suggestTask({ title: title.trim(), today, lang });
         if (ALLOWED.includes(res.category)) {
           setSuggestion(res);
