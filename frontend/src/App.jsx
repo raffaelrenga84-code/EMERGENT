@@ -6,6 +6,7 @@ import { applyTheme, getCurrentTheme, initThemeAutoListener } from './screens/su
 import { applyA11ySettings } from './screens/sub/AccessibilityScreen.jsx';
 import { useGoogleAvatar } from './lib/useGoogleAvatar.js';
 import { usePushSubscription } from './lib/usePushSubscription.js';
+import { useAppBadgeClear } from './lib/useAppBadge.js';
 import LoginScreen from './screens/LoginScreen.jsx';
 import WelcomeScreen from './screens/WelcomeScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
@@ -76,6 +77,8 @@ export default function App() {
   // Salva avatar Google + registra Push subscription
   useGoogleAvatar(session, profile);
   usePushSubscription(session);
+  // Pulisce il badge rosso sull'icona quando l'app è in primo piano
+  useAppBadgeClear();
 
   useEffect(() => {
     const savedSession = localStorage.getItem('fammy_session');

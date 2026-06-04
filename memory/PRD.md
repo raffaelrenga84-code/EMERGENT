@@ -1,3 +1,78 @@
+# FAMMY — Family Organization App (Iterazione 16)
+
+## Iterazione 16 (4 giugno 2026) — Push commenti + Badge rosso + Diagnostica push
+
+### Bug fix #1 — Notifiche push per nuovi commenti su task
+**Root cause**: in `TaskDetailModal.addComment()` veniva fatto solo l'INSERT in
+`task_responses`. Nessun trigger DB e nessuna chiamata frontend a `send-push`,
+quindi gli altri membri non ricevevano NIENTE (né con app chiusa né con app
+aperta su un altro device).
+
+**Fix**:
+- Nuovo helper `/app/frontend/src/lib/pushClient.js` con `sendPush()` e
+  `memberIdsToUserIds()` (risolve member_id → user_id batch).
+- `addComment()` ora, dopo l'INSERT del commento, calcola la lista di
+  destinatari (autore originale del task + assegnatari attuali +
+  `delegated_from`) e chiama `send-push` con un payload tipo
+  `💬 <NomeAutore> ha scritto · "<title>" · "<preview>"` + `tag:
+  task-comment-<id>` + `data: { task_id }`.
+- Best-effort: i fallimenti sono silenti, l'app non si rompe se
+  l'edge function è giù.
+
+### Bug fix #2 — Manca il "numerino rosso" (App Badge) sull'icona
+**Root cause**: il Service Worker mostrava la notifica via
+`registration.showNotification(...)` ma non chiamava mai la Badging API.
+
+**Fix**:
+- `/app/frontend/public/sw.js`:
+  - Nel `push` handler, dopo `showNotification`, chiamo
+    `navigator.setAppBadge(count)` con il count delle notifiche
+    FAMMY ancora visibili.
+  - Nel `notificationclick` handler, chiamo `clearAppBadge()` (con
+    fallback su `setAppBadge(0)`) per pulire il badge appena l'utente
+    apre.
+  - Nel `message` handler, supporto un messaggio `CLEAR_BADGE` dal client.
+- `/app/frontend/src/lib/useAppBadge.js`: nuovo hook
+  `useAppBadgeClear()` che pulisce il badge quando l'app diventa
+  visibile (`visibilitychange` + `focus`).
+- `/app/frontend/src/App.jsx`: monto `useAppBadgeClear()`.
+- ⚠️ iOS: la Badging API funziona SOLO se FAMMY è installata come PWA
+  (Aggiungi a Home, iOS 16.4+).
+
+### Feature — Diagnostica push nel Profilo
+**Perché**: l'utente ha segnalato che "Silvia" non riceve il digest serale
+delle 21:00. Spesso il motivo è che il device di Silvia non ha mai
+registrato una `push_subscription` (Safari iOS senza PWA, permessi
+negati, ecc.).
+
+**Fix**: nuova card `PushDiagnosticCard` in ProfileTab → Notifiche, accanto
+al bottone "Invia notifica di test". Mostra:
+- ✅ numero di dispositivi registrati per ricevere push (per quell'utente)
+- l'elenco con tipo device (📱 iPhone / 💻 Mac / …) + ultima volta usata
+- un hint giallo specifico per Safari iOS non-standalone:
+  "Aggiungi FAMMY alla Home per ricevere le push"
+- pulsante ↻ refresh manuale
+
+### File modificati / nuovi
+- ➕ `/app/frontend/src/lib/pushClient.js` — helper `sendPush()` + `memberIdsToUserIds()`
+- ➕ `/app/frontend/src/lib/useAppBadge.js` — hook + utility `clearBadge()`
+- ✏️ `/app/frontend/src/components/TaskDetailModal.jsx` — `addComment()` ora dispatcha push
+- ✏️ `/app/frontend/public/sw.js` — Badging API in `push`/`notificationclick`/`message`
+- ✏️ `/app/frontend/src/App.jsx` — monta `useAppBadgeClear`
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx` — `PushDiagnosticCard`
+
+### Testing
+- Lint: tutti i file ✅
+- Smoke test screenshot: landing rende correttamente ✅
+- Test end-to-end richiede:
+  1. Edge Function `send-push` già deployata su Supabase ✅ (l'utente l'ha già fatto)
+  2. `fammy_private.config` con `service_role_key` impostato ⚠️ — l'utente
+     deve verificare di aver eseguito l'INSERT finale del file
+     `fammy-push-notifications.sql` (vedi commento riga 134-139)
+  3. Almeno 2 utenti con FAMMY installato come PWA e permessi notifica concessi
+
+---
+
 # FAMMY — Family Organization App (Iterazione 15)
 
 ## Iterazione 15.1 (23 maggio 2026, sera) — UX Agenda + Tab Famiglia

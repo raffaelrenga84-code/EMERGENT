@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useT, LANGS } from '../../lib/i18n.jsx';
 import Avatar from '../../components/Avatar.jsx';
@@ -325,9 +325,12 @@ export default function ProfileTab({ session, profile, families = [], members = 
             />
           )}
 
-          {/* Test push notification */}
+          {/* Test push notification + diagnostica device */}
           {notificationControl.notificationPermission === 'granted' && (
-            <TestPushButton session={session} />
+            <>
+              <TestPushButton session={session} />
+              <PushDiagnosticCard session={session} />
+            </>
           )}
 
           {/* Quiet Hours - non disturbare 22-07 */}
@@ -608,3 +611,120 @@ function TestPushButton({ session }) {
     </div>
   );
 }
+
+// Card di diagnostica push: mostra all'utente quanti dispositivi sono
+// registrati per ricevere le notifiche push e (in caso di problemi) un
+// hint su come correggere (es. su iOS bisogna aggiungere FAMMY a Home).
+function PushDiagnosticCard({ session }) {
+  const [loading, setLoading] = useState(true);
+  const [subs, setSubs] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Detect iOS PWA standalone
+  const isIOS = typeof navigator !== 'undefined' &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+  const isStandalone = typeof window !== 'undefined' && (
+    window.matchMedia?.('(display-mode: standalone)')?.matches ||
+    window.navigator.standalone === true
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!session?.user?.id) return;
+      setLoading(true);
+      const { data } = await supabase
+        .from('push_subscriptions')
+        .select('id, user_agent, last_used_at, created_at')
+        .eq('user_id', session.user.id)
+        .order('last_used_at', { ascending: false });
+      if (!cancelled) {
+        setSubs(data || []);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session?.user?.id, refreshKey]);
+
+  if (!session?.user?.id) return null;
+
+  const niceDevice = (ua) => {
+    if (!ua) return 'Dispositivo sconosciuto';
+    if (/iPhone/i.test(ua)) return '📱 iPhone';
+    if (/iPad/i.test(ua)) return '📱 iPad';
+    if (/Android/i.test(ua)) return '📱 Android';
+    if (/Macintosh/i.test(ua)) return '💻 Mac';
+    if (/Windows/i.test(ua)) return '💻 Windows';
+    return '🖥️ Browser';
+  };
+  const fmtDate = (iso) => {
+    try { return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+    catch { return ''; }
+  };
+
+  return (
+    <div style={{
+      padding: 12, background: 'var(--ab)', borderRadius: 12,
+      border: '1px solid var(--sd)', marginTop: 8,
+    }} data-testid="push-diagnostic-card">
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 8,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase' }}>
+          🩺 Diagnostica push
+        </div>
+        <button type="button" onClick={() => setRefreshKey((k) => k + 1)}
+          style={{
+            padding: '4px 10px', border: '1px solid var(--sm)', borderRadius: 100,
+            background: 'white', cursor: 'pointer', fontSize: 11, color: 'var(--km)',
+          }}
+          data-testid="push-diagnostic-refresh">↻</button>
+      </div>
+
+      {loading ? (
+        <div style={{ fontSize: 12, color: 'var(--km)' }}>Caricamento…</div>
+      ) : subs.length === 0 ? (
+        <div style={{ fontSize: 13, color: '#9A6300', lineHeight: 1.4 }}>
+          ⚠️ <strong>Nessun dispositivo registrato</strong> per ricevere push.
+          <div style={{ marginTop: 6, color: 'var(--km)' }}>
+            Concedi i permessi notifiche e ricarica la pagina. Su iPhone:
+            apri il menu Condividi di Safari → <em>Aggiungi a Home</em> per
+            installare FAMMY come app, poi apri l'icona dalla Home.
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--gn)', fontWeight: 700 }}>
+            ✅ {subs.length} dispositiv{subs.length === 1 ? 'o registrato' : 'i registrati'}
+          </div>
+          {subs.slice(0, 5).map((s) => (
+            <div key={s.id} style={{
+              fontSize: 12, color: 'var(--km)',
+              display: 'flex', justifyContent: 'space-between', gap: 8,
+              padding: '4px 0', borderTop: '1px dashed var(--sm)',
+            }}>
+              <span>{niceDevice(s.user_agent)}</span>
+              <span style={{ fontSize: 11, fontStyle: 'italic' }}>
+                {s.last_used_at ? `ultima: ${fmtDate(s.last_used_at)}` : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isIOS && !isStandalone && (
+        <div style={{
+          marginTop: 10, padding: 8, borderRadius: 8,
+          background: '#FFF6E5', border: '1px solid #FFD27A',
+          fontSize: 12, color: '#7A4E00', lineHeight: 1.45,
+        }}>
+          📲 Sei su iPhone in Safari. Per ricevere le push notifications,
+          aggiungi FAMMY alla Home: Condividi → <em>Aggiungi a Home</em>,
+          poi apri sempre l'app dall'icona installata.
+        </div>
+      )}
+    </div>
+  );
+}
+

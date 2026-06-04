@@ -53,9 +53,22 @@ self.addEventListener('push', event => {
       data: data.data || {},
     };
 
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Fammy', options)
-    );
+    event.waitUntil((async () => {
+      // 1) Mostra la notifica
+      await self.registration.showNotification(data.title || 'Fammy', options);
+
+      // 2) Incrementa il badge sull'icona dell'app (numerino rosso).
+      //    Funziona su Chrome/Edge Android & macOS, e su iOS quando l'app
+      //    è installata come PWA (Add to Home Screen, iOS 16.4+).
+      try {
+        if ('setAppBadge' in self.navigator) {
+          // Conta le notifiche FAMMY ancora visibili come "non lette".
+          const visible = await self.registration.getNotifications();
+          const count = (visible || []).length || 1;
+          await self.navigator.setAppBadge(count);
+        }
+      } catch (e) { /* badge api not available */ }
+    })());
   } catch (e) {
     console.error('Push notification error:', e);
   }
@@ -64,6 +77,14 @@ self.addEventListener('push', event => {
 // Notification click handler
 self.addEventListener('notificationclick', event => {
   event.notification.close();
+
+  // Pulisci il badge quando l'utente clicca su una notifica.
+  // Nota: alcune piattaforme richiedono `clearAppBadge`, altre supportano
+  // anche `setAppBadge(0)`. Proviamo entrambi.
+  try {
+    if ('clearAppBadge' in self.navigator) self.navigator.clearAppBadge();
+    else if ('setAppBadge' in self.navigator) self.navigator.setAppBadge(0);
+  } catch (e) { /* silent */ }
 
   if (event.action === 'close') {
     return;
@@ -119,5 +140,11 @@ async function syncEventNotifications() {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'CLEAR_BADGE') {
+    try {
+      if ('clearAppBadge' in self.navigator) self.navigator.clearAppBadge();
+      else if ('setAppBadge' in self.navigator) self.navigator.setAppBadge(0);
+    } catch (e) { /* silent */ }
   }
 });

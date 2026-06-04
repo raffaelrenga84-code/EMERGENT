@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { sendPush, memberIdsToUserIds } from '../lib/pushClient.js';
 import { useT } from '../lib/i18n.jsx';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
 import DetailTabs from './DetailTabs.jsx';
@@ -376,14 +377,48 @@ export default function TaskDetailModal({
   const addComment = async () => {
     if (!newComment.trim()) return;
     setBusy(true);
+    const commentText = newComment.trim();
     await supabase.from('task_responses').insert({
       task_id: realTaskId, author_id: me?.id || null,
-      text: newComment.trim(), type: 'comment',
+      text: commentText, type: 'comment',
     });
     setNewComment('');
     const { data } = await supabase.from('task_responses').select('*').eq('task_id', realTaskId).order('created_at');
     setComments(data || []);
     setBusy(false);
+
+    // 🔔 Push: notifica gli altri membri coinvolti nella conversazione.
+    // Destinatari: autore originale del task + tutti gli attuali assignees
+    //              + delegated_from (chi era stato originariamente assegnato).
+    // Escludi: me stesso (autore del commento).
+    try {
+      const recipientMemberIds = new Set();
+      if (task.author_id && task.author_id !== me?.id) {
+        recipientMemberIds.add(task.author_id);
+      }
+      for (const a of assignees) {
+        if (a?.id && a.id !== me?.id) recipientMemberIds.add(a.id);
+      }
+      if (Array.isArray(task.delegated_from)) {
+        for (const mid of task.delegated_from) {
+          if (mid && mid !== me?.id) recipientMemberIds.add(mid);
+        }
+      }
+      const userIds = await memberIdsToUserIds([...recipientMemberIds]);
+      // Escludi anche il MIO user_id (nel caso fossi sia author che assegnee)
+      if (me?.user_id) userIds.delete(me.user_id);
+      if (userIds.size > 0) {
+        const authorName = (me?.name || '').split(' ')[0] || 'Qualcuno';
+        const preview = commentText.length > 80 ? commentText.slice(0, 77) + '…' : commentText;
+        sendPush({
+          userIds: [...userIds],
+          title: `💬 ${authorName} ha scritto`,
+          body: `${task.title}\n${preview}`,
+          tag: `task-comment-${realTaskId}`,
+          data: { task_id: realTaskId, kind: 'task' },
+        });
+      }
+    } catch (e) { /* silent: push best-effort */ }
   };
 
   // BUGFIX: filtra solo i membri della stessa famiglia del task.
