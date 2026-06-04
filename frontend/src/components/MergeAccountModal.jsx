@@ -130,7 +130,8 @@ export default function MergeAccountModal({ session, onClose, onMerged }) {
       return;
     }
     const bUid = data?.user?.id;
-    if (!bUid) {
+    const bSession = data?.session;
+    if (!bUid || !bSession?.access_token) {
       setBusy(false);
       setErr(t('merge_err_no_uid') || 'Impossibile recuperare l\'altro account.');
       return;
@@ -141,6 +142,15 @@ export default function MergeAccountModal({ session, onClose, onMerged }) {
       setErr(t('merge_err_same_account') || 'È lo stesso account.');
       return;
     }
+
+    // setSession esplicito: garantisce che il JWT di B sia "attaccato" al
+    // client isolato per tutte le successive chiamate (incluse rpc).
+    // Senza questo, in alcuni casi auth.uid() lato Postgres risulta NULL
+    // e la INSERT su fammy_merge_requests fallisce per RLS.
+    await bClientRef.current.auth.setSession({
+      access_token: bSession.access_token,
+      refresh_token: bSession.refresh_token,
+    });
 
     // Stage 1: B (loggato sul client isolato) crea la merge_request:
     // "Sono B, voglio essere assorbito da A=auth.uid()".
