@@ -186,7 +186,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
           <button className="btn full secondary" onClick={() => setShowJoinCode(true)}
             data-testid="family-tab-join-code-btn"
             style={{ borderStyle: 'dashed' }}>
-            🎟️ Ho un codice invito
+            {t('have_invite_code')}
           </button>
         </div>
 

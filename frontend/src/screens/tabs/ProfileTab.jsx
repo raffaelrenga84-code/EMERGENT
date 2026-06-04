@@ -104,45 +104,60 @@ export default function ProfileTab({ session, profile, families = [], members = 
 
   const initial = (profile?.avatar_letter || (profile?.display_name || 'U').charAt(0)).toUpperCase();
 
+  // Header avatar — sempre visibile in cima al profilo per dare un "hello"
+  // immediato. Click su "Cambia colore" apre il color picker inline.
+  const header = (
+    <div className="profile-section" style={{
+      display: 'flex', alignItems: 'center', gap: 14, paddingTop: 4, paddingBottom: 16,
+    }}>
+      <Avatar
+        name={profile?.display_name}
+        avatarUrl={profile?.avatar_url}
+        avatarLetter={initial}
+        avatarColor={color}
+        size={64}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--k)', lineHeight: 1.2 }}>
+          {profile?.display_name || '—'}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 4, wordBreak: 'break-all' }}>
+          {session.user.email || profile?.phone || t('profile_email_empty') || ''}
+        </div>
+      </div>
+      <button className="profile-btn" onClick={() => setEditingColor(!editingColor)} data-testid="profile-toggle-color">
+        🎨
+      </button>
+    </div>
+  );
+
+  // I 9 gruppi collassabili. Default: tutti chiusi (l'utente apre solo ciò
+  // che gli interessa, schermata pulita).
+  // Ognuno espone un titolo + sottotitolo + emoji icona + contenuto.
   return (
     <div className="profile-wrap">
       <h1 className="profile-h">{t('profile_h')}</h1>
 
-      {/* Avatar */}
-      <div className="profile-section">
-        <div className="profile-row">
-          <div>
-            <div className="profile-label">{t('profile_avatar')}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
-              <Avatar
-                name={profile?.display_name}
-                avatarUrl={profile?.avatar_url}
-                avatarLetter={initial}
-                avatarColor={color}
-                size={64}
-              />
-            </div>
-          </div>
-          <button className="profile-btn" onClick={() => setEditingColor(!editingColor)}>
-            {editingColor ? t('close') : t('profile_change_color')}
-          </button>
-        </div>
-        {editingColor && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-            {COLORS.map((c) => (
-              <button key={c} type="button" onClick={() => saveColor(c)}
-                style={{
-                  width: 32, height: 32, borderRadius: 10, background: c,
-                  border: color === c ? '3px solid var(--k)' : '1.5px solid var(--sm)',
-                }} />
-            ))}
-          </div>
-        )}
-      </div>
+      {header}
 
-      {/* Nome */}
-      <div className="profile-section">
-        <div className="profile-row">
+      {/* Color picker inline (sotto l'header) */}
+      {editingColor && (
+        <div className="profile-section" data-testid="profile-color-picker"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 0 }}>
+          {COLORS.map((c) => (
+            <button key={c} type="button" onClick={() => saveColor(c)}
+              style={{
+                width: 32, height: 32, borderRadius: 10, background: c,
+                border: color === c ? '3px solid var(--k)' : '1.5px solid var(--sm)',
+              }} />
+          ))}
+        </div>
+      )}
+
+      {/* GRUPPO 1: I MIEI DATI */}
+      <ProfileGroup icon="👤" title={t('profile_card_info_t')} subtitle={t('profile_card_info_s')} testid="profile-group-info">
+        {/* Nome */}
+        <div className="profile-row" style={profileRowInGroup}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="profile-label">{t('profile_name')}</div>
             {editingName ? (
@@ -163,11 +178,9 @@ export default function ProfileTab({ session, profile, families = [], members = 
             </button>
           )}
         </div>
-      </div>
 
-      {/* Compleanno */}
-      <div className="profile-section">
-        <div className="profile-row">
+        {/* Compleanno */}
+        <div className="profile-row" style={profileRowInGroup}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="profile-label">🎂 {t('birthday')}</div>
             {editingBirthday ? (
@@ -188,11 +201,9 @@ export default function ProfileTab({ session, profile, families = [], members = 
             </button>
           )}
         </div>
-      </div>
 
-      {/* Email */}
-      <div className="profile-section">
-        <div className="profile-row">
+        {/* Email */}
+        <div className="profile-row" style={profileRowInGroup}>
           <div>
             <div className="profile-label">{t('profile_email')}</div>
             <div className="profile-value" style={{ color: 'var(--km)' }}>
@@ -204,71 +215,19 @@ export default function ProfileTab({ session, profile, families = [], members = 
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Telefono — l'utente può aggiungere/verificare il proprio numero
-          per loggarsi anche via SMS la prossima volta. */}
-      <ProfilePhoneCard
-        session={session}
-        profile={profile}
-        onChanged={onChanged}
-      />
-
-      {/* Lingua */}
-      <div className="profile-section">
-        <div className="profile-label" style={{ marginBottom: 8 }}>{t('profile_language')}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {LANGS.map((l) => (
-            <button key={l.id} onClick={() => changeLang(l.id)}
-              style={{
-                padding: '8px 14px', borderRadius: 100, border: '1.5px solid',
-                borderColor: lang === l.id ? 'var(--k)' : 'var(--sm)',
-                background: lang === l.id ? 'var(--sm)' : 'white',
-                fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-              <span style={{ fontSize: 16 }}>{l.flag}</span> {l.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Family Memories — galleria mensile auto delle foto */}
-      {families.length > 0 && (
-        <div className="profile-section">
-          <FamilyMemoriesCard families={families} members={members} me={me} />
-        </div>
-      )}
-
-      {/* Insights AI — Riepilogo settimanale on-demand (lazy: nessuna chiamata
-          LLM finché l'utente non preme "Genera ora") */}
-      {families.length > 0 && (
-        <div className="profile-section">
-          <div className="profile-label" style={{ marginBottom: 12 }}>
-            ✨ {t('profile_insights_h') || 'Insights'}
-          </div>
-          <WeeklySummaryCard
-            lazy
-            familyId={activeFamilyId}
-            familyName={
-              activeFamilyId
-                ? (families.find((f) => f.id === activeFamilyId)?.name || 'Famiglia')
-                : `${families.length} ${t('profile_insights_families_label') || 'famiglie'}`
-            }
-            tasks={tasks}
-            events={events}
-            members={members}
+        {/* Telefono */}
+        <div style={{ marginTop: 8 }}>
+          <ProfilePhoneCard
+            session={session}
+            profile={profile}
+            onChanged={onChanged}
           />
-
-          {/* Sync settimanale calendario via email */}
-          <div style={{ marginTop: 12 }}>
-            <WeeklyEmailSyncToggle session={session} />
-          </div>
         </div>
-      )}
+      </ProfileGroup>
 
-      {/* Notifiche Push */}
-      <div className="profile-section">
-        <div className="profile-label" style={{ marginBottom: 12 }}>{t('notifications_push_h')}</div>
+      {/* GRUPPO 2: NOTIFICHE */}
+      <ProfileGroup icon="🔔" title={t('profile_card_notif_t')} subtitle={t('profile_card_notif_s')} testid="profile-group-notif">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Status attuale */}
           <div style={{
@@ -325,7 +284,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
             />
           )}
 
-          {/* Test push notification + diagnostica device */}
+          {/* Test push + diagnostica */}
           {notificationControl.notificationPermission === 'granted' && (
             <>
               <TestPushButton session={session} />
@@ -333,49 +292,77 @@ export default function ProfileTab({ session, profile, families = [], members = 
             </>
           )}
 
-          {/* Quiet Hours - non disturbare 22-07 */}
+          {/* Quiet Hours */}
           {notificationControl.notificationPermission === 'granted' && (
             <QuietHoursControl />
           )}
 
           {/* Info */}
           <p
-            style={{ fontSize: 12, color: 'var(--km)', lineHeight: 1.5 }}
+            style={{ fontSize: 12, color: 'var(--km)', lineHeight: 1.5, marginBottom: 0 }}
             dangerouslySetInnerHTML={{ __html: t('notif_info_30min') + '<br/>' + t('notif_info_immediate') }}
           />
         </div>
-      </div>
+      </ProfileGroup>
 
-      {/* Settings menu (Plans, Theme, A11y) */}
-      <div className="profile-section">
-        <div className="profile-label" style={{ marginBottom: 8 }}>{t('profile_settings_h')}</div>
+      {/* GRUPPO 3: INSIGHTS AI */}
+      {families.length > 0 && (
+        <ProfileGroup icon="✨" title={t('profile_card_insights_t')} subtitle={t('profile_card_insights_s')} testid="profile-group-insights">
+          <WeeklySummaryCard
+            lazy
+            familyId={activeFamilyId}
+            familyName={
+              activeFamilyId
+                ? (families.find((f) => f.id === activeFamilyId)?.name || 'Famiglia')
+                : `${families.length} ${t('profile_insights_families_label') || 'famiglie'}`
+            }
+            tasks={tasks}
+            events={events}
+            members={members}
+          />
+          <div style={{ marginTop: 12 }}>
+            <WeeklyEmailSyncToggle session={session} />
+          </div>
+        </ProfileGroup>
+      )}
+
+      {/* GRUPPO 4: FAMILY MEMORIES */}
+      {families.length > 0 && (
+        <ProfileGroup icon="📸" title={t('profile_card_memories_t')} subtitle={t('profile_card_memories_s')} testid="profile-group-memories">
+          <FamilyMemoriesCard families={families} members={members} me={me} />
+        </ProfileGroup>
+      )}
+
+      {/* GRUPPO 5: APP & LINGUA */}
+      <ProfileGroup icon="⚙️" title={t('profile_card_app_t')} subtitle={t('profile_card_app_s')} testid="profile-group-app">
+        {/* Lingua */}
+        <div className="profile-label" style={{ marginBottom: 8 }}>{t('profile_language')}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+          {LANGS.map((l) => (
+            <button key={l.id} onClick={() => changeLang(l.id)}
+              data-testid={`profile-lang-${l.id}`}
+              style={{
+                padding: '8px 14px', borderRadius: 100, border: '1.5px solid',
+                borderColor: lang === l.id ? 'var(--k)' : 'var(--sm)',
+                background: lang === l.id ? 'var(--sm)' : 'white',
+                fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+              <span style={{ fontSize: 16 }}>{l.flag}</span> {l.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Settings menu (Plans, Theme, A11y, Privacy) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <SettingRow label={t('profile_plans')} onClick={() => setView('plans')} accent />
           <SettingRow label={t('profile_theme')} onClick={() => setView('theme')} />
           <SettingRow label={t('profile_accessibility')} onClick={() => setView('a11y')} />
           <SettingRow label={t('profile_privacy')} onClick={() => setView('privacy')} />
         </div>
-      </div>
+      </ProfileGroup>
 
-      {/* Referral / share FAMMY */}
-      <div className="profile-section">
-        <div className="profile-label" style={{ marginBottom: 4 }}>{t('profile_referral_h')}</div>
-
-        {/* Mini-stat: quanti hanno joinato la famiglia questa settimana */}
-        <InviteStatsCard session={session} families={families} />
-
-        <p style={{ fontSize: 13, color: 'var(--km)', margin: '0 0 12px', lineHeight: 1.4 }}>
-          {t('profile_referral_sub')}
-        </p>
-        <button className="btn full" onClick={shareApp} data-testid="profile-referral-btn">{t('profile_referral_btn')}</button>
-        <p style={{ fontSize: 11, color: 'var(--km)', margin: '10px 4px 0', lineHeight: 1.45, textAlign: 'center' }}>
-          💡 {t('invite_hint_family')} <strong>Famiglia → 💌</strong>.
-        </p>
-      </div>
-
-      {/* Strumenti — funzioni "smart" non quotidiane (import, export, …) */}
-      <div className="profile-section">
-        <div className="profile-label" style={{ marginBottom: 8 }}>🛠️ {t('profile_tools_h') || 'Strumenti'}</div>
+      {/* GRUPPO 6: STRUMENTI SMART */}
+      <ProfileGroup icon="🛠️" title={t('profile_card_tools_t')} subtitle={t('profile_card_tools_s')} testid="profile-group-tools">
         <button
           type="button"
           className="btn full secondary"
@@ -388,7 +375,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
               {t('imp_open_btn') || 'Importa assenze da foto turno'}
             </div>
             <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>
-              {t('profile_tools_import_hint') || 'Voli, training e reperibilità riconosciuti dall\'AI'}
+              {t('profile_tools_import_hint')}
             </div>
           </div>
           <span style={{ color: 'var(--km)', fontSize: 18 }}>›</span>
@@ -403,19 +390,30 @@ export default function ProfileTab({ session, profile, families = [], members = 
           <span style={{ fontSize: 22 }}>🔗</span>
           <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--k)' }}>
-              {t('merge_btn_h') || 'Unisci due account'}
+              {t('merge_btn_h')}
             </div>
             <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>
-              {t('merge_btn_hint') || 'Hai per sbaglio due profili (es. Google + SMS)? Fondili in uno solo.'}
+              {t('merge_btn_hint')}
             </div>
           </div>
           <span style={{ color: 'var(--km)', fontSize: 18 }}>›</span>
         </button>
-      </div>
+      </ProfileGroup>
 
-      {/* Riguarda il tour */}
-      <div className="profile-section">
-        <div className="profile-label" style={{ marginBottom: 8 }}>🎓 {t('profile_tour_label')}</div>
+      {/* GRUPPO 7: INVITA UN AMICO */}
+      <ProfileGroup icon="💝" title={t('profile_card_share_t')} subtitle={t('profile_card_share_s')} testid="profile-group-share">
+        <InviteStatsCard session={session} families={families} />
+        <p style={{ fontSize: 13, color: 'var(--km)', margin: '8px 0 12px', lineHeight: 1.4 }}>
+          {t('profile_referral_sub')}
+        </p>
+        <button className="btn full" onClick={shareApp} data-testid="profile-referral-btn">{t('profile_referral_btn')}</button>
+        <p style={{ fontSize: 11, color: 'var(--km)', margin: '10px 4px 0', lineHeight: 1.45, textAlign: 'center' }}>
+          💡 {t('invite_hint_family')} <strong>{t('family_title') || 'Famiglia'} → 💌</strong>.
+        </p>
+      </ProfileGroup>
+
+      {/* GRUPPO 8: TOUR & AIUTO */}
+      <ProfileGroup icon="🎓" title={t('profile_card_tour_t')} subtitle={t('profile_card_tour_s')} testid="profile-group-tour">
         <button
           type="button"
           className="btn full secondary"
@@ -424,10 +422,13 @@ export default function ProfileTab({ session, profile, families = [], members = 
         >
           {t('profile_tour_btn')}
         </button>
-      </div>
+      </ProfileGroup>
 
+      {/* Logout - sezione finale separata */}
       <div className="profile-section" style={{ borderBottom: 'none' }}>
-        <button className="btn full danger" onClick={() => supabase.auth.signOut()}>{t('logout')}</button>
+        <button className="btn full danger" onClick={() => supabase.auth.signOut()} data-testid="profile-logout-btn">
+          {t('logout')}
+        </button>
         <p style={{ fontSize: 11, color: 'var(--km)', textAlign: 'center', marginTop: 16, lineHeight: 1.5, whiteSpace: 'pre-line' }}>
           {t('profile_app_info')}
         </p>
@@ -473,6 +474,84 @@ function SettingRow({ label, onClick, accent }) {
   );
 }
 
+// Stile compatto per la riga "campo + valore + bottone modifica" usato
+// all'interno dei gruppi collassabili (niente padding orizzontale extra
+// perché il gruppo lo eredita già dal proprio container).
+const profileRowInGroup = {
+  display: 'flex', alignItems: 'center', gap: 12,
+  padding: '10px 0', borderBottom: '1px solid var(--sm)',
+};
+
+/**
+ * ProfileGroup — sezione collassabile del Profilo.
+ * Mostra un header tappabile con icona + titolo + sottotitolo + chevron,
+ * e rivela il `children` quando l'utente espande.
+ *
+ * Stato locale: ogni gruppo ricorda l'apertura via localStorage in modo
+ * che dopo un reload l'utente ritrovi l'ultima configurazione.
+ */
+function ProfileGroup({ icon, title, subtitle, defaultOpen = false, testid, children }) {
+  const storageKey = `fammy_profile_group_${testid}`;
+  const [open, setOpen] = useState(() => {
+    try {
+      const v = localStorage.getItem(storageKey);
+      if (v === '1') return true;
+      if (v === '0') return false;
+    } catch (_) {}
+    return defaultOpen;
+  });
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try { localStorage.setItem(storageKey, next ? '1' : '0'); } catch (_) {}
+  };
+
+  return (
+    <div className="profile-section" style={{ paddingTop: 0, paddingBottom: 0 }}>
+      <button
+        type="button"
+        onClick={toggle}
+        data-testid={testid ? `${testid}-toggle` : undefined}
+        aria-expanded={open}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 0', background: 'transparent', border: 'none',
+          cursor: 'pointer', textAlign: 'left',
+        }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: 10,
+          background: 'var(--ab)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 20, flexShrink: 0,
+        }}>
+          {icon}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--k)', lineHeight: 1.2 }}>
+            {title}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2, lineHeight: 1.3 }}>
+            {subtitle}
+          </div>
+        </div>
+        <span style={{
+          color: 'var(--km)', fontSize: 22, fontWeight: 300,
+          transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+          transition: 'transform 0.2s ease',
+        }}>›</span>
+      </button>
+      {open && (
+        <div
+          data-testid={testid ? `${testid}-content` : undefined}
+          style={{ paddingBottom: 16 }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NotificationToggle({ enabled, onChange }) {
   const { t } = useT();
   return (
@@ -514,6 +593,7 @@ function NotificationToggle({ enabled, onChange }) {
 
 
 function TestPushButton({ session }) {
+  const { t } = useT();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [msgTone, setMsgTone] = useState('info'); // 'info' | 'success' | 'warn' | 'error'
@@ -535,14 +615,14 @@ function TestPushButton({ session }) {
         body: JSON.stringify({
           user_id: session.user.id,
           title: '🎉 Test FAMMY',
-          body: 'Le push notifications funzionano correttamente!',
+          body: t('test_push_body') || 'Le push notifications funzionano correttamente!',
           tag: 'test-push',
         }),
       });
 
       // Edge Function non deployata: Supabase Gateway risponde 404
       if (res.status === 404) {
-        setMsg('La funzione push non è ancora attiva sul server. Continueremo a mostrarti gli avvisi mentre l\'app è aperta.');
+        setMsg(t('test_push_not_deployed'));
         setMsgTone('info');
         return;
       }
@@ -551,23 +631,23 @@ function TestPushButton({ session }) {
       try { data = await res.json(); } catch { /* non-JSON response */ }
 
       if (data.sent && data.sent > 0) {
-        setMsg(`✅ Inviata a ${data.sent} dispositiv${data.sent === 1 ? 'o' : 'i'}.`);
+        setMsg(t('test_push_ok', { n: data.sent }));
         setMsgTone('success');
       } else if (data.reason === 'no_subscriptions') {
-        setMsg('Nessun dispositivo registrato. Ricarica la pagina dopo aver concesso il permesso notifiche.');
+        setMsg(t('test_push_no_subs'));
         setMsgTone('warn');
       } else if (!res.ok) {
-        setMsg('Notifiche push in arrivo — per ora ricevi gli avvisi in app.');
+        setMsg(t('test_push_unavailable'));
         setMsgTone('info');
       } else {
-        setMsg(data.error || 'Nessuna notifica inviata.');
+        setMsg(data.error || t('test_push_unavailable'));
         setMsgTone('warn');
       }
     } catch (e) {
       // Network error / function non raggiungibile: messaggio educato
       const isNetwork = e && (e.name === 'TypeError' || /load failed|failed to fetch/i.test(e.message || ''));
       if (isNetwork) {
-        setMsg('Push non disponibili al momento. Riceverai comunque gli avvisi in app.');
+        setMsg(t('test_push_unavailable'));
         setMsgTone('info');
       } else {
         setMsg(`Errore: ${e.message}`);
@@ -595,7 +675,7 @@ function TestPushButton({ session }) {
         data-testid="profile-test-push-btn"
         className="btn full secondary"
         style={{ fontSize: 13, padding: '10px 14px' }}>
-        {busy ? <span className="spin dark" /> : '🔔 Invia notifica di test'}
+        {busy ? <span className="spin dark" /> : t('test_push_btn')}
       </button>
       {msg && (
         <div style={{
@@ -616,6 +696,7 @@ function TestPushButton({ session }) {
 // registrati per ricevere le notifiche push e (in caso di problemi) un
 // hint su come correggere (es. su iOS bisogna aggiungere FAMMY a Home).
 function PushDiagnosticCard({ session }) {
+  const { t } = useT();
   const [loading, setLoading] = useState(true);
   const [subs, setSubs] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -649,7 +730,7 @@ function PushDiagnosticCard({ session }) {
   if (!session?.user?.id) return null;
 
   const niceDevice = (ua) => {
-    if (!ua) return 'Dispositivo sconosciuto';
+    if (!ua) return '🖥️ —';
     if (/iPhone/i.test(ua)) return '📱 iPhone';
     if (/iPad/i.test(ua)) return '📱 iPad';
     if (/Android/i.test(ua)) return '📱 Android';
@@ -672,7 +753,7 @@ function PushDiagnosticCard({ session }) {
         marginBottom: 8,
       }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase' }}>
-          🩺 Diagnostica push
+          {t('push_diag_h')}
         </div>
         <button type="button" onClick={() => setRefreshKey((k) => k + 1)}
           style={{
@@ -683,20 +764,18 @@ function PushDiagnosticCard({ session }) {
       </div>
 
       {loading ? (
-        <div style={{ fontSize: 12, color: 'var(--km)' }}>Caricamento…</div>
+        <div style={{ fontSize: 12, color: 'var(--km)' }}>…</div>
       ) : subs.length === 0 ? (
         <div style={{ fontSize: 13, color: '#9A6300', lineHeight: 1.4 }}>
-          ⚠️ <strong>Nessun dispositivo registrato</strong> per ricevere push.
+          ⚠️ <strong>{t('push_diag_empty_h')}</strong>
           <div style={{ marginTop: 6, color: 'var(--km)' }}>
-            Concedi i permessi notifiche e ricarica la pagina. Su iPhone:
-            apri il menu Condividi di Safari → <em>Aggiungi a Home</em> per
-            installare FAMMY come app, poi apri l'icona dalla Home.
+            {t('push_diag_empty_p')}
           </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ fontSize: 12, color: 'var(--gn)', fontWeight: 700 }}>
-            ✅ {subs.length} dispositiv{subs.length === 1 ? 'o registrato' : 'i registrati'}
+            {subs.length === 1 ? t('push_diag_count_one') : t('push_diag_count_many', { n: subs.length })}
           </div>
           {subs.slice(0, 5).map((s) => (
             <div key={s.id} style={{
@@ -706,7 +785,7 @@ function PushDiagnosticCard({ session }) {
             }}>
               <span>{niceDevice(s.user_agent)}</span>
               <span style={{ fontSize: 11, fontStyle: 'italic' }}>
-                {s.last_used_at ? `ultima: ${fmtDate(s.last_used_at)}` : ''}
+                {s.last_used_at ? t('push_diag_last_used', { when: fmtDate(s.last_used_at) }) : ''}
               </span>
             </div>
           ))}
@@ -719,9 +798,7 @@ function PushDiagnosticCard({ session }) {
           background: '#FFF6E5', border: '1px solid #FFD27A',
           fontSize: 12, color: '#7A4E00', lineHeight: 1.45,
         }}>
-          📲 Sei su iPhone in Safari. Per ricevere le push notifications,
-          aggiungi FAMMY alla Home: Condividi → <em>Aggiungi a Home</em>,
-          poi apri sempre l'app dall'icona installata.
+          {t('push_diag_ios_hint')}
         </div>
       )}
     </div>

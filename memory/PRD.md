@@ -1,5 +1,60 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.3 (4 giugno 2026, notte) — Profilo riorganizzato + traduzioni mancanti
+
+### Feature — Profilo user-friendly con sezioni collassabili
+**Problema**: il Profilo aveva 13 sezioni piatte una sotto l'altra → scroll
+infinito, l'utente si perdeva tra "Avatar / Nome / Compleanno / Email /
+Telefono / Lingua / Memorie / Insights / Notifiche / Settings / Referral
+/ Strumenti / Tour / Logout". Inoltre molti testi non erano tradotti
+(test push, quiet hours, "Ho un codice invito").
+
+**Fix**:
+- **Header sempre visibile**: avatar grande + nome + email/telefono +
+  pulsante 🎨 cambio colore (color picker inline).
+- **8 gruppi collassabili** (`ProfileGroup`) con icona, titolo e sottotitolo
+  esplicativo:
+  1. 👤 I miei dati — nome, compleanno, email, telefono
+  2. 🔔 Notifiche — stato permessi, toggle, test push, diagnostica push,
+     "Non disturbare" notturno
+  3. ✨ Insights AI — riepilogo settimanale + sync calendario
+  4. 📸 Family Memories — galleria mensile auto
+  5. ⚙️ App & lingua — lingua, piani, tema, accessibilità, privacy
+  6. 🛠️ Strumenti smart — importa assenze da foto, unisci account
+  7. 💝 Invita un amico — referral + stats invitati
+  8. 🎓 Tour & aiuto — rivedi il tour
+- **Stato apertura persistito** in `localStorage` (per gruppo).
+- **Tutti chiusi di default** tranne l'header: schermata pulita, l'utente
+  apre solo ciò che gli interessa.
+
+### Fix — Traduzioni mancanti
+Aggiunte 30+ key i18n × 4 lingue (IT/EN/FR/DE):
+- `test_push_btn`, `test_push_ok`, `test_push_no_subs`, `test_push_unavailable`,
+  `test_push_not_deployed` (TestPushButton — prima hardcoded IT)
+- `quiet_h_title`, `quiet_h_sub`, `quiet_h_active_fmt`, `quiet_h_from`,
+  `quiet_h_to` (QuietHoursControl — prima hardcoded IT)
+- `push_diag_h`, `push_diag_empty_h`, `push_diag_empty_p`, `push_diag_count_one`,
+  `push_diag_count_many`, `push_diag_last_used`, `push_diag_ios_hint`
+  (PushDiagnosticCard — prima hardcoded IT)
+- `have_invite_code`, `welcome_card_invite_t`, `welcome_card_invite_s`
+  (FamilyTab + WelcomeScreen — prima hardcoded IT)
+- `profile_card_*` × 8 gruppi (titoli e sottotitoli dei nuovi ProfileGroup)
+
+### File modificati / nuovi
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx` — refactor completo del
+  return + nuovo componente `ProfileGroup` + applicate t() a TestPushButton,
+  PushDiagnosticCard
+- ✏️ `/app/frontend/src/components/QuietHoursControl.jsx` — applicate t()
+- ✏️ `/app/frontend/src/screens/tabs/FamilyTab.jsx` — t() per "Ho un codice invito"
+- ✏️ `/app/frontend/src/screens/WelcomeScreen.jsx` — t() per card invite
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 30+ key × 4 lingue
+
+### Testing
+- Lint: ✅ tutti i file
+- Smoke screenshot: ✅ landing page funziona
+
+---
+
 ## Iterazione 16.2 (4 giugno 2026, sera) — Sticker Reactions sui commenti
 
 ### Feature — Reazioni emoji ai messaggi (stile WhatsApp)

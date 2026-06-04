@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useT } from '../lib/i18n.jsx';
 
 const KEY = 'fammy_quiet_hours';
 
@@ -7,6 +8,7 @@ const KEY = 'fammy_quiet_hours';
  * Stato persistito in localStorage. Lettura da useEventNotifications.inQuietHours().
  */
 export default function QuietHoursControl() {
+  const { t } = useT();
   const [config, setConfig] = useState(() => {
     try {
       const raw = localStorage.getItem(KEY);
@@ -38,12 +40,12 @@ export default function QuietHoursControl() {
         />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--k)' }}>
-            🌙 Non disturbare
+            {t('quiet_h_title')}
           </div>
           <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>
             {config.enabled
-              ? `Niente notifiche dalle ${fmtHour(config.startHour)} alle ${fmtHour(config.endHour)}`
-              : 'Silenzia le notifiche di notte'}
+              ? t('quiet_h_active_fmt', { from: fmtHour(config.startHour), to: fmtHour(config.endHour) })
+              : t('quiet_h_sub')}
           </div>
         </div>
       </label>
@@ -51,14 +53,14 @@ export default function QuietHoursControl() {
       {config.enabled && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <HourPicker
-            label="Da"
+            label={t('quiet_h_from')}
             value={config.startHour}
             onChange={(v) => setConfig((c) => ({ ...c, startHour: v }))}
             testid="quiet-hours-start"
           />
           <span style={{ color: 'var(--km)', fontSize: 14 }}>→</span>
           <HourPicker
-            label="A"
+            label={t('quiet_h_to')}
             value={config.endHour}
             onChange={(v) => setConfig((c) => ({ ...c, endHour: v }))}
             testid="quiet-hours-end"
