@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
-import { COUNTRY_CODES } from '../lib/countryCodes.js';
+import { detectCountryCode } from '../lib/detectCountry.js';
+import CountryCodeSelect from './CountryCodeSelect.jsx';
 
 /**
  * ProfilePhoneCard — riga "Telefono" nel ProfileTab.
@@ -20,7 +21,7 @@ export default function ProfilePhoneCard({ session, profile, onChanged }) {
   const { t } = useT();
   const [currentPhone, setCurrentPhone] = useState(null);
   const [stage, setStage] = useState('idle'); // 'idle' | 'edit' | 'otp' | 'busy'
-  const [countryCode, setCountryCode] = useState('+39');
+  const [countryCode, setCountryCode] = useState(() => detectCountryCode());
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [pendingNumber, setPendingNumber] = useState('');
@@ -172,16 +173,11 @@ export default function ProfilePhoneCard({ session, profile, onChanged }) {
           {t('profile_phone_edit_intro') || 'Ti invieremo un codice di verifica via SMS per associare il numero al tuo account.'}
         </p>
         <div style={{ display: 'flex', gap: 6 }}>
-          <select
+          <CountryCodeSelect
             value={countryCode}
-            onChange={(e) => setCountryCode(e.target.value)}
-            className="input"
-            data-testid="profile-phone-cc"
-            style={{ width: 140, padding: '10px 4px', fontSize: 13 }}>
-            {COUNTRY_CODES.map((c) => (
-              <option key={c.code + c.label} value={c.code}>{c.flag} {c.name} ({c.code})</option>
-            ))}
-          </select>
+            onChange={setCountryCode}
+            testid="profile-phone-cc"
+          />
           <input
             type="tel" inputMode="tel" autoComplete="tel"
             className="input"

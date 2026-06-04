@@ -4,6 +4,48 @@
 
 ### Iterazione 16.3.2 — Apple login rimosso + lista prefissi internazionali estesa
 
+### Iterazione 16.3.3 — Auto-detect paese + search-bar nei prefissi
+
+#### Feature 1 — Auto-detect del paese
+- ➕ `/app/frontend/src/lib/detectCountry.js`: utility `detectCountryCode()`
+  che restituisce il prefisso E.164 più probabile.
+- Strategia (zero network):
+  1. `Intl.DateTimeFormat().resolvedOptions().timeZone` → ISO-2 via mappa
+     (60+ timezone coperti: Europe/Rome→IT, Australia/Sydney→AU, ecc.)
+  2. Fallback: `navigator.language.split('-')[1]` (es. "en-AU" → AU)
+  3. Default: IT
+- Normalizzazione `GB→UK`, `CA→US/CA` per matchare la lista `COUNTRY_CODES`.
+- Applicato come default in `PhoneLoginModal` e `ProfilePhoneCard`.
+
+#### Feature 2 — Search-bar nella select prefissi
+- ➕ `/app/frontend/src/components/CountryCodeSelect.jsx`: sostituisce il
+  `<select>` nativo con un trigger-pill cliccabile + popover.
+- Popover contiene:
+  - Input search con icona 🔍 e bottone ✕ clear
+  - Lista risultati filtrata in tempo reale (multi-token, case-insensitive,
+    accent-stripping)
+  - Match su `name`, `label`, `code` — es. "aus" / "AU" / "+61" trovano
+    tutti Australia
+  - Item evidenziato + ✓ se è quello selezionato
+  - Stato "Nessun paese trovato per '{q}'" se la search non matcha nulla
+- Click esterno chiude. Focus automatico sulla search all'apertura.
+- Sostituito il `<select>` sia in `PhoneLoginModal` che in `ProfilePhoneCard`.
+
+#### File modificati / nuovi
+- ➕ `/app/frontend/src/lib/detectCountry.js`
+- ➕ `/app/frontend/src/components/CountryCodeSelect.jsx`
+- ✏️ `/app/frontend/src/components/PhoneLoginModal.jsx`
+- ✏️ `/app/frontend/src/components/ProfilePhoneCard.jsx`
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — `cc_search_ph`, `cc_no_results` × 4 lingue
+
+#### Testing
+- Lint: ✅ tutti file
+- Smoke + interactive test Playwright: ✅ digitato "aus" → mostra solo
+  🇦🇺 Australia (+61)
+
+---
+
+
 #### Modifica — Tolto pulsante "Continua con Apple"
 Su richiesta dell'utente. Modifiche:
 - ✏️ `/app/frontend/src/screens/LoginScreen.jsx` — rimosso bottone Apple +

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
-import { COUNTRY_CODES } from '../lib/countryCodes.js';
+import { detectCountryCode } from '../lib/detectCountry.js';
+import CountryCodeSelect from './CountryCodeSelect.jsx';
 
 /**
  * PhoneLoginModal — flusso "Login con telefono" (Supabase + Twilio Verify).
@@ -21,7 +22,8 @@ import { COUNTRY_CODES } from '../lib/countryCodes.js';
 export default function PhoneLoginModal({ onClose, prefillPhone = '' }) {
   const { t } = useT();
   const [stage, setStage] = useState('phone'); // 'phone' | 'otp' | 'success'
-  const [countryCode, setCountryCode] = useState('+39');
+  // Pre-seleziona il country code in base a timezone+lingua del browser.
+  const [countryCode, setCountryCode] = useState(() => detectCountryCode());
   const [phone, setPhone] = useState(prefillPhone);
   const [otp, setOtp] = useState('');
   const [fullNumber, setFullNumber] = useState('');
@@ -124,18 +126,11 @@ export default function PhoneLoginModal({ onClose, prefillPhone = '' }) {
               {t('phone_sub') || 'Ti invieremo un codice di verifica via SMS.'}
             </p>
             <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-              <select
+              <CountryCodeSelect
                 value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
-                data-testid="phone-country-code"
-                className="input"
-                style={{ width: 140, padding: '10px 4px', fontSize: 13 }}>
-                {COUNTRY_CODES.map((c) => (
-                  <option key={c.code + c.label} value={c.code}>
-                    {c.flag} {c.name} ({c.code})
-                  </option>
-                ))}
-              </select>
+                onChange={setCountryCode}
+                testid="phone-cc"
+              />
               <input
                 ref={phoneRef}
                 type="tel"
