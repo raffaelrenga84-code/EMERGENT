@@ -16,3 +16,21 @@ export const supabase = createClient(url, anonKey, {
     detectSessionInUrl: true,
   },
 });
+
+/**
+ * Crea un client Supabase ISOLATO con persistenza disabilitata.
+ * Usato per "merge account": logghiamo temporaneamente un altro utente
+ * (account B da assorbire) per ottenere il suo access token, senza
+ * sovrascrivere la session principale dell'utente già loggato (A).
+ * Ogni chiamata ritorna un nuovo client → garbage-collectato a fine flow.
+ */
+export function createIsolatedClient() {
+  return createClient(url, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    },
+  });
+}

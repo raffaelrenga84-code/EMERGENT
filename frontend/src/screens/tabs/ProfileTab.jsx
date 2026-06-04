@@ -14,6 +14,7 @@ import AccessibilityScreen from '../sub/AccessibilityScreen.jsx';
 import DataPrivacyScreen from '../sub/DataPrivacyScreen.jsx';
 import ImportScheduleModal from '../../components/ImportScheduleModal.jsx';
 import ProfilePhoneCard from '../../components/ProfilePhoneCard.jsx';
+import MergeAccountModal from '../../components/MergeAccountModal.jsx';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
@@ -29,6 +30,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [busy, setBusy] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [showImportSchedule, setShowImportSchedule] = useState(false);
+  const [showMerge, setShowMerge] = useState(false);
 
   if (view === 'plans') return <PricingScreen onBack={() => setView('main')} />;
   if (view === 'theme') return <ThemeScreen onBack={() => setView('main')} />;
@@ -388,6 +390,24 @@ export default function ProfileTab({ session, profile, families = [], members = 
           </div>
           <span style={{ color: 'var(--km)', fontSize: 18 }}>›</span>
         </button>
+
+        <button
+          type="button"
+          className="btn full secondary"
+          onClick={() => setShowMerge(true)}
+          data-testid="profile-merge-account-btn"
+          style={{ textAlign: 'left', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+          <span style={{ fontSize: 22 }}>🔗</span>
+          <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--k)' }}>
+              {t('merge_btn_h') || 'Unisci due account'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>
+              {t('merge_btn_hint') || 'Hai per sbaglio due profili (es. Google + SMS)? Fondili in uno solo.'}
+            </div>
+          </div>
+          <span style={{ color: 'var(--km)', fontSize: 18 }}>›</span>
+        </button>
       </div>
 
       {/* Riguarda il tour */}
@@ -421,6 +441,20 @@ export default function ProfileTab({ session, profile, families = [], members = 
           families={families}
           onClose={() => setShowImportSchedule(false)}
           onSaved={() => { setShowImportSchedule(false); onChanged && onChanged(); }}
+        />
+      )}
+
+      {showMerge && (
+        <MergeAccountModal
+          session={session}
+          onClose={() => setShowMerge(false)}
+          onMerged={() => {
+            // Dopo il merge: forza il ricaricamento dello state app
+            setShowMerge(false);
+            onChanged && onChanged();
+            // Soft reload per ripopolare le famiglie / membri dell'utente B
+            setTimeout(() => window.location.reload(), 1500);
+          }}
         />
       )}
     </div>
