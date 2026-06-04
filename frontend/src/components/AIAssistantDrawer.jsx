@@ -33,7 +33,7 @@ function parseActions(reply) {
   return { cleanText, actions };
 }
 
-export default function AIAssistantDrawer({ session, families = [], members = [], tasks = [], events = [], activeFamily, onAction }) {
+export default function AIAssistantDrawer({ session, families = [], members = [], tasks = [], events = [], activeFamily, activeTab, onAction }) {
   const { t, lang } = useT();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -44,6 +44,12 @@ export default function AIAssistantDrawer({ session, families = [], members = []
   const textareaRef = useRef(null);
 
   const userId = session?.user?.id || 'anonymous';
+
+  // Pages where the FAB AI should NOT be shown (decluttering): per richiesta
+  // dell'utente, lo nascondiamo su Famiglia e Profilo. Resta visibile su
+  // Bacheca, Agenda, Spese dove ha più senso (es. "crea task per stasera").
+  const hideFabOnTabs = ['famiglia', 'profile'];
+  const hideFab = hideFabOnTabs.includes(activeTab);
 
   // The current family (or all)
   const currentFamily = (() => {
@@ -143,14 +149,16 @@ export default function AIAssistantDrawer({ session, families = [], members = []
 
   return (
     <>
-      <button
-        className="fab ai-fab"
-        onClick={() => setOpen(true)}
-        title={t('ai_assistant_title')}
-        data-testid="ai-assistant-fab"
-      >
-        <Sparkles size={22} />
-      </button>
+      {!hideFab && (
+        <button
+          className="fab ai-fab"
+          onClick={() => setOpen(true)}
+          title={t('ai_assistant_title')}
+          data-testid="ai-assistant-fab"
+        >
+          <Sparkles size={22} />
+        </button>
+      )}
 
       {open && (
         <div className="ai-drawer-bg" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }} data-testid="ai-assistant-drawer">

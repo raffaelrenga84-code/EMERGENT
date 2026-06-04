@@ -268,6 +268,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
         tasks={tasks}
         events={events}
         activeFamily={activeFamily}
+        activeTab={activeTab}
         onAction={handleAIAction}
       />
 
