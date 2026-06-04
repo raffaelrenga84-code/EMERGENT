@@ -98,6 +98,16 @@ export default function AddEventModal({
   const submit = async (e) => {
     e.preventDefault();
     if (!title.trim() || !date) return;
+
+    // Validazione assegnatari: l'utente DEVE scegliere esplicitamente se
+    // l'evento è "Solo a me" o per quali membri/famiglie. Senza questa scelta
+    // l'evento veniva creato silenziosamente solo per il creatore e poi non
+    // era più modificabile dalla schermata Agenda → confusione UX.
+    if (!isEdit && !onlyForMe && assignees.length === 0) {
+      setErr(t('event_err_pick_assignees') || 'Scegli "Solo a me" oppure seleziona almeno un membro a cui assegnare l\'evento.');
+      return;
+    }
+
     setBusy(true); setErr('');
 
     const startsAt = time

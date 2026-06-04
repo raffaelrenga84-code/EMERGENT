@@ -120,6 +120,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   const [selTask, setSelTask] = useState(null);
   const [selEvent, setSelEvent] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -528,6 +529,20 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         />
       )}
 
+      {/* Modal di MODIFICA task — aperto dal click sulla penna ✏️ nel
+          TaskDetailModal. Pre-popola tutti i campi del task esistente. */}
+      {editingTask && (
+        <AddTaskModal
+          familyId={editingTask.family_id || targetFamilyId}
+          families={families}
+          members={members}
+          authorMemberId={me?.id}
+          editingTask={editingTask}
+          onClose={() => setEditingTask(null)}
+          onCreated={() => { setEditingTask(null); onChanged(); }}
+        />
+      )}
+
       {showAdd && (
         <AddEventModal
           familyId={targetFamilyId}
@@ -558,6 +573,9 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
           onClose={() => setSelTask(null)}
           onChanged={() => { onChanged(); }}
           onClosed={() => setSelTask(null)}
+          /* Fix: senza onEdit il click sulla penna ✏️ chiudeva solo il modale
+             senza riaprire AddTaskModal in modalità edit. */
+          onEdit={(taskToEdit) => setEditingTask(taskToEdit)}
         />
       )}
 
