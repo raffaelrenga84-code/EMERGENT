@@ -309,7 +309,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           <AbsenceModal session={session} profile={profile} families={families}
             tasks={tasks} members={allMembers}
             onClose={() => setShowAbsence(false)}
-            onSaved={() => { setShowAbsence(false); onChanged(); }} />
+            onSaved={() => { setShowAbsence(false); onChanged(); }}
+            onDeleted={() => { setShowAbsence(false); onChanged(); }} />
         )}
       </>
     );
@@ -438,6 +439,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           members={allMembers}
           onClose={() => setShowAbsence(false)}
           onSaved={() => { setShowAbsence(false); onChanged(); }}
+          onDeleted={() => { setShowAbsence(false); onChanged(); }}
         />
       )}
 

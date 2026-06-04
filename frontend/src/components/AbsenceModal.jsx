@@ -27,7 +27,7 @@ const REASONS = [
 export default function AbsenceModal({
   session, profile, families = [],
   editingAbsence = null, tasks = [], members = [],
-  onClose, onSaved,
+  onClose, onSaved, onDeleted,
 }) {
   const { t, lang } = useT();
   const isEdit = !!editingAbsence;
@@ -141,12 +141,25 @@ export default function AbsenceModal({
     onSaved?.({ id: absenceId, ...payload });
   };
 
+  // Elimina l'assenza corrente. Conferma chiesta lato UI prima di chiamarla.
+  const deleteAbsence = async () => {
+    if (!editingAbsence?.id) return;
+    setBusy(true); setErr('');
+    const { error } = await supabase.from('absences').delete().eq('id', editingAbsence.id);
+    setBusy(false);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    onDeleted ? onDeleted(editingAbsence.id) : onClose?.();
+  };
+
   const REASON_LABEL = (r) => r[`label_${lang}`] || r.label_it;
 
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, paddingBottom: 12, borderBottom: '1px solid var(--sm)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, paddingBottom: 12, borderBottom: '1px solid var(--sm)' }}>
           <h2 style={{ flex: 1, margin: 0, fontSize: 18 }} data-testid="absence-modal-title">
             {isEdit ? (t('absence_edit_h') || 'Modifica assenza') : (t('absence_new_h') || 'Nuova assenza')}
           </h2>
@@ -166,6 +179,41 @@ export default function AbsenceModal({
               📸 {t('imp_open_btn_short') || 'Da foto turno'}
             </button>
           )}
+          {isEdit && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(t('absence_delete_confirm') || 'Eliminare questa assenza?')) {
+                  deleteAbsence();
+                }
+              }}
+              disabled={busy}
+              data-testid="absence-delete-btn"
+              title={t('delete') || 'Elimina'}
+              aria-label={t('delete') || 'Elimina'}
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                border: '1px solid #E89898', background: 'white',
+                color: '#A93B2B', fontSize: 16, cursor: 'pointer',
+                padding: 0,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+              🗑
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            data-testid="absence-close-btn"
+            aria-label={t('close') || 'Chiudi'}
+            title={t('close') || 'Chiudi'}
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              border: '1px solid var(--sm)', background: 'white',
+              fontSize: 14, cursor: 'pointer', padding: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>✕
+          </button>
         </div>
 
         <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>

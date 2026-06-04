@@ -281,6 +281,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
             editingAbsence={editingAbsence}
             onClose={() => { setShowAbsence(false); setEditingAbsence(null); }}
             onSaved={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
+            onDeleted={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
           />
         )}
       </>
@@ -510,6 +511,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
           editingAbsence={editingAbsence}
           onClose={() => { setShowAbsence(false); setEditingAbsence(null); }}
           onSaved={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
+          onDeleted={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
         />
       )}
     </>

@@ -334,6 +334,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         events={filteredEvents}
         tasks={filteredTasks}
         absences={absences}
+        members={members}
         familyId={isAll ? null : targetFamilyId}
         selectedDay={selectedDay}
         onSelectDay={(d) => {
@@ -577,6 +578,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
           editingAbsence={editingAbsence}
           onClose={() => { setShowAbsence(false); setEditingAbsence(null); }}
           onSaved={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
+          onDeleted={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
         />
       )}
     </>
@@ -780,7 +782,7 @@ function ExportFamiliesPicker({ families, selected, onChange, t }) {
   );
 }
 
-function MonthGrid({ month, events, tasks = [], absences = [], familyId = null, selectedDay, onSelectDay, onPrev, onNext }) {
+function MonthGrid({ month, events, tasks = [], absences = [], members = [], familyId = null, selectedDay, onSelectDay, onPrev, onNext }) {
   const { t } = useT();
   const weekdays = t('weekday_short');
   const months = t('months');
@@ -824,13 +826,24 @@ function MonthGrid({ month, events, tasks = [], absences = [], familyId = null, 
     if (!familyId) return true; // isAll
     return Array.isArray(a.visible_to_families) && a.visible_to_families.includes(familyId);
   });
-  // Per ogni giorno del mese, marca se almeno un'assenza lo copre
+  // Per ogni giorno del mese, raccogli i colori dei membri assenti (max 4)
+  // così possiamo dipingere pallini distinti per persona invece di tutti viola.
+  // Fallback: se il membro non ha avatar_color, usa il viola "assenza generico".
   for (let d = 1; d <= daysInMonth; d++) {
     const isoDay = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     for (const a of relevantAbsences) {
       if (a.start_date <= isoDay && a.end_date >= isoDay) {
-        if (!itemsByDay[d]) itemsByDay[d] = { events: 0, tasks: 0, absences: 0 };
+        if (!itemsByDay[d]) itemsByDay[d] = { events: 0, tasks: 0, absences: 0, absenceColors: [] };
+        if (!itemsByDay[d].absenceColors) itemsByDay[d].absenceColors = [];
         itemsByDay[d].absences += 1;
+        // Trova membro: prima per user_id, poi fallback per nome
+        const member = (members || []).find((mm) =>
+          (a.user_id && mm.user_id === a.user_id) ||
+          (a.member_name && mm.name === a.member_name));
+        const color = member?.avatar_color || '#7C3AED';
+        if (!itemsByDay[d].absenceColors.includes(color)) {
+          itemsByDay[d].absenceColors.push(color);
+        }
       }
     }
   }
@@ -895,8 +908,16 @@ function MonthGrid({ month, events, tasks = [], absences = [], familyId = null, 
                   {Array.from({ length: Math.min(taskCount, 3) }).map((_, idx) => (
                     <span key={`t${idx}`} style={{ width: 6, height: 6, borderRadius: '50%', background: '#F39C12' }} />
                   ))}
-                  {Array.from({ length: Math.min(absenceCount, 2) }).map((_, idx) => (
-                    <span key={`a${idx}`} style={{ width: 6, height: 6, borderRadius: '50%', background: '#7C3AED' }} />
+                  {/* Pallini assenze: un colore per membro distinto (max 4
+                      colori). Bordino sottile per essere leggibili anche su
+                      sfondi simili. */}
+                  {(dayItems?.absenceColors || []).slice(0, 4).map((color, idx) => (
+                    <span key={`a${idx}`} title="Assenza" style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      background: color,
+                      border: '1px solid rgba(255,255,255,0.7)',
+                      boxSizing: 'border-box',
+                    }} />
                   ))}
                   {totalCount > 8 && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ac)' }}>+</span>}
                 </div>
@@ -930,17 +951,52 @@ function MonthGrid({ month, events, tasks = [], absences = [], familyId = null, 
           }}>✕</button>
         </div>
       )}
-      {/* Legenda mini */}
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8, fontSize: 11, color: 'var(--km)', flexWrap: 'wrap' }}>
+      {/* Legenda: gradient per eventi/task + chip per ogni membro con
+          assenze nel mese visualizzato (un colore unico per persona). */}
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 8, fontSize: 11, color: 'var(--km)', flexWrap: 'wrap' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ac)' }} /> Eventi
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F39C12' }} /> Incarichi
         </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7C3AED' }} /> ✈️ Assenze
-        </span>
+        {(() => {
+          // Costruisce la legenda dei membri che hanno almeno un'assenza nel mese.
+          // Mostriamo nome + pallino del loro avatar_color.
+          const seen = new Map();
+          for (const a of relevantAbsences) {
+            const member = (members || []).find((mm) =>
+              (a.user_id && mm.user_id === a.user_id) ||
+              (a.member_name && mm.name === a.member_name));
+            const color = member?.avatar_color || '#7C3AED';
+            const name = member?.name || a.member_name || 'Membro';
+            // Controlla se intersect il mese visibile
+            const startMonth = a.start_date?.slice(0, 7);
+            const endMonth = a.end_date?.slice(0, 7);
+            const visMonth = `${year}-${String(m + 1).padStart(2, '0')}`;
+            if (startMonth <= visMonth && endMonth >= visMonth) {
+              if (!seen.has(name)) seen.set(name, color);
+            }
+          }
+          if (seen.size === 0) return null;
+          return (
+            <>
+              <span style={{ width: 1, height: 12, background: 'var(--sm)' }} />
+              <span style={{ fontWeight: 700, color: 'var(--km)' }}>✈️</span>
+              {Array.from(seen.entries()).slice(0, 6).map(([name, color]) => (
+                <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{
+                    width: 7, height: 7, borderRadius: '50%',
+                    background: color,
+                    border: '1px solid rgba(255,255,255,0.7)',
+                    boxSizing: 'border-box',
+                  }} />
+                  {name.split(' ')[0]}
+                </span>
+              ))}
+            </>
+          );
+        })()}
       </div>
     </div>
   );
