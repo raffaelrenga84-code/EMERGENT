@@ -2,6 +2,16 @@
 
 ## Iterazione 16.3 (4 giugno 2026, notte) — Profilo riorganizzato + traduzioni mancanti
 
+### Fix follow-up — Family Memories Card tradotta
+Aggiunte 8 nuove key i18n × 4 lingue per la card "Ricordi di famiglia":
+`fm_header`, `fm_all_chip`, `fm_loading`, `fm_empty_h`, `fm_empty_in`,
+`fm_empty_p`, `fm_more_fmt`, `fm_kind_task`, `fm_kind_event`.
+
+Inoltre il `monthName` ora rispetta la lingua corrente (toLocaleDateString
+con locale dinamico it/en/fr/de), non più hardcoded `it-IT`.
+
+File modificato: `/app/frontend/src/components/FamilyMemoriesCard.jsx`
+
 ### Feature — Profilo user-friendly con sezioni collassabili
 **Problema**: il Profilo aveva 13 sezioni piatte una sotto l'altra → scroll
 infinito, l'utente si perdeva tra "Avatar / Nome / Compleanno / Email /

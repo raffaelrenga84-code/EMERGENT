@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { useT } from '../lib/i18n.jsx';
 import TaskDetailModal from './TaskDetailModal.jsx';
 import EventDetailModal from './EventDetailModal.jsx';
 
@@ -12,6 +13,7 @@ import EventDetailModal from './EventDetailModal.jsx';
  * appartiene a più famiglie.
  */
 export default function FamilyMemoriesCard({ families = [], members = [], me, compact = false }) {
+  const { t, lang } = useT();
   const familyIds = families.map((f) => f.id);
   const [filterFamily, setFilterFamily] = useState('all'); // 'all' | family.id
   const [month, setMonth] = useState(() => {
@@ -30,7 +32,9 @@ export default function FamilyMemoriesCard({ families = [], members = [], me, co
 
   const monthStart = month;
   const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 1);
-  const monthName = month.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+  // Locale del mese in base alla lingua corrente (it / en / fr / de)
+  const monthLocale = lang === 'it' ? 'it-IT' : lang === 'fr' ? 'fr-FR' : lang === 'de' ? 'de-DE' : 'en-US';
+  const monthName = month.toLocaleDateString(monthLocale, { month: 'long', year: 'numeric' });
   const isCurrentMonth = (() => {
     const now = new Date();
     return month.getFullYear() === now.getFullYear() && month.getMonth() === now.getMonth();
@@ -110,7 +114,7 @@ export default function FamilyMemoriesCard({ families = [], members = [], me, co
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ac)', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-            📸 Ricordi di famiglia
+            {t('fm_header')}
           </div>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--k)', textTransform: 'capitalize' }}>
             {monthEmoji} {monthName}
@@ -132,7 +136,7 @@ export default function FamilyMemoriesCard({ families = [], members = [], me, co
           <button type="button" onClick={() => setFilterFamily('all')}
             data-testid="memories-family-all"
             style={chipStyle(filterFamily === 'all')}>
-            🌍 Tutte
+            {t('fm_all_chip')}
           </button>
           {families.map((f) => (
             <button key={f.id} type="button" onClick={() => setFilterFamily(f.id)}
@@ -146,14 +150,14 @@ export default function FamilyMemoriesCard({ families = [], members = [], me, co
 
       {loading ? (
         <div style={{ fontSize: 13, color: 'var(--km)', padding: 20, textAlign: 'center' }}>
-          Caricamento ricordi…
+          {t('fm_loading')}
         </div>
       ) : photos.length === 0 ? (
         <div style={{ padding: '20px 10px', textAlign: 'center' }}>
           <div style={{ fontSize: 36, marginBottom: 6 }}>🖼️</div>
           <div style={{ fontSize: 13, color: 'var(--km)', lineHeight: 1.5 }}>
-            Nessuna foto questo mese{filteredFamily ? ` in "${filteredFamily.name}"` : ''}.<br />
-            <span style={{ fontSize: 12, opacity: 0.7 }}>Allega una foto a un incarico o evento per iniziare la tua galleria!</span>
+            {t('fm_empty_h')}{filteredFamily ? ` ${t('fm_empty_in', { name: filteredFamily.name })}` : ''}.<br />
+            <span style={{ fontSize: 12, opacity: 0.7 }}>{t('fm_empty_p')}</span>
           </div>
         </div>
       ) : (
@@ -166,7 +170,7 @@ export default function FamilyMemoriesCard({ families = [], members = [], me, co
             {photos.slice(0, compact ? 8 : 12).map((p) => (
               <button key={p.id} type="button" onClick={() => openPhoto(p)}
                 data-testid={`memory-photo-${p.id}`}
-                title={`${p.kind === 'task' ? 'Incarico' : 'Evento'}: ${p.title}`}
+                title={`${p.kind === 'task' ? t('fm_kind_task') : t('fm_kind_event')}: ${p.title}`}
                 style={{
                   aspectRatio: '1', borderRadius: 10, overflow: 'hidden',
                   border: '1px solid var(--sm)', padding: 0, background: 'var(--ab)',
@@ -193,7 +197,7 @@ export default function FamilyMemoriesCard({ families = [], members = [], me, co
           </div>
           {photos.length > (compact ? 8 : 12) && (
             <div style={{ marginTop: 8, fontSize: 11, color: 'var(--km)', textAlign: 'center' }}>
-              +{photos.length - (compact ? 8 : 12)} altre foto questo mese
+              {t('fm_more_fmt', { n: photos.length - (compact ? 8 : 12) })}
             </div>
           )}
         </>
