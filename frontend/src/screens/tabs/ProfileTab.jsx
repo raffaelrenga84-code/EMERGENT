@@ -13,6 +13,7 @@ import ThemeScreen from '../sub/ThemeScreen.jsx';
 import AccessibilityScreen from '../sub/AccessibilityScreen.jsx';
 import DataPrivacyScreen from '../sub/DataPrivacyScreen.jsx';
 import ImportScheduleModal from '../../components/ImportScheduleModal.jsx';
+import ProfilePhoneCard from '../../components/ProfilePhoneCard.jsx';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
@@ -192,10 +193,24 @@ export default function ProfileTab({ session, profile, families = [], members = 
         <div className="profile-row">
           <div>
             <div className="profile-label">{t('profile_email')}</div>
-            <div className="profile-value" style={{ color: 'var(--km)' }}>{session.user.email}</div>
+            <div className="profile-value" style={{ color: 'var(--km)' }}>
+              {session.user.email || (
+                <em style={{ fontStyle: 'italic', fontSize: 13 }}>
+                  {t('profile_email_empty') || 'Nessuna email associata'}
+                </em>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Telefono — l'utente può aggiungere/verificare il proprio numero
+          per loggarsi anche via SMS la prossima volta. */}
+      <ProfilePhoneCard
+        session={session}
+        profile={profile}
+        onChanged={onChanged}
+      />
 
       {/* Lingua */}
       <div className="profile-section">

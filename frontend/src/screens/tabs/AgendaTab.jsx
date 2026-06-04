@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
 import AddEventModal from '../../components/AddEventModal.jsx';
+import AddTaskModal from '../../components/AddTaskModal.jsx';
 import EventDetailModal from '../../components/EventDetailModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import CalendarShareModal from '../../components/CalendarShareModal.jsx';
@@ -117,6 +118,7 @@ function expandTasks(tasks) {
 export default function AgendaTab({ familyId, families, events, tasks = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily }) {
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
   const [selTask, setSelTask] = useState(null);
   const [selEvent, setSelEvent] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -505,9 +507,26 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         testid="agenda-fab"
         actions={[
           { id: 'event',   icon: '📅', label: t('fab_new_event')   || 'Nuovo evento',   onClick: () => setShowAdd(true),     testid: 'agenda-fab-new-event' },
+          { id: 'task',    icon: '📋', label: t('fab_new_task')    || 'Nuovo incarico', onClick: () => setShowAddTask(true), testid: 'agenda-fab-new-task' },
           { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza',  onClick: () => setShowAbsence(true), testid: 'agenda-fab-new-absence' },
         ]}
       />
+
+      {showAddTask && (
+        <AddTaskModal
+          familyId={isAll ? (families[0]?.id || null) : targetFamilyId}
+          families={families}
+          members={members}
+          authorMemberId={me?.id}
+          /* Prefill: se l'utente ha cliccato un giorno nel calendario,
+             quel giorno viene precaricato come scadenza del task. */
+          initialDueDate={selectedDay
+            ? `${selectedDay.getFullYear()}-${String(selectedDay.getMonth()+1).padStart(2,'0')}-${String(selectedDay.getDate()).padStart(2,'0')}`
+            : null}
+          onClose={() => setShowAddTask(false)}
+          onCreated={() => { setShowAddTask(false); onChanged(); }}
+        />
+      )}
 
       {showAdd && (
         <AddEventModal
