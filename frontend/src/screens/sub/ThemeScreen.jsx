@@ -17,6 +17,23 @@ export function applyTheme(theme) {
   try { localStorage.setItem(THEME_KEY, theme); } catch {}
 }
 
+/**
+ * Inizializza il listener globale di prefers-color-scheme. Chiamato una sola
+ * volta al boot dell'app. Quando il tema è in modalità "auto" e l'utente
+ * cambia il tema di sistema (es. iOS Settings → Display → Dark), FAMMY si
+ * adatta in tempo reale senza richiedere reload.
+ */
+export function initThemeAutoListener() {
+  if (typeof window === 'undefined' || !window.matchMedia) return;
+  const mql = window.matchMedia('(prefers-color-scheme: dark)');
+  const handler = () => {
+    if (getCurrentTheme() === 'auto') applyTheme('auto');
+  };
+  // addEventListener moderno; fallback a addListener per Safari < 14
+  if (mql.addEventListener) mql.addEventListener('change', handler);
+  else if (mql.addListener) mql.addListener(handler);
+}
+
 export default function ThemeScreen({ onBack }) {
   const { t } = useT();
   const [theme, setTheme] = useState(getCurrentTheme());
@@ -43,6 +60,7 @@ export default function ThemeScreen({ onBack }) {
         {options.map((opt) => (
           <button key={opt.id} onClick={() => setTheme(opt.id)}
             className="profile-row-btn"
+            data-testid={`theme-opt-${opt.id}`}
             style={{
               border: '1.5px solid', borderColor: theme === opt.id ? 'var(--k)' : 'var(--sm)',
               background: theme === opt.id ? 'var(--sm)' : 'white',
@@ -52,6 +70,23 @@ export default function ThemeScreen({ onBack }) {
           </button>
         ))}
       </div>
+
+      {theme === 'auto' && (
+        <p style={{
+          marginTop: 16, padding: '10px 14px', borderRadius: 10,
+          background: 'var(--ab)', border: '1px solid var(--sm)',
+          color: 'var(--km)', fontSize: 12, lineHeight: 1.5,
+        }} data-testid="theme-auto-hint">
+          💡 {t('theme_auto_hint') || 'FAMMY seguirà il tema del tuo dispositivo (iOS/Android/macOS).'}
+          {' '}
+          <strong style={{ color: 'var(--k)' }}>
+            {t('theme_auto_now') || 'Adesso'}:{' '}
+            {window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? (t('theme_dark') || 'Scuro')
+              : (t('theme_light') || 'Chiaro')}
+          </strong>
+        </p>
+      )}
     </div>
   );
 }

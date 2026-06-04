@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { supabase } from './lib/supabase.js';
 import { I18nProvider, detectBrowserLang } from './lib/i18n.jsx';
-import { applyTheme, getCurrentTheme } from './screens/sub/ThemeScreen.jsx';
+import { applyTheme, getCurrentTheme, initThemeAutoListener } from './screens/sub/ThemeScreen.jsx';
 import { applyA11ySettings } from './screens/sub/AccessibilityScreen.jsx';
 import { useGoogleAvatar } from './lib/useGoogleAvatar.js';
 import { usePushSubscription } from './lib/usePushSubscription.js';
@@ -43,6 +43,7 @@ function isDesktopDevice() {
 
 // Applica preferenze utente (tema + accessibilità) al primo render
 applyTheme(getCurrentTheme());
+initThemeAutoListener();
 applyA11ySettings();
 
 function getInviteToken() {

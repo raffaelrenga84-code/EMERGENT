@@ -163,6 +163,8 @@ export const T = {
     theme_light: '☀️ Chiaro',
     theme_dark: '🌙 Scuro',
     theme_auto: '🌗 Automatico (segui sistema)',
+    theme_auto_hint: 'FAMMY seguirà il tema del tuo dispositivo (iOS/Android/macOS).',
+    theme_auto_now: 'Adesso',
 
     // Accessibility
     a11y_h: 'Accessibilità',
@@ -772,6 +774,8 @@ export const T = {
     theme_light: '☀️ Light',
     theme_dark: '🌙 Dark',
     theme_auto: '🌗 Automatic (follow system)',
+    theme_auto_hint: 'FAMMY will follow your device theme (iOS/Android/macOS).',
+    theme_auto_now: 'Now',
 
     a11y_h: 'Accessibility',
     a11y_sub: 'Adapt FAMMY to your visual needs.',
@@ -1365,6 +1369,8 @@ export const T = {
     theme_light: '☀️ Clair',
     theme_dark: '🌙 Sombre',
     theme_auto: '🌗 Automatique (système)',
+    theme_auto_hint: 'FAMMY suivra le thème de ton appareil (iOS/Android/macOS).',
+    theme_auto_now: 'Maintenant',
 
     a11y_h: 'Accessibilité',
     a11y_sub: 'Adapte FAMMY à tes besoins visuels.',
@@ -1408,6 +1414,8 @@ export const T = {
     theme_light: '☀️ Clair',
     theme_dark: '🌙 Sombre',
     theme_auto: '🌗 Automatique (système)',
+    theme_auto_hint: 'FAMMY suivra le thème de ton appareil (iOS/Android/macOS).',
+    theme_auto_now: 'Maintenant',
 
     a11y_h: 'Accessibilité',
     a11y_sub: 'Adapte FAMMY à tes besoins visuels.',
@@ -1994,6 +2002,8 @@ export const T = {
     theme_light: '☀️ Hell',
     theme_dark: '🌙 Dunkel',
     theme_auto: '🌗 Automatisch (System)',
+    theme_auto_hint: 'FAMMY folgt dem Systemthema deines Geräts (iOS/Android/macOS).',
+    theme_auto_now: 'Jetzt',
 
     a11y_h: 'Barrierefreiheit',
     a11y_sub: 'Passe FAMMY an deine Bedürfnisse an.',
@@ -2037,6 +2047,8 @@ export const T = {
     theme_light: '☀️ Hell',
     theme_dark: '🌙 Dunkel',
     theme_auto: '🌗 Automatisch (System)',
+    theme_auto_hint: 'FAMMY folgt dem Systemthema deines Geräts (iOS/Android/macOS).',
+    theme_auto_now: 'Jetzt',
 
     a11y_h: 'Barrierefreiheit',
     a11y_sub: 'Passe FAMMY an deine Bedürfnisse an.',
