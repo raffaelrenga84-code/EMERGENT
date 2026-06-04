@@ -2,6 +2,32 @@
 
 ## Iterazione 16.3 (4 giugno 2026, notte) — Profilo riorganizzato + traduzioni mancanti
 
+### Iterazione 16.3.2 — Apple login rimosso + lista prefissi internazionali estesa
+
+#### Modifica — Tolto pulsante "Continua con Apple"
+Su richiesta dell'utente. Modifiche:
+- ✏️ `/app/frontend/src/screens/LoginScreen.jsx` — rimosso bottone Apple +
+  funzione `AppleIcon()` (non più referenziata). Mantenuti Google + telefono.
+- i18n key `login_with_apple` rimangono nel file (innocue, ignorate).
+
+#### Feature — Prefissi internazionali completi
+Prima erano solo 11 paesi hard-coded. Adesso 70+ paesi (tutta UE + tutti
+i mercati principali extra-UE: Australia, Brasile, India, Cina, USA,
+Argentina, Messico, Sudafrica, Israele, Giappone, Corea, ecc.).
+
+- ➕ `/app/frontend/src/lib/countryCodes.js` — lista condivisa centralizzata
+  con `{code, flag, label, name}` per ogni paese. Ordinata top-7 più usati
+  poi UE alfabetico poi resto del mondo.
+- ✏️ `/app/frontend/src/components/PhoneLoginModal.jsx` — usa la lista
+  condivisa; option ora mostra `🇦🇺 Australia (+61)` invece di `🇦🇺 +61`.
+- ✏️ `/app/frontend/src/components/ProfilePhoneCard.jsx` — stesso refactor.
+
+#### Testing
+- Lint: ✅ tutti file
+- Smoke screenshot landing: ✅ (mostra solo Google + telefono, niente Apple)
+
+---
+
 ### Fix follow-up — Family Memories Card tradotta
 Aggiunte 8 nuove key i18n × 4 lingue per la card "Ricordi di famiglia":
 `fm_header`, `fm_all_chip`, `fm_loading`, `fm_empty_h`, `fm_empty_in`,

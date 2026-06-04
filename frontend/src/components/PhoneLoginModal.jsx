@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { COUNTRY_CODES } from '../lib/countryCodes.js';
 
 /**
  * PhoneLoginModal — flusso "Login con telefono" (Supabase + Twilio Verify).
@@ -15,19 +16,7 @@ import { useT } from '../lib/i18n.jsx';
  *  - prefillPhone: opzionale, se vogliamo pre-popolare il numero
  *  - redirectTo: dove tornare dopo il login (per il flow invito)
  */
-const COUNTRY_CODES = [
-  { code: '+39', flag: '🇮🇹', label: 'IT' },
-  { code: '+1',  flag: '🇺🇸', label: 'US/CA' },
-  { code: '+44', flag: '🇬🇧', label: 'UK' },
-  { code: '+33', flag: '🇫🇷', label: 'FR' },
-  { code: '+49', flag: '🇩🇪', label: 'DE' },
-  { code: '+34', flag: '🇪🇸', label: 'ES' },
-  { code: '+41', flag: '🇨🇭', label: 'CH' },
-  { code: '+43', flag: '🇦🇹', label: 'AT' },
-  { code: '+32', flag: '🇧🇪', label: 'BE' },
-  { code: '+31', flag: '🇳🇱', label: 'NL' },
-  { code: '+351',flag: '🇵🇹', label: 'PT' },
-];
+// Country codes esposti da `lib/countryCodes.js` (lista condivisa con ProfilePhoneCard)
 
 export default function PhoneLoginModal({ onClose, prefillPhone = '' }) {
   const { t } = useT();
@@ -140,10 +129,10 @@ export default function PhoneLoginModal({ onClose, prefillPhone = '' }) {
                 onChange={(e) => setCountryCode(e.target.value)}
                 data-testid="phone-country-code"
                 className="input"
-                style={{ width: 120, padding: '10px 4px', fontSize: 13 }}>
+                style={{ width: 140, padding: '10px 4px', fontSize: 13 }}>
                 {COUNTRY_CODES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.flag} {c.code}
+                  <option key={c.code + c.label} value={c.code}>
+                    {c.flag} {c.name} ({c.code})
                   </option>
                 ))}
               </select>
