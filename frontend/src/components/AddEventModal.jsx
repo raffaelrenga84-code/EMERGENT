@@ -46,8 +46,11 @@ export default function AddEventModal({
   const [onlyForMe, setOnlyForMe] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [assigneesFlash, setAssigneesFlash] = useState(false);
+  const [showAssigneeAlert, setShowAssigneeAlert] = useState(false);
 
   const scrollableRef = useRef(null);
+  const assigneesRef = useRef(null);
   useKeyboardSafeModal(scrollableRef);
 
   // Carica gli assegnatari attuali se in modalità modifica
@@ -104,7 +107,14 @@ export default function AddEventModal({
     // l'evento veniva creato silenziosamente solo per il creatore e poi non
     // era più modificabile dalla schermata Agenda → confusione UX.
     if (!isEdit && !onlyForMe && assignees.length === 0) {
-      setErr(t('event_err_pick_assignees') || 'Scegli "Solo a me" oppure seleziona almeno un membro a cui assegnare l\'evento.');
+      setShowAssigneeAlert(true);
+      // Scroll alla sezione assegnatari + flash visivo
+      if (assigneesRef.current && scrollableRef.current) {
+        const offsetTop = assigneesRef.current.offsetTop - 8;
+        scrollableRef.current.scrollTo({ top: offsetTop, behavior: 'smooth' });
+      }
+      setAssigneesFlash(true);
+      window.setTimeout(() => setAssigneesFlash(false), 1800);
       return;
     }
 
@@ -218,6 +228,41 @@ export default function AddEventModal({
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Alert assegnatari mancanti — popup bloccante */}
+        {showAssigneeAlert && (
+          <div onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 300, padding: 16,
+            }} data-testid="add-event-assignee-alert">
+            <div onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white', borderRadius: 16, maxWidth: 360, width: '100%',
+                padding: 22, boxShadow: '0 18px 48px rgba(0,0,0,0.3)',
+              }}>
+              <div style={{ fontSize: 38, marginBottom: 8 }}>👥</div>
+              <h3 style={{ marginTop: 0, marginBottom: 6, fontSize: 17 }}>
+                {t('assign_required_h_event') || 'A chi assegni questo evento?'}
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--km)', marginTop: 0, lineHeight: 1.5 }}>
+                {t('assign_required_p_event') ||
+                  'Per evitare che un evento finisca nel calendario sbagliato, scegli sempre i destinatari. Puoi assegnarlo a te stesso ("Solo a me") oppure a uno o più membri.'}
+              </p>
+              <button type="button" onClick={() => setShowAssigneeAlert(false)}
+                data-testid="add-event-assignee-alert-ok"
+                style={{
+                  marginTop: 14, width: '100%',
+                  padding: '12px 16px', borderRadius: 12, border: 'none',
+                  background: 'var(--ac)', color: 'white',
+                  fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                }}>
+                {t('assign_required_btn') || 'Capito, seleziono ora'}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, paddingBottom: 12, borderBottom: '1px solid var(--sm)' }}>
           <div style={{ flex: 1 }}>
             <h2 style={{ margin: 0, fontSize: 18 }} data-testid="add-event-modal-title">{t('addevent_h')}</h2>
@@ -273,7 +318,17 @@ export default function AddEventModal({
 
             {/* === ASSEGNATARI === */}
             {byFamily.length > 0 && (
-              <div style={{ marginTop: 20 }}>
+              <div ref={assigneesRef} style={{
+                marginTop: 20,
+                ...(assigneesFlash ? {
+                  outline: '2.5px solid var(--rd)',
+                  outlineOffset: 4,
+                  borderRadius: 8,
+                  background: 'var(--rdB)',
+                  padding: 8,
+                  transition: 'all 0.25s ease',
+                } : {}),
+              }}>
                 <label>{t('assignee_multi_label')}</label>
                 <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 12 }}>
                   {t('assignee_multi_hint')}

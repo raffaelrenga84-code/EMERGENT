@@ -1,5 +1,43 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.1 (4 giugno 2026, ore dopo) — Forza scelta assegnatari su Task & Event
+
+### Bug fix — Incarico/Evento creato senza assegnatari
+**Root cause**:
+- In `AddTaskModal` non c'era nessuna validazione: l'utente poteva creare un
+  incarico SENZA scegliere nessuno → finiva nel limbo (status 'todo' senza
+  assegnatari) e nessuno si sentiva responsabile.
+- In `AddEventModal` la validazione esisteva ma mostrava solo un piccolo
+  errore `setErr` in fondo alla modale, spesso fuori dallo scroll → l'utente
+  non capiva perché il submit "non funzionasse".
+
+**Fix**: validazione bloccante in entrambe le modali (solo in creazione,
+non in modifica). Quando l'utente prova a salvare senza aver scelto
+`"Solo a me"` né alcun assegnatario:
+1. **Popup bloccante** che spiega in modo chiaro perché serve scegliere
+   ("Per evitare che un incarico finisca dimenticato, scegli sempre a chi
+   è destinato...") + bottone "Capito, seleziono ora"
+2. **Auto-scroll** del modale fino alla sezione assegnatari
+3. **Flash visivo rosso** (outline + sfondo rosa) sulla sezione assegnatari
+   per 1.8s — impossibile da non notare
+
+### File modificati
+- ✏️ `/app/frontend/src/components/AddTaskModal.jsx` — validazione + alert + ref + flash
+- ✏️ `/app/frontend/src/components/AddEventModal.jsx` — upgrade da `setErr` a popup + ref + flash
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 5 nuove key × 4 lingue (`assign_required_*`)
+
+### Testing
+- Lint: ✅
+- Smoke test screenshot: ✅
+- Verifica end-to-end richiede login Google → test manuale dell'utente:
+  1. Apri "Nuovo incarico", scrivi titolo, NON selezionare nessuno → tap Aggiungi
+  2. Devi vedere popup "👥 A chi assegni…" + scroll a sezione assegnatari evidenziata in rosso
+  3. Stessa cosa per "Nuovo evento"
+
+---
+
+# FAMMY — Family Organization App (Iterazione 16)
+
 ## Iterazione 16 (4 giugno 2026) — Push commenti + Badge rosso + Diagnostica push
 
 ### Bug fix #1 — Notifiche push per nuovi commenti su task

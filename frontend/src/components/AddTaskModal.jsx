@@ -70,7 +70,10 @@ export default function AddTaskModal({
 
   const scrollableRef = useRef(null);
   const titleInputRef = useRef(null);
+  const assigneesRef = useRef(null);
   const [titleFlash, setTitleFlash] = useState(false);
+  const [assigneesFlash, setAssigneesFlash] = useState(false);
+  const [showAssigneeAlert, setShowAssigneeAlert] = useState(false);
   useKeyboardSafeModal(scrollableRef);
 
   // Carica gli assegnatari attuali in modo edit
@@ -145,6 +148,22 @@ export default function AddTaskModal({
         try { titleInputRef.current?.focus(); } catch (_) {}
       }, 250);
       window.setTimeout(() => setTitleFlash(false), 1500);
+      return;
+    }
+
+    // Validazione assegnatari (solo in creazione): l'utente DEVE scegliere
+    // esplicitamente "Solo a me" oppure almeno un membro. Altrimenti
+    // l'incarico viene creato senza assegnatari → confusione UX
+    // (nessuno lo riceve, nessuno si sente responsabile).
+    if (!isEdit && !onlyForMe && assignees.length === 0) {
+      setShowAssigneeAlert(true);
+      // Scroll alla sezione assegnatari + flash
+      if (assigneesRef.current && scrollableRef.current) {
+        const offsetTop = assigneesRef.current.offsetTop - 8;
+        scrollableRef.current.scrollTo({ top: offsetTop, behavior: 'smooth' });
+      }
+      setAssigneesFlash(true);
+      window.setTimeout(() => setAssigneesFlash(false), 1800);
       return;
     }
 
@@ -306,6 +325,40 @@ export default function AddTaskModal({
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Alert assegnatari mancanti — popup bloccante sopra la modale */}
+        {showAssigneeAlert && (
+          <div onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 300, padding: 16,
+            }} data-testid="add-task-assignee-alert">
+            <div onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white', borderRadius: 16, maxWidth: 360, width: '100%',
+                padding: 22, boxShadow: '0 18px 48px rgba(0,0,0,0.3)',
+              }}>
+              <div style={{ fontSize: 38, marginBottom: 8 }}>👥</div>
+              <h3 style={{ marginTop: 0, marginBottom: 6, fontSize: 17 }}>
+                {t('assign_required_h') || 'A chi assegni questo incarico?'}
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--km)', marginTop: 0, lineHeight: 1.5 }}>
+                {t('assign_required_p') ||
+                  'Per evitare che un incarico finisca dimenticato, scegli sempre a chi è destinato. Puoi assegnarlo a te stesso ("Solo a me") oppure a uno o più membri della famiglia.'}
+              </p>
+              <button type="button" onClick={() => setShowAssigneeAlert(false)}
+                data-testid="add-task-assignee-alert-ok"
+                style={{
+                  marginTop: 14, width: '100%',
+                  padding: '12px 16px', borderRadius: 12, border: 'none',
+                  background: 'var(--ac)', color: 'white',
+                  fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                }}>
+                {t('assign_required_btn') || 'Capito, seleziono ora'}
+              </button>
+            </div>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, paddingBottom: 12, borderBottom: '1px solid var(--sm)' }}>
           <h2 style={{ flex: 1, margin: 0, fontSize: 18 }} data-testid="add-task-modal-title">
             {isEdit ? t('edit_task_h') || 'Modifica incarico' : t('addtask_h')}
@@ -395,7 +448,17 @@ export default function AddTaskModal({
             </div>
 
             {/* === ASSEGNATARI === */}
-            <div style={{ marginTop: 20 }}>
+            <div ref={assigneesRef} style={{
+              marginTop: 20,
+              ...(assigneesFlash ? {
+                outline: '2.5px solid var(--rd)',
+                outlineOffset: 4,
+                borderRadius: 8,
+                background: 'var(--rdB)',
+                padding: 8,
+                transition: 'all 0.25s ease',
+              } : {}),
+            }}>
               <label>{t('assignee_multi_label')}</label>
               <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 12 }}>
                 {t('assignee_multi_hint')}
