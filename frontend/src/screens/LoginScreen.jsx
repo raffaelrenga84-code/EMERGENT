@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT, LANGS } from '../lib/i18n.jsx';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal.jsx';
+import PhoneLoginModal from '../components/PhoneLoginModal.jsx';
 
 export default function LoginScreen() {
   const { t, lang, setLang } = useT();
   const [errorMsg, setErrorMsg] = useState('');
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
 
   const loginWithProvider = async (provider) => {
     setErrorMsg('');
@@ -58,6 +60,27 @@ export default function LoginScreen() {
           <AppleIcon />
           <span>{t('login_with_apple')}</span>
         </button>
+
+        {/* Divider "oppure" */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          margin: '4px 0', color: 'var(--km)', fontSize: 11,
+        }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--sm)' }} />
+          <span>{t('login_or') || 'oppure'}</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--sm)' }} />
+        </div>
+
+        {/* Login con telefono (Twilio Verify SMS OTP) */}
+        <button
+          type="button"
+          className="oauth-btn"
+          data-testid="login-with-phone"
+          onClick={() => setShowPhone(true)}
+          style={{ padding: '12px 16px', fontSize: 14 }}>
+          <span style={{ fontSize: 16 }}>📱</span>
+          <span>{t('login_with_phone') || 'Continua con il telefono'}</span>
+        </button>
       </div>
 
       {/* Warning anti-doppione: evita che lo stesso utente crei due account
@@ -95,6 +118,7 @@ export default function LoginScreen() {
       </p>
 
       {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
+      {showPhone && <PhoneLoginModal onClose={() => setShowPhone(false)} />}
     </div>
   );
 }
