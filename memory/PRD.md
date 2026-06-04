@@ -8,6 +8,55 @@
 
 ### Iterazione 16.3.4 — Hint prefisso per paese + recovery numero
 
+### Iterazione 16.3.5 — Backup Google account per utenti phone-only
+
+#### Feature — "Proteggi il tuo account" (link Google come backup)
+Soluzione concordata con l'utente (modalità "C"): per chi si è loggato con
+SOLO telefono, mostriamo UNA volta un soft modal che invita a collegare un
+account Google come backup, usando l'**identity linking** di Supabase.
+
+**Perché Google (e non magic-link email)?**
+L'utente non vuole un magic-link via email per evitare il rischio di
+account doppi. Con `supabase.auth.linkIdentity({provider:'google'})` Google
+viene attaccato all'identity esistente del numero → **stesso `user_id`**,
+zero migrazioni dati, zero doppioni.
+
+**Trigger**:
+- `shouldShowBackupGoogle(session)` controlla che l'utente abbia
+  esattamente UNA identity di tipo `'phone'` (nessuna `google` né `email`)
+- E che NON abbia già cliccato "Più tardi" (flag in localStorage per uid)
+- Mostrato 1.5s dopo aver caricato session + families (per non saltare in
+  faccia all'utente sulla home)
+- Se l'utente clicca "Più tardi" → flag `fammy_backup_google_dismissed_<uid>=1`
+  → **non viene MAI più mostrato**
+
+#### File modificati / nuovi
+- ➕ `/app/frontend/src/components/BackupGoogleModal.jsx`
+  - Modale con titolo "🔐 Proteggi il tuo account"
+  - 3 bullet di benefici (no doppi account / recovery / famiglie intatte)
+  - Bottone "Collega Google come backup" → `linkIdentity('google')`
+  - Bottone "Più tardi (non lo mostriamo più)"
+  - Export di `shouldShowBackupGoogle()` come pure-function di check
+- ✏️ `/app/frontend/src/App.jsx` — useEffect che decide se montare il modale +
+  rendering condizionale
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 10 nuove key × 4 lingue:
+  `bk_h`, `bk_p_intro`, `bk_b1`, `bk_b2`, `bk_b3`, `bk_link_btn`,
+  `bk_linking`, `bk_skip`, `bk_link_cancelled`
+
+#### ⚠️ AZIONE UTENTE (Supabase Dashboard)
+Assicurati che su **Auth → Settings** sia abilitata l'opzione **"Allow
+manual linking"** (o `GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true`). Senza
+questo flag, `linkIdentity()` torna errore.
+👉 https://supabase.com/dashboard/project/_/settings/auth → Manual Linking
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- Test end-to-end richiede login telefono reale → test manuale dell'utente
+
+---
+
+
 #### Bug fix — Hint "senza prefisso 0 iniziale" mostrato anche per paesi non-IT
 Il vecchio testo era specifico per Italia. Adesso:
 - `+39` → "Esempio: 333 1234567 (senza prefisso 0 iniziale)."

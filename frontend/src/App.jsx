@@ -15,6 +15,7 @@ import CookieConsentBanner, { getConsent } from './components/CookieConsentBanne
 import PrivacyPolicyModal from './components/PrivacyPolicyModal.jsx';
 import ToastListener from './components/ToastListener.jsx';
 import DesktopLanding from './screens/DesktopLanding.jsx';
+import BackupGoogleModal, { shouldShowBackupGoogle } from './components/BackupGoogleModal.jsx';
 
 // Riconosce un device "desktop puro" (no touch, mouse, schermo grande).
 // Tablet / iPad rimangono mobile-mode perché supportano touch.
@@ -62,6 +63,8 @@ export default function App() {
   // GDPR: consenso cookie e modal privacy (entrambi accessibili anche da loggati e non).
   const [consent, setConsent] = useState(() => getConsent());
   const [showPrivacy, setShowPrivacy] = useState(false);
+  // Backup Google: una sola volta dopo il login phone-only.
+  const [showBackupGoogle, setShowBackupGoogle] = useState(false);
   // dataLoaded: true quando abbiamo gia' fatto almeno una fetch di profile+families
   // dopo aver ricevuto la session. Evita il "flash" di WelcomeScreen per utenti
   // esistenti mentre families e' ancora in caricamento.
@@ -135,6 +138,20 @@ export default function App() {
 
   const refresh = () => setRefreshKey((k) => k + 1);
 
+  // Backup-Google nudge: dopo che la session è caricata e profile pronto,
+  // valutiamo se l'utente è "phone-only" (nessuna identity Google linkata).
+  // In tal caso, mostriamo il modale una sola volta (segna "dismissed" in
+  // localStorage al click "Più tardi"). Vedi `shouldShowBackupGoogle`.
+  useEffect(() => {
+    if (!session || !dataLoaded) return;
+    if (families.length === 0) return; // aspetta che l'onboarding sia finito
+    if (shouldShowBackupGoogle(session)) {
+      // Piccolo delay per non sovrapporsi alla home appena renderizzata
+      const id = setTimeout(() => setShowBackupGoogle(true), 1500);
+      return () => clearTimeout(id);
+    }
+  }, [session, dataLoaded, families.length]);
+
   // Optimistic update — sostituisce la famiglia aggiornata nello state
   // senza aspettare il round-trip a Supabase. Garantisce che la foto/emoji/nome
   // si veda subito in FamilySwitcher, FamilyTab e ovunque legga `families`.
@@ -194,6 +211,12 @@ export default function App() {
         onOpenPrivacy={() => setShowPrivacy(true)}
       />
       {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
+      {showBackupGoogle && session?.user?.id && (
+        <BackupGoogleModal
+          userId={session.user.id}
+          onClose={() => setShowBackupGoogle(false)}
+        />
+      )}
       {consent === 'all' && <Analytics />}
     </I18nProvider>
   );
