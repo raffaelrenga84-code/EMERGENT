@@ -4,6 +4,7 @@ import { sendPush, memberIdsToUserIds } from '../lib/pushClient.js';
 import { useT } from '../lib/i18n.jsx';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
 import DetailTabs from './DetailTabs.jsx';
+import MessageReactions from './MessageReactions.jsx';
 
 const CAT_EMOJI = {
   care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌',
@@ -47,6 +48,12 @@ export default function TaskDetailModal({
   const [showDelegate, setShowDelegate] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRecurringChoice, setShowRecurringChoice] = useState(null); // 'edit' | 'delete'
+  // Id del response su cui è attualmente aperto il picker emoji via long-press.
+  // null = nessun picker via long-press attivo (i picker "uncontrolled" lavorano
+  // con il loro internalOpen state, indipendente).
+  const [longPressPickerId, setLongPressPickerId] = useState(null);
+  const longPressTimerRef = useRef(null);
+  const longPressTriggeredRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +115,7 @@ export default function TaskDetailModal({
 
   // Realtime: ascolta nuovi messaggi su questo task. Se il tab attivo non è
   // 'thread' e il messaggio non è mio né di sistema → incrementa unreadCount
-  // (badge "● novità" sul tab Chat).
+  // (badge "● novità" sul tab Chat). Ascolta anche UPDATE per le reactions.
   useEffect(() => {
     if (!realTaskId) return;
     const channel = supabase
@@ -129,6 +136,15 @@ export default function TaskDetailModal({
           // Solo se NON sono già nel tab Chat lo conto come "non letto"
           setUnreadCount((n) => (activeTabRef.current === 'thread' ? 0 : n + 1));
         }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'task_responses',
+        filter: `task_id=eq.${realTaskId}`,
+      }, (payload) => {
+        // Update di reactions: ri-sincronizza l'array di commenti
+        const upd = payload.new;
+        if (!upd) return;
+        setComments((prev) => prev.map((c) => c.id === upd.id ? { ...c, ...upd } : c));
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -824,33 +840,72 @@ export default function TaskDetailModal({
                       {author?.avatar_letter || (author?.name || '?').charAt(0).toUpperCase()}
                     </div>
                     <div style={{
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: isMine ? 'flex-end' : 'flex-start',
                       maxWidth: '75%',
-                      padding: '8px 12px',
-                      borderRadius: 16,
-                      background: isMine ? 'var(--ac)' : 'white',
-                      color: isMine ? 'white' : 'var(--k)',
-                      border: isMine ? 'none' : '1px solid var(--sm)',
-                      borderBottomRightRadius: isMine ? 4 : 16,
-                      borderBottomLeftRadius: isMine ? 16 : 4,
-                      boxShadow: '0 1px 2px rgba(28,22,17,0.06)',
                     }}>
-                      {!isMine && (
-                        <div style={{
-                          fontSize: 10, fontWeight: 700, marginBottom: 2,
-                          color: author?.avatar_color || 'var(--ac)',
+                      <div
+                        onTouchStart={() => {
+                          longPressTriggeredRef.current = false;
+                          if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                          longPressTimerRef.current = setTimeout(() => {
+                            longPressTriggeredRef.current = true;
+                            setLongPressPickerId(c.id);
+                          }, 500);
+                        }}
+                        onTouchEnd={() => {
+                          if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                        }}
+                        onTouchMove={() => {
+                          if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                        }}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setLongPressPickerId(c.id);
+                        }}
+                        data-testid={`task-chat-bubble-${c.id}`}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 16,
+                          background: isMine ? 'var(--ac)' : 'white',
+                          color: isMine ? 'white' : 'var(--k)',
+                          border: isMine ? 'none' : '1px solid var(--sm)',
+                          borderBottomRightRadius: isMine ? 4 : 16,
+                          borderBottomLeftRadius: isMine ? 16 : 4,
+                          boxShadow: '0 1px 2px rgba(28,22,17,0.06)',
+                          userSelect: 'none',
+                          WebkitUserSelect: 'none',
+                          WebkitTouchCallout: 'none',
                         }}>
-                          {author?.name?.split(' ')[0] || t('td_someone')}
+                        {!isMine && (
+                          <div style={{
+                            fontSize: 10, fontWeight: 700, marginBottom: 2,
+                            color: author?.avatar_color || 'var(--ac)',
+                          }}>
+                            {author?.name?.split(' ')[0] || t('td_someone')}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 14, lineHeight: 1.35, wordBreak: 'break-word' }}>
+                          {c.text}
                         </div>
-                      )}
-                      <div style={{ fontSize: 14, lineHeight: 1.35, wordBreak: 'break-word' }}>
-                        {c.text}
+                        <div style={{
+                          fontSize: 10, opacity: 0.65, marginTop: 4,
+                          textAlign: isMine ? 'right' : 'left',
+                        }}>
+                          {new Date(c.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       </div>
-                      <div style={{
-                        fontSize: 10, opacity: 0.65, marginTop: 4,
-                        textAlign: isMine ? 'right' : 'left',
-                      }}>
-                        {new Date(c.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                      </div>
+                      {/* Reactions: bollini + picker (icona 😊 sempre visibile +
+                          long-press apre il picker da bubble) */}
+                      <MessageReactions
+                        response={c}
+                        me={me}
+                        members={members}
+                        taskTitle={title}
+                        isMine={isMine}
+                        pickerOpen={longPressPickerId === c.id}
+                        onPickerClose={() => setLongPressPickerId(null)}
+                      />
                     </div>
                   </div>
                 );

@@ -1,5 +1,54 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.2 (4 giugno 2026, sera) — Sticker Reactions sui commenti
+
+### Feature — Reazioni emoji ai messaggi (stile WhatsApp)
+I ragazzi della famiglia (e gli adulti pigri 😄) ora possono reagire a un
+commento di task con 6 emoji: **❤️ 👍 🎉 😂 😮 🙏**, senza dover
+scrivere "ok" ogni volta.
+
+### Schema DB (`fammy-reactions.sql`)
+- Colonna `task_responses.reactions jsonb NOT NULL DEFAULT '{}'`
+- Formato: `{ "❤️": ["<member_id1>", "<member_id2>"], "👍": [...] }`
+- Indice GIN su `reactions` per query veloci.
+- RPC `toggle_reaction(p_response_id, p_emoji, p_member_id)` SECURITY DEFINER:
+  - Verifica `auth.uid()` = proprietario di `p_member_id` (no impersonation)
+  - Verifica che l'utente sia membro della famiglia del task
+  - Toggle atomico: rimuove la reaction se già presente, altrimenti aggiunge
+  - Ritorna il nuovo `reactions` JSON
+- `alter publication supabase_realtime add table task_responses` (idempotente)
+  per ricevere gli UPDATE realtime.
+
+### Frontend
+- ➕ `/app/frontend/src/components/MessageReactions.jsx`:
+  - Picker overlay 6 emoji (pop animation 180ms)
+  - Icona 😊 "uncontrolled" sempre visibile a fianco del bubble
+  - Modalità "controlled" via prop `pickerOpen` per supportare long-press
+  - Bollini sotto il bubble con count + tooltip nomi reactor + outline
+    diverso se contiene il mio member_id
+  - Optimistic update con rollback su errore RPC
+  - Push notifica all'autore del commento via `sendPush()`:
+    `"❤️ Marco ha reagito" / <task_title>\n"<message preview>"`
+- ✏️ `/app/frontend/src/components/TaskDetailModal.jsx`:
+  - `long-press` 500ms su bubble → apre picker
+  - `onContextMenu` (right-click desktop) → apre picker
+  - Wrapper `<MessageReactions>` per ogni bubble non-system
+  - Sottoscrizione realtime estesa a `UPDATE` su `task_responses` (per
+    sincronizzare reactions degli altri utenti)
+- ✏️ `/app/frontend/src/styles.css` — `@keyframes reactionPop`
+
+### ⚠️ AZIONE UTENTE
+Esegui `/app/frontend/fammy-reactions.sql` su Supabase SQL Editor → Run.
+Senza la migration, l'RPC `toggle_reaction` non esiste e le reactions
+non funzionano.
+
+### Testing
+- Lint: ✅ tutti file
+- Smoke screenshot: ✅
+- Test end-to-end richiede login Google e 2 utenti per la push → test manuale
+
+---
+
 ## Iterazione 16.1 (4 giugno 2026, ore dopo) — Forza scelta assegnatari su Task & Event
 
 ### Bug fix — Incarico/Evento creato senza assegnatari
