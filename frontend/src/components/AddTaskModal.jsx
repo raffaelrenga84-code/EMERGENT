@@ -369,10 +369,10 @@ export default function AddTaskModal({
             data-testid="add-task-close-btn"
             aria-label={t('close') || 'Chiudi'}
             style={{
-              width: 32, height: 32, borderRadius: '50%',
-              border: '1px solid var(--sm)', background: 'white',
+              width: 40, height: 40, borderRadius: '50%',
+              border: '1px solid var(--sm)', background: 'var(--ab)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, fontWeight: 600, color: 'var(--km)',
+              fontSize: 20, fontWeight: 600, color: 'var(--k)',
               cursor: 'pointer', padding: 0, lineHeight: 1,
               flexShrink: 0,
             }}>✕</button>

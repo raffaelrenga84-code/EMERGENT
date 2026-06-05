@@ -1,5 +1,39 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.18 (5 giugno 2026) — Modal sotto al notch iOS (PWA standalone)
+
+### Bug fix — X nascosta dietro batteria/notch
+**Root cause**: il safe-area-inset era applicato al `.modal` interno, ma il
+modal-bg cresceva a tutta altezza viewport. Su iOS in PWA standalone con
+`black-translucent` status bar, il modal poteva estendersi sotto al notch
+/ Dynamic Island, e il padding-top del `.modal` non bastava a far scendere
+la X sotto la zona del status bar.
+
+**Fix**: spostato il safe-area-inset dal `.modal` al `.modal-bg`
+(il container che è sempre fixed inset:0):
+- `.modal-bg`: `padding-top: env(safe-area-inset-top, 0px)` — il modal
+  non può MAI estendersi sopra alla zona sicura (notch/Dynamic Island)
+- `.modal`: rimosso il padding-top condizionale, ora è semplice `24px`
+- `.modal max-height`: `calc(92vh - env(safe-area-inset-top, 0px))` per
+  evitare scroll non necessario
+- Desktop (≥768px): `padding-top: 0` (no safe-area in vista web)
+
+**X button**: aumentato da 32x32 → 40x40 px con sfondo `var(--ab)` più
+visibile (era bianco quasi invisibile), font 20px (era 18), color
+`var(--k)` (era grigio chiaro). Più tap-friendly e contrasto migliore.
+
+### File modificati
+- ✏️ `/app/frontend/src/styles.css` — safe-area su `.modal-bg`
+- ✏️ `/app/frontend/src/components/AddTaskModal.jsx` — X button 40x40 solido
+
+### Testing
+- Build: ✅ (`fammy-20260605145531`)
+- ⚠️ **Provalo tu** (PWA iOS): apri "Nuovo incarico" → ora la X è ben sotto
+  la batteria, 40x40 con sfondo grigio chiaro e font 20px → facilmente
+  premibile anche con dita grosse
+
+---
+
 ## Iterazione 16.5.17 (5 giugno 2026) — UX modal "Nuovo incarico"
 
 ### Fix multipli su `AddTaskModal`
