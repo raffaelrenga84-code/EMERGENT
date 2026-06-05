@@ -1,5 +1,42 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.21 (5 giugno 2026) — i18n date + chiavi commenti assenza
+
+### Bug fix 1 — Date in lingua dell'app (non del browser)
+**Problema**: in `NativeDateInput.jsx` la formattazione data usava
+`toLocaleDateString(undefined, ...)` → il browser sceglieva il locale di
+sistema. Risultato: utente con browser italiano ma app in inglese vedeva
+"Lunedì 1 Giugno 2026" invece di "Monday June 1, 2026".
+
+**Fix**: usa `useT().lang` per leggere la lingua attiva dell'app e mappa
+con `LANG_TO_LOCALE = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' }`.
+Tutte e 4 le funzioni `toLocaleDateString` / `toLocaleString` ora usano il
+locale dell'app, non quello del browser.
+
+### Bug fix 2 — Chiavi i18n mancanti (ABSENCE_COMMENTS_H, absence_comments_empty)
+**Problema**: nella iterazione precedente avevo aggiunto le chiavi
+`absence_comments_*` solo come fallback inline nel componente, ma non
+nel file `i18n.jsx` → in modalità EN/FR/DE il `t()` ritornava la chiave
+raw "absence_comments_h" maiuscolizzata dal CSS.
+
+**Fix**: aggiunte 5 keys × 4 lingue (IT/EN/FR/DE):
+- `absence_comments_h` — "Commenti" / "Comments" / "Commentaires" / "Kommentare"
+- `absence_comments_empty`
+- `absence_comments_placeholder`
+- `absence_comments_missing_sql`
+- `absence_readonly_hint`
+
+### File modificati
+- ✏️ `/app/frontend/src/components/NativeDateInput.jsx` — useT lang + locale map
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 5 nuove keys × 4 lingue
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605152148`)
+- ⚠️ **Provalo tu** (in EN): apri un'assenza esistente → ora le date sono "Monday, June 1, 2026" e i label sono "Comments", "Write a comment..." correttamente tradotti
+
+---
+
 ## Iterazione 16.5.20 (5 giugno 2026) — Agenda Apple-style + commenti sulle assenze
 
 ### Feature 1 — Lista singolo giorno (stile Apple Calendar)

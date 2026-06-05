@@ -1,4 +1,10 @@
 import { useRef } from 'react';
+import { useT } from '../lib/i18n.jsx';
+
+// Map della lingua dell'app → BCP47 locale per Intl.DateTimeFormat
+const LANG_TO_LOCALE = {
+  it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE',
+};
 
 /**
  * NativeDateInput — picker data/ora nativo cross-browser robusto.
@@ -31,6 +37,8 @@ export default function NativeDateInput({
   testid,
 }) {
   const ref = useRef(null);
+  const { lang } = useT();
+  const locale = LANG_TO_LOCALE[lang] || undefined;
 
   // showPicker() solo come UX boost su desktop — sulla label il browser
   // apre già il picker nativo da solo.
@@ -46,19 +54,19 @@ export default function NativeDateInput({
     if (!v) return null;
     try {
       if (type === 'date') {
-        return new Date(v + 'T00:00:00').toLocaleDateString(undefined, {
+        return new Date(v + 'T00:00:00').toLocaleDateString(locale, {
           weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
         });
       }
       if (type === 'datetime-local') {
-        return new Date(v).toLocaleString(undefined, {
+        return new Date(v).toLocaleString(locale, {
           day: 'numeric', month: 'long', year: 'numeric',
           hour: '2-digit', minute: '2-digit',
         });
       }
       if (type === 'time') return v;
       if (type === 'month') {
-        return new Date(v + '-01T00:00:00').toLocaleDateString(undefined, {
+        return new Date(v + '-01T00:00:00').toLocaleDateString(locale, {
           month: 'long', year: 'numeric',
         });
       }
