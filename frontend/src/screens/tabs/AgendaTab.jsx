@@ -117,8 +117,33 @@ function expandTasks(tasks) {
   return expanded;
 }
 
+// Helper: riga del bottom-sheet "Quick actions" (apre dal "+" in header).
+function ActionRow({ icon, label, onClick, accent, testid }) {
+  return (
+    <button
+      type="button"
+      data-testid={testid}
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '14px 16px', borderRadius: 14,
+        border: '1px solid var(--sm)', background: 'white',
+        textAlign: 'left', cursor: 'pointer',
+        borderLeft: accent ? `3px solid ${accent}` : '1px solid var(--sm)',
+      }}>
+      <span style={{
+        width: 36, height: 36, borderRadius: '50%',
+        background: 'var(--ab)', display: 'inline-flex',
+        alignItems: 'center', justifyContent: 'center',
+        fontSize: 18, flexShrink: 0,
+      }}>{icon}</span>
+      <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--k)' }}>{label}</span>
+    </button>
+  );
+}
 
-export default function AgendaTab({ familyId, families, events, tasks = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily }) {
+
+export default function AgendaTab({ familyId, families, events, tasks = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily, onOpenAI }) {
   const { t, lang } = useT();
   const localeMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' };
   const dateLocale = localeMap[lang] || 'it-IT';
@@ -145,6 +170,8 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   // Medicine FAB
   const [medsForMember, setMedsForMember] = useState(null);
   const [showMedsPicker, setShowMedsPicker] = useState(false);
+  // Bottom-sheet azioni rapide (sostituisce il floating FAB in Agenda)
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   // Carica gli assegnatari di eventi per il filtro "Solo a me"
   useEffect(() => {
@@ -395,6 +422,44 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
             }}>
             📥
           </button>
+          {/* AI: apre l'AIAssistantDrawer */}
+          {onOpenAI && (
+            <button
+              type="button"
+              data-testid="agenda-ai-btn"
+              onClick={() => onOpenAI()}
+              title={t('ai_assistant') || 'Assistente AI'}
+              aria-label={t('ai_assistant') || 'Assistente AI'}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'var(--gn)', border: 'none',
+                color: 'white', fontSize: 17,
+                cursor: 'pointer', display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: '0 2px 6px rgba(124,142,118,0.35)',
+              }}>
+              ✨
+            </button>
+          )}
+          {/* "+" azioni rapide: apre bottom-sheet con nuovo incarico/assenza/medicina */}
+          <button
+            type="button"
+            data-testid="agenda-new-btn"
+            onClick={() => setShowQuickActions(true)}
+            title={t('fab_new_title') || 'Nuovo'}
+            aria-label={t('fab_new_title') || 'Nuovo'}
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'var(--ac)', border: 'none',
+              color: 'white', fontSize: 22, fontWeight: 600,
+              cursor: 'pointer', display: 'inline-flex',
+              alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, lineHeight: 1,
+              boxShadow: '0 2px 6px rgba(193,98,75,0.35)',
+            }}>
+            +
+          </button>
         </div>
       </div>
 
@@ -550,21 +615,53 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         </>
       )}
 
-      <FabSpeedDial
-        testid="agenda-fab"
-        pulse={fabPulse}
-        actions={[
-          { id: 'task',    icon: '📋', label: t('fab_new_task')    || 'Nuovo incarico', onClick: () => setShowAddTask(true), testid: 'agenda-fab-new-task' },
-          { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza',  onClick: () => setShowAbsence(true), testid: 'agenda-fab-new-absence' },
-          ...(assistedMembers.length > 0 ? [{
-            id: 'med', icon: '💊',
-            label: t('fab_new_med') || 'Nuova medicina',
-            onClick: onClickNewMed,
-            testid: 'agenda-fab-new-med',
-            color: 'var(--gn)',
-          }] : []),
-        ]}
-      />
+      {/* Quick actions bottom-sheet (sostituisce il floating FAB).
+          Triggered da "+" nel header. */}
+      {showQuickActions && (
+        <div
+          data-testid="agenda-quick-actions-backdrop"
+          onClick={() => setShowQuickActions(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1500,
+            background: 'rgba(28,22,17,0.35)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            data-testid="agenda-quick-actions-sheet"
+            style={{
+              width: '100%', maxWidth: 520, background: 'white',
+              borderTopLeftRadius: 22, borderTopRightRadius: 22,
+              padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
+              display: 'flex', flexDirection: 'column', gap: 6,
+              animation: 'fammy-sheet-up 220ms cubic-bezier(.2,.8,.3,1)',
+            }}>
+            <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--sm)', margin: '0 auto 12px' }} />
+            <ActionRow icon="📋" label={t('fab_new_task') || 'Nuovo incarico'}
+              testid="agenda-action-task"
+              onClick={() => { setShowQuickActions(false); setShowAddTask(true); }} />
+            <ActionRow icon="✈️" label={t('fab_new_absence') || 'Nuova assenza'}
+              testid="agenda-action-absence"
+              onClick={() => { setShowQuickActions(false); setShowAbsence(true); }} />
+            {assistedMembers.length > 0 && (
+              <ActionRow icon="💊" label={t('fab_new_med') || 'Nuova medicina'}
+                accent="var(--gn)"
+                testid="agenda-action-med"
+                onClick={() => { setShowQuickActions(false); onClickNewMed(); }} />
+            )}
+            <button
+              type="button"
+              onClick={() => setShowQuickActions(false)}
+              data-testid="agenda-actions-cancel"
+              style={{
+                marginTop: 6, padding: '12px', borderRadius: 12,
+                border: '1px solid var(--sm)', background: 'white',
+                fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
+              }}>{t('cancel') || 'Annulla'}</button>
+          </div>
+        </div>
+      )}
 
       {showAddTask && (
         <AddTaskModal

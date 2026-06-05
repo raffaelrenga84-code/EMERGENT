@@ -33,7 +33,7 @@ function parseActions(reply) {
   return { cleanText, actions };
 }
 
-export default function AIAssistantDrawer({ session, families = [], members = [], tasks = [], events = [], activeFamily, activeTab, onAction }) {
+export default function AIAssistantDrawer({ session, families = [], members = [], tasks = [], events = [], activeFamily, activeTab, onAction, hideFab: hideFabProp = false, openSignal = 0 }) {
   const { t, lang } = useT();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -47,9 +47,15 @@ export default function AIAssistantDrawer({ session, families = [], members = []
 
   // Pages where the FAB AI should NOT be shown (decluttering): per richiesta
   // dell'utente, lo nascondiamo su Famiglia e Profilo. Resta visibile su
-  // Bacheca, Agenda, Spese dove ha più senso (es. "crea task per stasera").
+  // Bacheca e Spese. Su Agenda il prop esterno (hideFabProp) ha la priorità
+  // perché ora c'è un bottone dedicato nell'header.
   const hideFabOnTabs = ['famiglia', 'profile'];
-  const hideFab = hideFabOnTabs.includes(activeTab);
+  const hideFab = hideFabProp || hideFabOnTabs.includes(activeTab);
+
+  // Apertura controllata esternamente: parent che incrementa openSignal apre il drawer
+  useEffect(() => {
+    if (openSignal > 0) setOpen(true);
+  }, [openSignal]);
 
   // The current family (or all)
   const currentFamily = (() => {

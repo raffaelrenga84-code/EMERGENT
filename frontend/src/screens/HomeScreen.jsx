@@ -156,6 +156,12 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
     ? members.find((m) => m.user_id === session.user.id)
     : members.find((m) => m.user_id === session.user.id && m.family_id === activeFamily);
 
+  // Trigger esterno per aprire l'AI drawer dall'header di Agenda.
+  // Ogni volta che incrementiamo, il drawer si apre.
+  const [aiOpenSignal, setAiOpenSignal] = useState(0);
+  const onOpenAI = () => setAiOpenSignal((s) => s + 1);
+
+
   // Nasconde l'header (titolo + family chip) su Profilo e Agenda.
   // Su Agenda lo nascondiamo per dare più spazio al calendario; il family chip
   // viene reso inline nelle altre tab.
@@ -272,6 +278,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             profile={profile}
             onSwitchFamily={setActiveFamily}
             onChanged={() => { refresh(); refreshAbsences(); }}
+            onOpenAI={onOpenAI}
           />
         )}
         {activeTab === 'spese' && (
@@ -350,6 +357,8 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
         activeFamily={activeFamily}
         activeTab={activeTab}
         onAction={handleAIAction}
+        hideFab={activeTab === 'agenda'}
+        openSignal={aiOpenSignal}
       />
 
       {aiTaskPrefill && targetFamilyForAI() && (
