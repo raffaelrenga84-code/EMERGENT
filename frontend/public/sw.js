@@ -148,3 +148,38 @@ self.addEventListener('message', event => {
     } catch (e) { /* silent */ }
   }
 });
+
+// Quando il browser ruota l'endpoint (es. aggiornamento del SO, cambio
+// del push service), Chrome/Firefox emettono `pushsubscriptionchange`.
+// Re-sottoscriviamo immediatamente con la stessa applicationServerKey,
+// poi notifichiamo i client aperti per fare l'upsert nella tabella DB.
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const oldSub = event.oldSubscription;
+      // Reuse l'application server key dal vecchio sub
+      let appServerKey = null;
+      if (oldSub) {
+        appServerKey = oldSub.options?.applicationServerKey || null;
+      }
+      if (!appServerKey) return; // Senza key non possiamo re-sottoscrivere
+
+      const newSub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: appServerKey,
+      });
+
+      // Notifica tutti i client aperti che c'è una nuova subscription da salvare
+      const clients = await self.clients.matchAll({ includeUncontrolled: true });
+      for (const client of clients) {
+        client.postMessage({
+          type: 'PUSH_SUB_CHANGED',
+          subscription: newSub.toJSON(),
+        });
+      }
+    } catch (e) {
+      // Silent: il prossimo open dell'app farà di nuovo register()
+    }
+  })());
+});
+

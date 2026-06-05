@@ -801,6 +801,84 @@ function PushDiagnosticCard({ session }) {
           {t('push_diag_ios_hint')}
         </div>
       )}
+
+      {/* Troubleshooting: "Le push non arrivano in background?" — link
+          collassabile con i fix più comuni per Android / iOS. */}
+      <BackgroundPushHelp />
+    </div>
+  );
+}
+
+function BackgroundPushHelp() {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const isIOS = typeof navigator !== 'undefined' &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+  const isAndroid = typeof navigator !== 'undefined' &&
+    /Android/i.test(navigator.userAgent || '');
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        data-testid="background-push-help-toggle"
+        style={{
+          background: 'transparent', border: 'none',
+          color: 'var(--ac)', textDecoration: 'underline',
+          fontSize: 12, cursor: 'pointer', padding: 0, fontWeight: 600,
+        }}>
+        🤔 {t('push_help_link') || 'Le notifiche non arrivano in background?'}
+      </button>
+      {open && (
+        <div style={{
+          marginTop: 8, padding: 12, borderRadius: 12,
+          background: 'var(--s)', border: '1px solid var(--sm)',
+          fontSize: 12, color: 'var(--k)', lineHeight: 1.55,
+        }} data-testid="background-push-help-box">
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>
+            {t('push_help_h') || 'Cose da controllare:'}
+          </div>
+          <ol style={{ margin: 0, paddingLeft: 18 }}>
+            {isAndroid && (
+              <>
+                <li style={{ marginBottom: 4 }}>
+                  <strong>{t('push_help_android_battery_h') || 'Ottimizzazione batteria'}</strong>:
+                  {' '}{t('push_help_android_battery_p') || 'Impostazioni → App → FAMMY → Batteria → "Non ottimizzato". Senza, Android killa il Service Worker dopo qualche minuto.'}
+                </li>
+                <li style={{ marginBottom: 4 }}>
+                  <strong>{t('push_help_android_bg_h') || 'Attività in background'}</strong>:
+                  {' '}{t('push_help_android_bg_p') || 'In Impostazioni → App → FAMMY → "Consenti attività in background".'}
+                </li>
+              </>
+            )}
+            {isIOS && (
+              <>
+                <li style={{ marginBottom: 4 }}>
+                  <strong>{t('push_help_ios_pwa_h') || 'App installata dalla Home'}</strong>:
+                  {' '}{t('push_help_ios_pwa_p') || 'Su iPhone le push funzionano SOLO se hai aggiunto FAMMY alla schermata Home dal menu Condividi di Safari, e apri sempre l\'app da quell\'icona.'}
+                </li>
+                <li style={{ marginBottom: 4 }}>
+                  <strong>{t('push_help_ios_focus_h') || 'Focus / Modalità Aereo'}</strong>:
+                  {' '}{t('push_help_ios_focus_p') || 'Controlla che non ci sia una "Modalità Concentrazione" attiva (es. "Non disturbare", "Sonno") che blocca le notifiche.'}
+                </li>
+              </>
+            )}
+            <li style={{ marginBottom: 4 }}>
+              <strong>{t('push_help_perm_h') || 'Permesso notifiche'}</strong>:
+              {' '}{t('push_help_perm_p') || 'Se l\'hai accettato e poi negato, in alcuni browser va riconcesso manualmente dalle impostazioni del sito.'}
+            </li>
+            <li style={{ marginBottom: 4 }}>
+              <strong>{t('push_help_open_h') || 'Riapri FAMMY ogni tanto'}</strong>:
+              {' '}{t('push_help_open_p') || 'L\'apertura "rinnova" la subscription. Anche bastano 2 secondi una volta a settimana.'}
+            </li>
+          </ol>
+          <div style={{
+            marginTop: 10, padding: 8, background: 'var(--ab)',
+            borderRadius: 8, fontSize: 11, color: 'var(--km)',
+          }}>
+            {t('push_help_test_hint') || '💡 Per un test "vero": invia la notifica di test, poi chiudi completamente FAMMY (swipe dalle app recenti) e chiedi a un familiare di scriverti un commento su un task. Dovrebbe arrivare.'}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

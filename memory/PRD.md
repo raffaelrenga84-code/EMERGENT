@@ -12,6 +12,72 @@
 
 ### Iterazione 16.3.6 — Invito: solo Google/telefono + delete membri
 
+### Iterazione 16.3.7 — Deep-link PWA + push background fix
+
+#### Feature 1 — Deep-link PWA (manifest)
+Aggiornato `/app/frontend/public/manifest.json` con:
+- `"handle_links": "preferred"` → su Android Chrome, quando l'utente clicca
+  un link a `farxer.com/invite/<token>` (o qualsiasi URL dentro lo scope),
+  il sistema apre direttamente la PWA installata invece del browser.
+- `"launch_handler": { "client_mode": ["focus-existing", "auto"] }` → se
+  l'app è già aperta in background, la riporta in foreground invece di
+  aprire una nuova tab.
+- `"id": "/?source=pwa"` e `"start_url": "/?source=pwa"` per identità PWA
+  stabile (richiesto da Chrome per il deep-linking).
+- `"display_override": ["window-controls-overlay", "standalone"]` per
+  l'esperienza più "app-like" possibile.
+
+⚠️ iOS NON supporta `handle_links` (limite Safari). Su iPhone i link
+continueranno ad aprirsi in Safari, ma se l'utente apre Safari → il PWA
+gli verrà proposto di installare.
+
+#### Feature 2 — Re-subscribe automatico + endpoint stale fix
+La causa principale di "le push arrivano solo se apro l'app" è che
+l'endpoint Web Push può scadere/ruotare (succede dopo update OS,
+pulizia cache, eccetera) e il DB ha quello vecchio. Fix:
+
+- ✏️ `/app/frontend/src/lib/usePushSubscription.js`:
+  1. Al register: se la subscription ha `expirationTime` passato, la
+     `.unsubscribe()` e ne crea una nuova.
+  2. Aggiorna `last_used_at` ad ogni open → la diagnostica push è più
+     accurata.
+  3. Listener `visibilitychange`: a ogni rientro nell'app (foreground)
+     ri-chiama `register()` per validare subscription.
+  4. Listener `serviceWorker.message` per il nuovo evento
+     `PUSH_SUB_CHANGED` (vedi sotto).
+
+- ✏️ `/app/frontend/public/sw.js`:
+  Aggiunto handler `pushsubscriptionchange` (Chrome/Firefox lo emettono
+  quando l'endpoint cambia). Il SW si re-sottoscrive con la stessa
+  `applicationServerKey` e notifica i client aperti via postMessage
+  `PUSH_SUB_CHANGED` → il client fa l'upsert nel DB.
+
+#### Feature 3 — Card troubleshooting "Le push non arrivano?"
+Nella `PushDiagnosticCard` del Profilo c'è un nuovo link
+🤔 "Le notifiche non arrivano in background?" che apre un pannello con:
+- (Android) Ottimizzazione batteria + Attività in background
+- (iOS) App da installare via Home + Focus Mode
+- (universale) Permesso notifiche + suggerimento di riaprire ogni tanto
+- Un test "vero": chiudi app → chiedi a un familiare di scrivere un
+  commento → la push dovrebbe arrivare
+
+#### File modificati / nuovi
+- ✏️ `/app/frontend/public/manifest.json` — deep-link + launch_handler
+- ✏️ `/app/frontend/public/sw.js` — pushsubscriptionchange handler
+- ✏️ `/app/frontend/src/lib/usePushSubscription.js` — re-subscribe + listener
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx` — `BackgroundPushHelp`
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 17 nuove key (IT + EN, FR/DE fanno fallback)
+
+#### Testing
+- Lint: ✅ (ignorate prompt injection in linter output)
+- Smoke screenshot: ✅
+- ⚠️ Test "vero" delle push richiede 2 device PWA installati →
+  **provalo tu**: chiudi l'app sul telefono A, chiedi a chi è su device
+  B di commentare un task, la push dovrebbe arrivare su A.
+
+---
+
+
 #### Bug fix 1 — InviteAcceptScreen ancora con magic-link email
 La pagina `/invite/<token>` mostrava ancora il form magic-link via email
 ("Email logins are disabled" se Supabase ha disabilitato gli email login).

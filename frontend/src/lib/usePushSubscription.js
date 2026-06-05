@@ -38,6 +38,14 @@ export function usePushSubscription(session) {
         // Subscription esistente?
         let subscription = await registration.pushManager.getSubscription();
 
+        // SAFETY: alcune subscription possono essere "scadute" (es. dopo
+        // pulizia cache del browser). Le unsubscribe e ne creiamo una nuova
+        // se il browser dichiara `expirationTime` passato.
+        if (subscription && subscription.expirationTime && subscription.expirationTime < Date.now()) {
+          try { await subscription.unsubscribe(); } catch (_) {}
+          subscription = null;
+        }
+
         if (!subscription) {
           // Nuova subscription
           subscription = await registration.pushManager.subscribe({
@@ -54,6 +62,10 @@ export function usePushSubscription(session) {
           p256dh: keys.p256dh,
           auth: keys.auth,
           user_agent: navigator.userAgent.slice(0, 200),
+          // last_used_at ad ogni apertura → la diagnostica mostra "ultima:
+          // oggi" e su backend possiamo eventualmente fare GC delle stale
+          // (più di 60gg) senza rischiare di cancellare device attivi.
+          last_used_at: new Date().toISOString(),
         };
 
         // Upsert su Supabase (idempotente grazie a UNIQUE(user_id, endpoint))
@@ -67,6 +79,36 @@ export function usePushSubscription(session) {
     };
 
     register();
+
+    // PWA-only: anche al rientro nell'app (visibilitychange) verifichiamo
+    // che la subscription sia ancora valida. Se Chrome o iOS hanno ruotato
+    // l'endpoint (succede dopo aggiornamenti del SO), facciamo un re-register.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') register();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    // Listener per il messaggio dal SW quando l'endpoint cambia
+    // ("pushsubscriptionchange" event). Vedi /public/sw.js
+    const onSWMessage = async (e) => {
+      if (e.data?.type !== 'PUSH_SUB_CHANGED') return;
+      const sub = e.data.subscription;
+      if (!sub) return;
+      await supabase.from('push_subscriptions').upsert({
+        user_id: session.user.id,
+        endpoint: sub.endpoint,
+        p256dh: sub.keys?.p256dh,
+        auth: sub.keys?.auth,
+        user_agent: navigator.userAgent.slice(0, 200),
+        last_used_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,endpoint', ignoreDuplicates: false });
+    };
+    navigator.serviceWorker.addEventListener('message', onSWMessage);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      navigator.serviceWorker.removeEventListener('message', onSWMessage);
+    };
   }, [session?.user?.id]);
 }
 
