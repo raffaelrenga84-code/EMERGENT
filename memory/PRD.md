@@ -1,5 +1,82 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.9 (5 giugno 2026) — Caregiver system + FAB Agenda allineato
+
+### Feature 1 — FAB Agenda allineato a Bacheca + pulse "guarda qui!"
+Il FAB "+" in Agenda mostrava solo "Nuovo incarico" + "Nuova assenza". Adesso
+è perfettamente allineato a quello di Bacheca con anche "💊 Nuova medicina"
+(visibile solo se ci sono assistiti accessibili). Identico picker bottom-sheet
+quando ci sono ≥2 assistiti.
+
+**Pulse "guarda qui"**: quando l'utente clicca una data nel calendario,
+il FAB lampeggia con un'animazione pulsante (3 onde di ring + scale up).
+Nuova animazione CSS `fammy-fab-attract` (1.4s, applicata via classe
+`.fab.fab-pulse`). Nuovo prop `pulse: boolean` su `FabSpeedDial`.
+
+### Feature 2 (a+b+c) — Sistema Caregiver completo
+Un membro "assistito" (es. nonna senza smartphone, bambino, demenza) può
+avere uno o più "caregiver" — altri membri della stessa famiglia.
+
+**SQL migration** (`fammy-caregivers.sql`):
+- Nuova colonna `members.cared_by uuid[]` (default vuoto)
+- Index GIN per query rapide
+- Funzione `get_member_caregiver_user_ids(member_id)` — restituisce auth.uid dei caregivers attivi
+- Funzione `get_my_assisted_members()` — lista assistiti dell'utente corrente
+
+**Componente `CaregiverPicker.jsx`** riutilizzabile:
+- Chip toggle multi-select con avatar + nome
+- Esclude assistito stesso e placeholder senza account
+- Empty-state friendly quando non ci sono caregiver candidates
+
+**Edit/Add Member Modal**:
+- Quando spunto "è assistito", appare riga "🤝 Chi se ne occupa?"
+- Caregiver salvati in `cared_by`
+- Fallback graceful se migration non eseguita (`cared_by` errore → retry senza)
+
+**Edge function `medication-reminder-push`** routing intelligente:
+- Se `cared_by` non vuoto → push **solo ai caregiver** (+ assistito se ha account, per doppio canale)
+- Se vuoto → fallback storico: tutta la famiglia
+- Dedup user_ids prima dell'invio
+
+**UI rifinita (opzione c)**:
+- 🩺 **Care Hub header**: badge "🤝 Maria, Luca" sotto al nome dell'assistito
+- 👤 **ProfileTab → Salute**: nuova sezione "👥 Persone che assisto" con
+  shortcut diretti al Care Hub di ciascun assistito
+- 👥 **FamilyTab card**: chip verde "🤝 Maria" sotto il badge assenze
+
+### File nuovi
+- ➕ `/app/frontend/fammy-caregivers.sql` — migration + 2 funzioni SQL
+- ➕ `/app/frontend/src/components/CaregiverPicker.jsx` — multi-select chip
+
+### File modificati
+- ✏️ `/app/frontend/src/components/FabSpeedDial.jsx` — prop `pulse` + classe
+- ✏️ `/app/frontend/src/styles.css` — keyframe `fammy-fab-attract` + `.fab.fab-pulse`
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — FAB allineato + pulse on selectedDay + MedicationsModal mount + picker
+- ✏️ `/app/frontend/src/components/EditMemberModal.jsx` — caregiver picker + fallback schema
+- ✏️ `/app/frontend/src/components/AddMemberModal.jsx` — caregiver picker + fallback schema
+- ✏️ `/app/frontend/src/components/MedicationsModal.jsx` — badge caregivers nell'header
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx` — sezione "Persone che assisto"
+- ✏️ `/app/frontend/src/screens/tabs/FamilyTab.jsx` — chip "🤝" sulle card
+- ✏️ `/app/frontend/supabase/_dashboard_standalone/medication-reminder-push.ts` — routing intelligente
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 5 nuove keys IT/EN
+
+### ⚠️ AZIONE UTENTE (2 step)
+1. Esegui `/app/frontend/fammy-caregivers.sql` su Supabase SQL Editor
+2. Re-deploya la edge function `medication-reminder-push` (dashboard Supabase → Edge Functions → medication-reminder-push → Deploy)
+
+### Testing
+- Lint: ✅ tutti i 7 file
+- Build: ✅ (`fammy-20260605111125`)
+- ⚠️ **Provalo tu**:
+  1. Famiglia → modifica un membro assistito → ora vedi "🤝 Chi se ne occupa?" con chip → seleziona 1-2 caregiver → salva
+  2. Care Hub header mostra "🤝 [nomi caregiver]"
+  3. FamilyTab card mostra chip verde "🤝 Maria"
+  4. Profilo → "Salute & assistenza" mostra "👥 Persone che assisto" con shortcut
+  5. Agenda → tap su una data → il "+" lampeggia per 1.5s
+  6. Agenda → tap "+" → vedi anche "💊 Nuova medicina" (se hai assistiti)
+
+---
+
 ## Iterazione 16.5.8 (5 giugno 2026) — Auto-bump CACHE_NAME ad ogni deploy
 
 ### Bug fix definitivo — La PWA installata non si aggiornava ai deploy

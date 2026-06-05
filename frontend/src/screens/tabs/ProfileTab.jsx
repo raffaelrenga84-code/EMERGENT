@@ -38,6 +38,15 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const iAmAssisted = myMembers.some((m) => m.is_assisted);
   const [savingAssisted, setSavingAssisted] = useState(false);
   const [openMyCareHub, setOpenMyCareHub] = useState(false);
+  // Care Hub di un assistito (quando l'utente è caregiver)
+  const [careHubFor, setCareHubFor] = useState(null);
+
+  // Assistiti di cui l'utente loggato è caregiver
+  const myMemberIds = new Set(myMembers.map((m) => m.id));
+  const assistedByMe = (members || []).filter((m) =>
+    m.is_assisted && Array.isArray(m.cared_by) &&
+    m.cared_by.some((cgId) => myMemberIds.has(cgId))
+  );
 
   const toggleMyAssisted = async (next) => {
     if (myMembers.length === 0) return;
@@ -285,6 +294,60 @@ export default function ProfileTab({ session, profile, families = [], members = 
             🩺 {t('profile_open_care_hub') || 'Apri il mio Care Hub'}
           </button>
         )}
+
+        {/* PERSONE CHE ASSISTO — visibile se l'utente è caregiver di altri */}
+        {assistedByMe.length > 0 && (
+          <div style={{
+            marginTop: 14, paddingTop: 12,
+            borderTop: '1px dashed var(--sd)',
+          }}>
+            <div style={{
+              fontSize: 11, fontWeight: 800, color: 'var(--km)',
+              textTransform: 'uppercase', letterSpacing: '0.04em',
+              marginBottom: 8,
+            }}>
+              👥 {t('profile_assisted_by_me_h') || 'Persone che assisto'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {assistedByMe.map((m) => {
+                const fam = families.find((f) => f.id === m.family_id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setCareHubFor(m)}
+                    data-testid={`profile-assisted-shortcut-${m.id}`}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 12,
+                      border: '1.5px solid var(--sm)', background: 'white',
+                      cursor: 'pointer', textAlign: 'left',
+                    }}>
+                    <span style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      background: m.avatar_color || 'var(--ac)', color: 'white',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, fontSize: 13, flexShrink: 0,
+                    }}>
+                      {m.avatar_letter || (m.name || '?').charAt(0).toUpperCase()}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--k)' }}>
+                        {m.name}
+                      </div>
+                      {fam && (
+                        <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 1 }}>
+                          {fam.emoji} {fam.name}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 16, color: 'var(--ac)' }}>🩺</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </ProfileGroup>
 
       {/* GRUPPO 2: NOTIFICHE */}
@@ -529,6 +592,15 @@ export default function ProfileTab({ session, profile, families = [], members = 
           member={myMembers[0]}
           me={myMembers[0]}
           onClose={() => { setOpenMyCareHub(false); onChanged && onChanged(); }}
+        />
+      )}
+
+      {/* Care Hub di un assistito di cui sono caregiver (shortcut Profilo) */}
+      {careHubFor && (
+        <MedicationsModal
+          member={careHubFor}
+          me={myMembers.find((mm) => mm.family_id === careHubFor.family_id) || myMembers[0]}
+          onClose={() => { setCareHubFor(null); onChanged && onChanged(); }}
         />
       )}
     </div>

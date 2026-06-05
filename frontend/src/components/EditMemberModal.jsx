@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { createBirthdayEventData } from '../lib/birthdayUtils.js';
 import GiftIdeasModal from './GiftIdeasModal.jsx';
+import CaregiverPicker from './CaregiverPicker.jsx';
 
 const PRESET_ROLES = [
   'nonno', 'nonna', 'mamma', 'papà', 'figlio', 'figlia',
@@ -35,6 +36,8 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
   const [uploading, setUploading] = useState(false);
   const [birthDate, setBirthDate] = useState(member.birth_date || '');
   const [isAssisted, setIsAssisted] = useState(!!member.is_assisted);
+  const [caredBy, setCaredBy] = useState(member.cared_by || []);
+  const [familyMembers, setFamilyMembers] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [showGiftIdeas, setShowGiftIdeas] = useState(false);
@@ -42,6 +45,19 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
   const [deleting, setDeleting] = useState(false);
 
   const finalRole = customRoleMode && customRole.trim() ? customRole.trim() : role;
+
+  // Carica i membri della famiglia per il CaregiverPicker (solo se non li abbiamo già)
+  useEffect(() => {
+    let cancelled = false;
+    if (!member.family_id) return;
+    supabase.from('members')
+      .select('id, name, user_id, avatar_letter, avatar_color, family_id')
+      .eq('family_id', member.family_id)
+      .then(({ data }) => {
+        if (!cancelled) setFamilyMembers(data || []);
+      });
+    return () => { cancelled = true; };
+  }, [member.family_id]);
 
   // L'eliminazione è permessa solo per membri SENZA account collegato (cioè
   // placeholder o membri creati per sbaglio dall'admin). I membri con
@@ -99,6 +115,10 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
       if (withBirth) payload.birth_date = birthDate || null;
       // Toggle "è assistito": sblocca la sezione medicine nel profilo.
       payload.is_assisted = isAssisted;
+      // Caregiver assegnati (chi si occupa di questo assistito).
+      // Salvato solo se isAssisted=true; se l'utente disattiva l'assistenza
+      // azzeriamo l'array per coerenza.
+      payload.cared_by = isAssisted ? caredBy : [];
       // .select() per detettare RLS che blocca silenziosamente (rows vuote)
       return supabase.from('members').update(payload).eq('id', member.id).select();
     };
@@ -116,6 +136,24 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
       const retry = await tryUpdate(false, true);
       data = retry.data; error = retry.error;
       if (!error) setErr(t('schema_missing_birthdate'));
+    }
+    // 3) Schema vecchio: manca cared_by (migration caregivers non eseguita).
+    // Ritento senza cared_by così l'update non-cared_by riesce.
+    if (error && /cared_by/i.test(error.message)) {
+      const tryNoCare = async () => {
+        const payload = {
+          name: name.trim(), role: finalRole,
+          avatar_color: color,
+          avatar_letter: emoji || name.trim().charAt(0).toUpperCase(),
+          is_assisted: isAssisted,
+        };
+        if (avatarUrl) payload.avatar_url = avatarUrl;
+        if (birthDate) payload.birth_date = birthDate;
+        return supabase.from('members').update(payload).eq('id', member.id).select();
+      };
+      const retry = await tryNoCare();
+      data = retry.data; error = retry.error;
+      if (!error) setErr(t('schema_missing_caregivers') || 'Esegui fammy-caregivers.sql per attivare l\'assegnazione caregiver.');
     }
 
     if (error) { setErr(error.message); setBusy(false); return; }
@@ -309,6 +347,35 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
                 </div>
               </div>
             </label>
+
+            {/* CAREGIVER PICKER — visibile solo quando is_assisted è attivo */}
+            {isAssisted && (
+              <div style={{
+                marginTop: 12, paddingTop: 12,
+                borderTop: '1px dashed var(--gn)',
+              }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 800, color: 'var(--km)',
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                  marginBottom: 6,
+                }}>
+                  🤝 {t('caregiver_h') || 'Chi se ne occupa?'}
+                </div>
+                <CaregiverPicker
+                  familyMembers={familyMembers}
+                  assistedMemberId={member.id}
+                  value={caredBy}
+                  onChange={setCaredBy}
+                />
+                <p style={{
+                  fontSize: 11, color: 'var(--km)',
+                  margin: '8px 0 0', lineHeight: 1.4,
+                }}>
+                  {t('caregiver_hint') ||
+                    'I caregiver selezionati riceveranno le notifiche per le medicine al posto dell\'assistito. Se non selezioni nessuno → notifica tutta la famiglia.'}
+                </p>
+              </div>
+            )}
           </div>
 
           <div style={{ marginTop: 16 }}>

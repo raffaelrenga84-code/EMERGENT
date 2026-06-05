@@ -30,6 +30,25 @@ export default function MedicationsModal({ member, me, onClose, initialTab = 'me
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showShare, setShowShare] = useState(false);
+  // Membri della famiglia (per derivare i caregiver assegnati)
+  const [familyMembers, setFamilyMembers] = useState([]);
+
+  // Carica i membri della famiglia (una volta)
+  useEffect(() => {
+    let cancelled = false;
+    if (!member.family_id) return;
+    supabase.from('members')
+      .select('id, name, avatar_letter, avatar_color, family_id, user_id')
+      .eq('family_id', member.family_id)
+      .then(({ data }) => {
+        if (!cancelled) setFamilyMembers(data || []);
+      });
+    return () => { cancelled = true; };
+  }, [member.family_id]);
+
+  const caregivers = (member.cared_by || [])
+    .map((id) => familyMembers.find((m) => m.id === id))
+    .filter(Boolean);
 
   const load = async () => {
     setLoading(true);
@@ -86,6 +105,15 @@ export default function MedicationsModal({ member, me, onClose, initialTab = 'me
             </h2>
             <div style={{ fontSize: 12, color: 'var(--km)' }}>
               {member.name}
+              {caregivers.length > 0 && (
+                <span data-testid="care-hub-caregivers-badge" style={{
+                  marginLeft: 8, padding: '2px 8px', borderRadius: 100,
+                  background: 'var(--gnB)', color: 'var(--gn)',
+                  fontSize: 10, fontWeight: 700,
+                }}>
+                  🤝 {caregivers.map((c) => c.name).join(', ')}
+                </span>
+              )}
             </div>
           </div>
           <button

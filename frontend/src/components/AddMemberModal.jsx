@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import CaregiverPicker from './CaregiverPicker.jsx';
 import { createBirthdayEventData } from '../lib/birthdayUtils.js';
 
 // Ruoli "preset". Lo *value* salvato nel DB resta in italiano (compat. con dati
@@ -30,8 +31,23 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
   const [color, setColor] = useState(COLORS[0]);
   const [birthDate, setBirthDate] = useState('');
   const [isAssisted, setIsAssisted] = useState(false);
+  const [caredBy, setCaredBy] = useState([]);
+  const [familyMembers, setFamilyMembers] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  // Carica i membri della famiglia per il CaregiverPicker
+  useEffect(() => {
+    let cancelled = false;
+    if (!familyId) return;
+    supabase.from('members')
+      .select('id, name, user_id, avatar_letter, avatar_color, family_id')
+      .eq('family_id', familyId)
+      .then(({ data }) => {
+        if (!cancelled) setFamilyMembers(data || []);
+      });
+    return () => { cancelled = true; };
+  }, [familyId]);
 
   const finalRole = customRoleMode && customRole.trim() ? customRole.trim() : role;
 
@@ -50,6 +66,8 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
         avatar_color: color,
         status: 'active',
         is_assisted: isAssisted,
+        // Caregiver assegnati (solo se è marcato come assistito)
+        cared_by: isAssisted ? caredBy : [],
       };
       if (withBirth && birthDate) payload.birth_date = birthDate;
       const { data, error } = await supabase
@@ -88,6 +106,29 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
       if (!retry.error) {
         created = retry.data;
         error = null;
+      }
+    }
+
+    // Se manca cared_by (migration caregivers non eseguita) → fallback senza
+    if (error && /cared_by/i.test(error.message)) {
+      const retry = await (async () => {
+        const payload = {
+          family_id: familyId,
+          name: name.trim(),
+          role: finalRole,
+          avatar_letter: name.trim().charAt(0).toUpperCase(),
+          avatar_color: color,
+          status: 'active',
+          is_assisted: isAssisted,
+        };
+        if (birthDate) payload.birth_date = birthDate;
+        return supabase.from('members').insert(payload).select().single();
+      })();
+      if (!retry.error) {
+        created = retry.data;
+        error = null;
+        if (isAssisted) setErr(t('schema_missing_caregivers') ||
+          'Esegui fammy-caregivers.sql per attivare l\'assegnazione caregiver.');
       }
     }
 
@@ -216,6 +257,35 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
                 </div>
               </div>
             </label>
+
+            {/* CAREGIVER PICKER — visibile solo se è assistito */}
+            {isAssisted && (
+              <div style={{
+                marginTop: 12, paddingTop: 12,
+                borderTop: '1px dashed var(--gn)',
+              }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 800, color: 'var(--km)',
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                  marginBottom: 6,
+                }}>
+                  🤝 {t('caregiver_h') || 'Chi se ne occupa?'}
+                </div>
+                <CaregiverPicker
+                  familyMembers={familyMembers}
+                  assistedMemberId={null}
+                  value={caredBy}
+                  onChange={setCaredBy}
+                />
+                <p style={{
+                  fontSize: 11, color: 'var(--km)',
+                  margin: '8px 0 0', lineHeight: 1.4,
+                }}>
+                  {t('caregiver_hint') ||
+                    'I caregiver selezionati riceveranno le notifiche per le medicine al posto dell\'assistito.'}
+                </p>
+              </div>
+            )}
           </div>
 
           <div style={{

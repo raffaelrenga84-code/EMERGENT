@@ -12,6 +12,7 @@ import ExportSheet from '../../components/ExportSheet.jsx';
 import FamilySwitcher from '../../components/FamilySwitcher.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
+import MedicationsModal from '../../components/MedicationsModal.jsx';
 import { absenceLabel, fmtAbsenceRange } from '../../lib/useAbsences.js';
 
 const TASK_CAT_EMOJI = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
@@ -135,6 +136,12 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const [openSections, setOpenSections] = useState({ today: false, future: false, past: false });
   const [onlyMine, setOnlyMine] = useState(true);
   const [eventAssignees, setEventAssignees] = useState([]);
+  // FAB pulse: attivato quando l'utente clicca un giorno nel calendario,
+  // per segnalare visivamente "ok ora premi + per inserire qualcosa qui".
+  const [fabPulse, setFabPulse] = useState(false);
+  // Medicine FAB
+  const [medsForMember, setMedsForMember] = useState(null);
+  const [showMedsPicker, setShowMedsPicker] = useState(false);
 
   // Carica gli assegnatari di eventi per il filtro "Solo a me"
   useEffect(() => {
@@ -145,6 +152,28 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
       .then(({ data }) => { if (!cancelled) setEventAssignees(data || []); });
     return () => { cancelled = true; };
   }, [events]);
+
+  // Quando l'utente clicca una data nel calendario → fa lampeggiare il FAB.
+  // Skippa il primo render (selectedDay parte da null).
+  useEffect(() => {
+    if (!selectedDay) return;
+    setFabPulse(true);
+    const id = setTimeout(() => setFabPulse(false), 1500);
+    return () => clearTimeout(id);
+  }, [selectedDay]);
+
+  // Membri assistiti accessibili (limitati al family scope se non "Tutte").
+  const assistedMembers = (members || []).filter((m) => {
+    if (!m.is_assisted) return false;
+    if (familyId) return m.family_id === familyId;
+    return (families || []).some((f) => f.id === m.family_id);
+  });
+
+  const onClickNewMed = () => {
+    if (assistedMembers.length === 0) return;
+    if (assistedMembers.length === 1) setMedsForMember(assistedMembers[0]);
+    else setShowMedsPicker(true);
+  };
 
   const expandedEvents = expandEvents(events);
   // Task con due_date che non sono done, da mostrare in calendario/agenda.
@@ -507,9 +536,17 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
 
       <FabSpeedDial
         testid="agenda-fab"
+        pulse={fabPulse}
         actions={[
           { id: 'task',    icon: '📋', label: t('fab_new_task')    || 'Nuovo incarico', onClick: () => setShowAddTask(true), testid: 'agenda-fab-new-task' },
           { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza',  onClick: () => setShowAbsence(true), testid: 'agenda-fab-new-absence' },
+          ...(assistedMembers.length > 0 ? [{
+            id: 'med', icon: '💊',
+            label: t('fab_new_med') || 'Nuova medicina',
+            onClick: onClickNewMed,
+            testid: 'agenda-fab-new-med',
+            color: 'var(--gn)',
+          }] : []),
         ]}
       />
 
@@ -617,6 +654,89 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
           onSaved={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
           onDeleted={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
         />
+      )}
+
+      {/* Care Hub aperto dal FAB "💊 Nuova medicina" */}
+      {medsForMember && (
+        <MedicationsModal
+          member={medsForMember}
+          me={me}
+          initialTab="meds"
+          onClose={() => { setMedsForMember(null); onChanged && onChanged(); }}
+        />
+      )}
+
+      {/* Picker bottom-sheet: scegli per quale persona assistita.
+          Mostrato solo se ci sono ≥2 assistiti. */}
+      {showMedsPicker && (
+        <div
+          data-testid="meds-picker-backdrop"
+          onClick={() => setShowMedsPicker(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1500,
+            background: 'rgba(28,22,17,0.35)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            data-testid="meds-picker-sheet"
+            style={{
+              width: '100%', maxWidth: 520, background: 'white',
+              borderTopLeftRadius: 22, borderTopRightRadius: 22,
+              padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
+              display: 'flex', flexDirection: 'column', gap: 8,
+              animation: 'fammy-sheet-up 220ms cubic-bezier(.2,.8,.3,1)',
+              maxHeight: '70vh', overflowY: 'auto',
+            }}>
+            <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--sm)', margin: '0 auto 8px' }} />
+            <div style={{
+              fontSize: 11, fontWeight: 800, color: 'var(--km)',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              textAlign: 'center', marginBottom: 6,
+            }}>
+              {t('meds_picker_h') || 'Per chi vuoi aggiungere medicine?'}
+            </div>
+            {assistedMembers.map((m) => {
+              const fam = families?.find((f) => f.id === m.family_id);
+              return (
+                <button
+                  key={m.id} type="button"
+                  data-testid={`meds-picker-item-${m.id}`}
+                  onClick={() => { setShowMedsPicker(false); setMedsForMember(m); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 14px', borderRadius: 14,
+                    border: '1.5px solid var(--sm)', background: 'white',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}>
+                  <span style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: m.avatar_color || 'var(--ac)', color: 'white',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: 15, flexShrink: 0,
+                  }}>{m.avatar_letter || (m.name || '?').charAt(0).toUpperCase()}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{m.name}</div>
+                    {fam && (
+                      <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>
+                        {fam.emoji} {fam.name}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+            <button
+              type="button" onClick={() => setShowMedsPicker(false)}
+              data-testid="meds-picker-cancel"
+              style={{
+                marginTop: 6, padding: '12px', borderRadius: 12,
+                border: '1px solid var(--sm)', background: 'white',
+                fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
+              }}>{t('cancel') || 'Annulla'}</button>
+          </div>
+        </div>
       )}
     </>
   );

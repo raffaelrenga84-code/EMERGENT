@@ -7,8 +7,10 @@ import { useEffect, useRef, useState } from 'react';
  *  - actions: [{ id, icon, label, onClick, testid, color }]
  *  - testid: string per il root FAB
  *  - className: override className del FAB (default 'fab')
+ *  - pulse: boolean — quando true, anima il FAB con pulsazione "guarda qui!"
+ *    (es. dopo aver cliccato una data in Agenda)
  */
-export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', className = 'fab' }) {
+export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', className = 'fab', pulse = false }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -33,7 +35,7 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
     const a = actions[0];
     return (
       <button
-        className={className}
+        className={className + (pulse ? ' fab-pulse' : '')}
         onClick={() => a.onClick?.()}
         data-testid={a.testid || testid}>
         +
@@ -105,7 +107,7 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
 
       {/* FAB principale */}
       <button
-        className={className}
+        className={className + (pulse && !open ? ' fab-pulse' : '')}
         onClick={() => setOpen((v) => !v)}
         data-testid={testid}
         style={{

@@ -124,16 +124,32 @@ serve(async (req) => {
         }
       }
 
-      // Risali alla famiglia + a tutti gli user_id dei membri di quella famiglia
+      // Risali al membro target (incluso cared_by) e poi calcola il target
+      // della notifica: caregiver assegnati (se presenti) → solo loro;
+      // altrimenti fallback alla famiglia intera.
       const { data: targetMember } = await supabaseAdmin
-        .from('members').select('id, name, family_id').eq('id', med.member_id).single();
+        .from('members').select('id, name, family_id, user_id, cared_by').eq('id', med.member_id).single();
       if (!targetMember) continue;
 
-      const { data: familyMembers } = await supabaseAdmin
-        .from('members').select('user_id').eq('family_id', targetMember.family_id);
+      const caredBy: string[] = (targetMember as any).cared_by || [];
+      let userIds: string[] = [];
 
-      const userIds = (familyMembers || [])
-        .map((m: any) => m.user_id).filter(Boolean);
+      if (caredBy.length > 0) {
+        // Caregivers assegnati → notifichiamo SOLO loro (più l'assistito se ha
+        // anche lui un account, per doppio canale di sicurezza).
+        const { data: cgs } = await supabaseAdmin
+          .from('members').select('id, user_id').in('id', caredBy);
+        userIds = (cgs || []).map((m: any) => m.user_id).filter(Boolean);
+        if (targetMember.user_id) userIds.push(targetMember.user_id);
+      } else {
+        // Fallback comportamento storico: tutta la famiglia
+        const { data: familyMembers } = await supabaseAdmin
+          .from('members').select('user_id').eq('family_id', targetMember.family_id);
+        userIds = (familyMembers || []).map((m: any) => m.user_id).filter(Boolean);
+      }
+
+      // Dedup
+      userIds = Array.from(new Set(userIds));
       if (userIds.length === 0) continue;
 
       // Chiama la stessa Edge Function send-push (riusa la logica web-push)

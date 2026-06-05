@@ -194,6 +194,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
                         <MemberCard
                           key={m.id}
                           member={m}
+                          familyMembers={familyMembers}
                           isMe={m.user_id === session.user.id}
                           isOwner={m.user_id === f.created_by}
                           canRemove={canRemoveMember(m, f)}
@@ -417,6 +418,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
             <MemberCard
               key={m.id}
               member={m}
+              familyMembers={familyMembersOfThis}
               isMe={m.user_id === session.user.id}
               isOwner={m.user_id === family.created_by}
               canRemove={canRemoveMember(m, family)}
@@ -552,9 +554,16 @@ export default function FamilyTab({ family, members, session, families, activeFa
   );
 }
 
-function MemberCard({ member, isMe, isOwner, canRemove, otherFamilies = [], activeAbsence, onEdit, onRemove, onInvite, onSetAbsence, onOpenMedications }) {
+function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, otherFamilies = [], activeAbsence, onEdit, onRemove, onInvite, onSetAbsence, onOpenMedications }) {
   const { t } = useT();
   const canInvite = !isMe && !member.user_id;
+
+  // Caregivers assegnati a questo membro assistito (chip "🤝 Maria")
+  const caregivers = member.is_assisted && Array.isArray(member.cared_by)
+    ? member.cared_by
+        .map((cgId) => familyMembers.find((mm) => mm.id === cgId))
+        .filter(Boolean)
+    : [];
 
   // L'icona/azione "rimuovi" varia in base al contesto:
   //  - isMe (e canRemove): pulsante "🚪 Esci" (= esci dalla famiglia)
@@ -649,6 +658,22 @@ function MemberCard({ member, isMe, isOwner, canRemove, otherFamilies = [], acti
               color: '#B36E00', fontSize: 11, fontWeight: 700,
             }}>
             {absenceLabel(activeAbsence)} · {fmtAbsenceRange(activeAbsence)}
+          </div>
+        )}
+
+        {/* Riga 4.5: Chip caregiver(s) — solo se assistito + cared_by non vuoto */}
+        {caregivers.length > 0 && (
+          <div
+            data-testid={`member-caregivers-${member.id}`}
+            style={{
+              display: 'inline-flex', alignSelf: 'flex-start',
+              alignItems: 'center', gap: 4,
+              padding: '3px 9px', borderRadius: 100,
+              background: 'var(--gnB)',
+              border: '1px solid var(--gn)',
+              color: 'var(--gn)', fontSize: 11, fontWeight: 700,
+            }}>
+            🤝 {caregivers.map((c) => c.name).join(', ')}
           </div>
         )}
 
