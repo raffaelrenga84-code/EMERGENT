@@ -580,48 +580,39 @@ function MemberCard({ member, isMe, isOwner, canRemove, otherFamilies = [], acti
   ) : null;
 
   return (
-    <div className="member-card" onClick={onEdit}>
+    <div className="member-card" onClick={onEdit}
+      style={{ alignItems: 'flex-start', gap: 12 }}>
       <Avatar
         name={member.name}
         avatarUrl={member.avatar_url}
         avatarLetter={member.avatar_letter}
         avatarColor={member.avatar_color || '#1C1611'}
-        size={40}
+        size={44}
       />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span>{member.name}</span>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {/* Riga 1: Nome + chip identità (Tu / Owner) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minHeight: 24 }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--k)' }}>{member.name}</span>
           {isOwner && (
             <span title="Proprietario della famiglia" style={{
-              fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
-              background: 'rgba(255,107,107,0.15)', color: '#C73838',
-              border: '1px solid rgba(255,107,107,0.4)',
-              display: 'inline-flex', alignItems: 'center', gap: 3,
+              fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 100,
+              background: 'rgba(255,107,107,0.13)', color: '#C73838',
+              border: '1px solid rgba(255,107,107,0.35)',
+              whiteSpace: 'nowrap',
             }}>👑 Owner</span>
           )}
           {isMe && (
             <span style={{
-              fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+              fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 100,
               background: 'var(--gnB)', color: 'var(--gn)',
               border: '1px solid var(--gn)',
+              whiteSpace: 'nowrap',
             }}>{t('you_chip') || 'Tu'}</span>
           )}
-          {activeAbsence && (
-            <span
-              data-testid={`member-absence-badge-${member.id}`}
-              style={{
-                padding: '2px 8px', borderRadius: 100,
-                background: 'rgba(243,156,18,0.18)',
-                border: '1px solid rgba(243,156,18,0.5)',
-                color: '#B36E00', fontSize: 11, fontWeight: 700,
-                whiteSpace: 'nowrap',
-              }}
-              title={fmtAbsenceRange(activeAbsence)}>
-              {absenceLabel(activeAbsence)} · {fmtAbsenceRange(activeAbsence)}
-            </span>
-          )}
         </div>
-        <div style={{ color: 'var(--km)', fontSize: 13 }}>
+
+        {/* Riga 2: Ruolo · stato account */}
+        <div style={{ color: 'var(--km)', fontSize: 12 }}>
           {translateRole(member.role, t) || t('member_one_label')}
           {!member.user_id && (
             <> · <span style={{ color: 'var(--ac)', fontWeight: 600 }}>
@@ -629,14 +620,41 @@ function MemberCard({ member, isMe, isOwner, canRemove, otherFamilies = [], acti
             </span></>
           )}
         </div>
+
+        {/* Riga 3: Compleanno (se presente) */}
+        {member.birthday && (
+          <div style={{ color: 'var(--km)', fontSize: 11 }}>
+            🎂 {new Date(member.birthday).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
+          </div>
+        )}
+
+        {/* Riga 4: Assenza badge (in stato visivo distinto) */}
+        {activeAbsence && (
+          <div
+            data-testid={`member-absence-badge-${member.id}`}
+            title={fmtAbsenceRange(activeAbsence)}
+            style={{
+              display: 'inline-flex', alignSelf: 'flex-start',
+              padding: '3px 9px', borderRadius: 100,
+              background: 'rgba(243,156,18,0.15)',
+              border: '1px solid rgba(243,156,18,0.4)',
+              color: '#B36E00', fontSize: 11, fontWeight: 700,
+            }}>
+            {absenceLabel(activeAbsence)} · {fmtAbsenceRange(activeAbsence)}
+          </div>
+        )}
+
+        {/* Riga 5: "Anche in:" altre famiglie (compatte) */}
         {otherFamilies.length > 0 && (
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
-            <span style={{ fontSize: 10, color: 'var(--km)', alignSelf: 'center' }}>{t('also_in')}</span>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: 'var(--km)', textTransform: 'uppercase', fontWeight: 700 }}>
+              {t('also_in')}
+            </span>
             {otherFamilies.map((f) => (
               <span key={f.id} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3,
-                padding: '2px 8px', borderRadius: 100,
-                background: f.color ? `${f.color}22` : 'var(--ab)',
+                padding: '1px 7px', borderRadius: 100,
+                background: f.color ? `${f.color}1a` : 'var(--ab)',
                 color: f.color || 'var(--ac)',
                 fontSize: 10, fontWeight: 600,
               }}>
@@ -645,75 +663,70 @@ function MemberCard({ member, isMe, isOwner, canRemove, otherFamilies = [], acti
             ))}
           </div>
         )}
-        {member.birthday && (
-          <div style={{ color: 'var(--km)', fontSize: 12, marginTop: 3 }}>
-            🎂 {new Date(member.birthday).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+
+        {/* Riga 6: Action bar — bottoni compatti pill-style */}
+        {(isMe && onSetAbsence) || (member.is_assisted && onOpenMedications) ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+            {isMe && onSetAbsence && (
+              <button
+                type="button"
+                data-testid="set-absence-btn"
+                onClick={(e) => { e.stopPropagation(); onSetAbsence(); }}
+                style={pillBtn('var(--ac)')}>
+                ✈️ {activeAbsence ? (t('manage_absence') || 'Gestisci assenza') : (t('set_absence') || 'Imposta assenza')}
+              </button>
+            )}
+            {member.is_assisted && onOpenMedications && (
+              <button
+                type="button"
+                data-testid={`member-meds-btn-${member.id}`}
+                onClick={(e) => { e.stopPropagation(); onOpenMedications(); }}
+                style={pillBtn('var(--ac)', true)}>
+                💊 {t('em_meds_btn') || 'Medicine'}
+              </button>
+            )}
           </div>
-        )}
-        {isMe && onSetAbsence && (
-          <button
-            type="button"
-            data-testid="set-absence-btn"
-            onClick={(e) => { e.stopPropagation(); onSetAbsence(); }}
-            style={{
-              marginTop: 6, padding: '4px 10px',
-              fontSize: 11, fontWeight: 600,
-              border: '1px solid var(--sm)', borderRadius: 100,
-              background: 'white', color: 'var(--ac)', cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-            }}>
-            ✈️ {activeAbsence ? (t('manage_absence') || 'Gestisci assenza') : (t('set_absence') || 'Imposta assenza')}
-          </button>
-        )}
-        {/* Medicine: visibile per ogni membro contrassegnato come "assistito".
-            Chiunque della famiglia può aprire (privacy mod. 2a). */}
-        {member.is_assisted && onOpenMedications && (
-          <button
-            type="button"
-            data-testid={`member-meds-btn-${member.id}`}
-            onClick={(e) => { e.stopPropagation(); onOpenMedications(); }}
-            style={{
-              marginTop: 6, marginLeft: 6, padding: '4px 10px',
-              fontSize: 11, fontWeight: 600,
-              border: '1px solid var(--ac)', borderRadius: 100,
-              background: 'var(--ab)', color: 'var(--ac)', cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-            }}>
-            💊 {t('em_meds_btn') || 'Medicine'}
-          </button>
-        )}
+        ) : null}
       </div>
 
-      {/* Bottone Invita (mostrato solo per placeholder, no isMe) */}
-      {canInvite && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onInvite(); }}
-          data-testid={`member-invite-btn-${member.id}`}
-          style={{
-            background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
-            border: 'none', color: 'white',
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.05em',
-            padding: '7px 14px', borderRadius: 100,
-            cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            boxShadow: '0 4px 12px rgba(193,98,75,0.32)',
-            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-            whiteSpace: 'nowrap',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.05)';
-            e.currentTarget.style.boxShadow = '0 6px 16px rgba(193,98,75,0.42)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(193,98,75,0.32)';
-          }}
-          title={t('invite_with_link')}>
-          <span style={{ fontSize: 13 }}>💌</span>
-          <span>{t('invite_btn')}</span>
-        </button>
-      )}
-      {removeButton}
+      {/* Colonna destra: action principale (Invita / Esci / ✕) */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+        gap: 6, flexShrink: 0,
+      }}>
+        {canInvite && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onInvite(); }}
+            data-testid={`member-invite-btn-${member.id}`}
+            style={{
+              background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
+              border: 'none', color: 'white',
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.03em',
+              padding: '7px 12px', borderRadius: 100,
+              cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              boxShadow: '0 3px 10px rgba(193,98,75,0.28)',
+              whiteSpace: 'nowrap',
+            }}
+            title={t('invite_with_link')}>
+            <span style={{ fontSize: 12 }}>💌</span>
+            <span>{t('invite_btn')}</span>
+          </button>
+        )}
+        {removeButton}
+      </div>
     </div>
   );
+}
+
+// Pill button compatto, riutilizzabile.
+function pillBtn(color, filled = false) {
+  return {
+    padding: '5px 11px', fontSize: 11, fontWeight: 600,
+    border: `1px solid ${color}`, borderRadius: 100,
+    background: filled ? `${color}15` : 'white',
+    color: color, cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    whiteSpace: 'nowrap',
+  };
 }

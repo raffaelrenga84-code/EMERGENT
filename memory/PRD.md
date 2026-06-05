@@ -34,6 +34,36 @@
 
 ### Iterazione 16.5 — Persone Assistite Fase 2: Profilo medico + Diario + Push background
 
+### Iterazione 16.5.1 — Refactor estetico card membro
+
+#### Refactor — MemberCard più leggibile
+Prima la card era affollata: nome + 3-4 chip in una sola riga che andava
+a capo, ruolo sotto, "Anche in:" sotto ancora, compleanno e poi bottoni
+in fila orizzontale. Risultato visivo: caos su mobile <400px.
+
+Nuovo layout a 6 righe verticali ben distinte:
+1. Nome (bold 15) + chip identità (Owner / Tu) inline
+2. Ruolo · stato account (12px, grigio)
+3. 🎂 Compleanno (se presente)
+4. Badge assenza (su sua riga, full pillola)
+5. "Anche in:" + chip altre famiglie
+6. Action bar (✈️ Assenza · 💊 Medicine) in pill compatte
+
+Colonna destra: bottone Invita 💌 / Esci 🚪 / ✕ separati.
+Avatar 40 → 44px, gap tra righe 4px, alignItems: flex-start per evitare
+schiacciamento.
+
+#### Estrazione helper `pillBtn(color, filled)`
+Funzione DRY per i bottoni a pillola dentro la card.
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- ⚠️ **Provalo tu**: vai in Famiglia → vedrai le card più pulite e ordinate
+
+---
+
+
 #### Feature 1 — Profilo medico
 Per ogni membro `is_assisted=true`, ora c'è un profilo medico 1:1 con:
 - Gruppo sanguigno (select)
