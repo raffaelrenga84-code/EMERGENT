@@ -1,5 +1,44 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.19 (5 giugno 2026) — Agenda redesign stile iPhone Calendar
+
+### Refactor — Calendario pulito, minimal, iPhone-style
+Ispirato a iPhone Calendar app. Cambiamenti:
+
+**Header mese**:
+- ✕ Rimossi i pulsanti ‹ › centrati ingombranti
+- ➕ Bottoni pill year ‹2026 / 2026› ai lati, discreti e cliccabili per nav mese
+- ➕ **Titolo "Giugno" bold 32px** font Cormorant sulla sinistra (era piccolo centrato)
+- ➕ Bottone "Oggi" appare a destra quando si guarda un mese ≠ corrente
+- Bottone Export ora icona 📥 in pill 36×36 (era pill testuale "Esporta")
+
+**Griglia mese**:
+- ✕ Rimossi box bianchi/bordi attorno a ogni cella → pulito, su sfondo neutro
+- ✕ Rimossa ✈️ ripetuta su ogni giorno con assenze (era rumorosa)
+- ✕ Rimossa la legenda eventi/incarichi/membri sotto al calendario
+- ➕ **Numero giorno in cerchio**:
+  - Oggi → cerchio pieno accent (var(--ac)) con numero bianco
+  - Selezionato → bordo accent 1.5px, numero scuro
+  - Passato → grigio sbiadito (var(--sm-dark))
+  - Weekend → grigio chiaro (var(--km))
+  - Normale → nero
+- ➕ **Pallini riassuntivi** sotto: max 3 (1 evento / 1 task / 1 assenza), 5×5px
+- ➕ Header weekday separato da underline 1px (cleaner separation)
+- ➕ Min-height celle 56px per dare aria (era 44)
+
+**Banner "X selezionato"**: ✕ rimosso, ridondante con i bucket sotto che già
+cambiano label (📌 5 giu / Dopo 5 giu / Prima di 5 giu)
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — refactor MonthGrid + header
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605150237`)
+- ⚠️ **Provalo tu**: Agenda → ora vedi "Giugno" bold + griglia pulita stile iPhone, niente più box/legenda/✈️ ovunque
+
+---
+
 ## Iterazione 16.5.18 (5 giugno 2026) — Modal sotto al notch iOS (PWA standalone)
 
 ### Bug fix — X nascosta dietro batteria/notch

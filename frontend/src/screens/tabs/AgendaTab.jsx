@@ -335,12 +335,13 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
 
   return (
     <>
-      {/* Header agenda: family switcher a sinistra + pulsante export a destra.
-          Sticky in alto durante lo scroll così su mobile resta sempre raggiungibile,
-          con tap target più comodo per le dita (min 36px di altezza). */}
+      {/* Header agenda compatto stile iPhone Calendar:
+          - FamilySwitcher pill a sx (solo se >1 famiglia) — più discreto
+          - Bottone "Oggi" se sto guardando un mese diverso → snap back
+          - Bottone Export icona (kebab-style minimal) */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 8, padding: '10px 16px 6px',
+        gap: 8, padding: '4px 16px 0',
       }}>
         {families && families.length > 1 ? (
           <FamilySwitcher
@@ -352,23 +353,47 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
             variant="pill"
           />
         ) : <span />}
-        <button
-          type="button"
-          data-testid="agenda-export-btn"
-          onClick={() => setShowExportSheet(true)}
-          title={t('export_sheet_title') || 'Esporta calendario'}
-          aria-label={t('export_sheet_title') || 'Esporta calendario'}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '8px 14px', borderRadius: 100,
-            background: 'white', border: '1.5px solid var(--sm)',
-            color: 'var(--ac)', fontSize: 13, fontWeight: 700,
-            cursor: 'pointer', boxShadow: '0 2px 6px rgba(28,22,17,0.05)',
-            whiteSpace: 'nowrap', flexShrink: 0,
-          }}>
-          <span style={{ fontSize: 14 }}>📥</span>
-          <span>{t('export_btn_short') || 'Esporta'}</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {(() => {
+            const todayDate = new Date();
+            const viewIsCurrentMonth = viewMonth.getFullYear() === todayDate.getFullYear()
+              && viewMonth.getMonth() === todayDate.getMonth();
+            if (viewIsCurrentMonth) return null;
+            return (
+              <button
+                type="button"
+                data-testid="agenda-jump-today-btn"
+                onClick={() => {
+                  setViewMonth(new Date(todayDate.getFullYear(), todayDate.getMonth(), 1));
+                  setSelectedDay(todayDate);
+                }}
+                style={{
+                  padding: '6px 12px', borderRadius: 100,
+                  background: 'var(--ab)', border: 'none',
+                  color: 'var(--ac)', fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer',
+                }}>
+                {t('agenda_today') || 'Oggi'}
+              </button>
+            );
+          })()}
+          <button
+            type="button"
+            data-testid="agenda-export-btn"
+            onClick={() => setShowExportSheet(true)}
+            title={t('export_sheet_title') || 'Esporta calendario'}
+            aria-label={t('export_sheet_title') || 'Esporta calendario'}
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'var(--ab)', border: 'none',
+              color: 'var(--k)', fontSize: 16,
+              cursor: 'pointer', display: 'inline-flex',
+              alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+            📥
+          </button>
+        </div>
       </div>
 
       <MonthGrid
@@ -1067,19 +1092,77 @@ function MonthGrid({ month, events, tasks = [], absences = [], members = [], fam
       data-testid="month-grid-swipe"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      style={{ touchAction: 'pan-y', overflow: 'hidden' }}>
-      <div className="month-header">
-        <button className="month-nav" onClick={goPrev} style={{ fontSize: 18 }}>‹</button>
-        <span className="month-title" style={{ fontSize: 16, fontWeight: 700 }}>{Array.isArray(months) ? months[m] : ''} {year}</span>
-        <button className="month-nav" onClick={goNext} style={{ fontSize: 18 }}>›</button>
+      style={{
+        touchAction: 'pan-y', overflow: 'hidden',
+        padding: '0 16px',
+      }}>
+      {/* Header: anno pill a sinistra (cliccabile per scegliere altro
+          mese veloce in futuro), titolo mese GRANDE bold, niente ‹ ›
+          decorative — l'utente swipe-a per cambiare mese. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 8, padding: '12px 0 4px',
+      }}>
+        <button
+          type="button"
+          onClick={goPrev}
+          data-testid="month-prev-btn"
+          aria-label="Mese precedente"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '6px 12px 6px 10px', borderRadius: 100,
+            background: 'var(--ab)', border: 'none',
+            fontSize: 14, fontWeight: 600, color: 'var(--k)',
+            cursor: 'pointer',
+          }}>
+          <span style={{ fontSize: 16, lineHeight: 1 }}>‹</span> {year}
+        </button>
+        <button
+          type="button"
+          onClick={goNext}
+          data-testid="month-next-btn"
+          aria-label="Mese successivo"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '6px 10px 6px 12px', borderRadius: 100,
+            background: 'var(--ab)', border: 'none',
+            fontSize: 14, fontWeight: 600, color: 'var(--k)',
+            cursor: 'pointer',
+          }}>
+          ›
+        </button>
       </div>
+      <h2 style={{
+        margin: '0 0 12px',
+        fontSize: 32, fontWeight: 800,
+        letterSpacing: '-0.02em',
+        color: 'var(--k)',
+        fontFamily: 'var(--fs)',
+      }}>
+        {Array.isArray(months) ? months[m] : ''}
+      </h2>
+
       <div
         key={`${year}-${m}`}
         className={slideDir === 'left' ? 'month-slide-in-r' : slideDir === 'right' ? 'month-slide-in-l' : ''}>
-      <div className="month-weekdays">
-        {Array.isArray(weekdays) && weekdays.map((w, i) => <div key={i} className="month-weekday" style={{ fontSize: 11, fontWeight: 700, padding: '6px 4px' }}>{w}</div>)}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        gap: 0, marginBottom: 4,
+        borderBottom: '1px solid var(--sm)',
+        paddingBottom: 6,
+      }}>
+        {Array.isArray(weekdays) && weekdays.map((w, i) => (
+          <div key={i} style={{
+            textAlign: 'center', fontSize: 11, fontWeight: 600,
+            color: i >= 5 ? 'var(--km)' : 'var(--k)',
+            letterSpacing: '0.04em',
+          }}>{w}</div>
+        ))}
       </div>
-      <div className="month-cells" style={{ gap: 4 }}>
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        rowGap: 4, columnGap: 0,
+      }}>
         {cells.map((d, i) => {
           const dayItems = d ? itemsByDay[d] : null;
           const eventCount = dayItems?.events || 0;
@@ -1093,54 +1176,64 @@ function MonthGrid({ month, events, tasks = [], absences = [], members = [], fam
           const cellDate = d ? new Date(year, m, d) : null;
           const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
           const isPast = cellDate && cellDate < todayMidnight;
+          const isWeekend = i % 7 >= 5;
+          // Colore numero: oggi=accent, selezionato=k, passato=dim, weekend=km, normale=k
+          const numColor = today_b
+            ? 'var(--ac)'
+            : isPast ? 'var(--sm-dark, #B8AC9A)'
+            : isWeekend ? 'var(--km)'
+            : 'var(--k)';
+
           return (
-            <button key={i} className={`month-cell ${today_b ? 'today' : ''} ${isSelected ? 'selected' : ''} ${hasItems ? 'has-events' : ''}`}
+            <button
+              key={i}
+              data-testid={d ? `month-day-${d}` : `month-empty-${i}`}
               disabled={!d}
               onClick={() => d && onSelectDay(new Date(year, m, d))}
               style={{
-                padding: '6px 4px',
-                minHeight: 44,
+                background: 'transparent',
+                border: 'none',
+                padding: '8px 0 6px',
+                minHeight: 56,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                background: hasItems ? 'var(--am)11' : isPast ? '#F5F2EC' : 'white',
-                border: today_b ? '2px solid var(--am)' : isSelected ? '2px solid var(--ac)' : hasItems ? '2px solid var(--am)33' : '1px solid var(--sm)',
-                borderRadius: 8,
+                gap: 4,
                 cursor: d ? 'pointer' : 'default',
-                opacity: isPast && !hasItems ? 0.45 : 1,
-                transition: 'all 0.2s ease',
                 position: 'relative',
               }}>
-              {/* Strip ✈️ in alto se ci sono assenze in questo giorno */}
-              {absenceCount > 0 && (
+              {d && (
                 <span style={{
-                  position: 'absolute', top: 2, right: 3,
-                  fontSize: 11, lineHeight: 1,
-                }}>✈️</span>
+                  display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  width: 28, height: 28,
+                  borderRadius: '50%',
+                  fontSize: 17, fontWeight: today_b ? 700 : 500,
+                  color: today_b ? 'white' : numColor,
+                  background: today_b ? 'var(--ac)' : 'transparent',
+                  border: isSelected && !today_b ? '1.5px solid var(--ac)' : 'none',
+                  lineHeight: 1,
+                  fontFamily: 'var(--fs)',
+                  transition: 'all 0.15s ease',
+                }}>
+                  {d}
+                </span>
               )}
-              {d && <span className="month-day" style={{ fontSize: 14, fontWeight: 700, color: isPast ? 'var(--km)' : 'var(--k)' }}>{d}</span>}
+              {/* Pallini riassuntivi sotto il numero: max 3 colorati */}
               {hasItems && (
-                <div style={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap', width: '100%' }}>
-                  {/* Pallini blu per eventi, arancio per task, viola per assenze */}
-                  {Array.from({ length: Math.min(eventCount, 3) }).map((_, idx) => (
-                    <span key={`e${idx}`} style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ac)' }} />
-                  ))}
-                  {Array.from({ length: Math.min(taskCount, 3) }).map((_, idx) => (
-                    <span key={`t${idx}`} style={{ width: 6, height: 6, borderRadius: '50%', background: '#F39C12' }} />
-                  ))}
-                  {/* Pallini assenze: un colore per membro distinto (max 4
-                      colori). Bordino sottile per essere leggibili anche su
-                      sfondi simili. */}
-                  {(dayItems?.absenceColors || []).slice(0, 4).map((color, idx) => (
-                    <span key={`a${idx}`} title="Assenza" style={{
-                      width: 7, height: 7, borderRadius: '50%',
-                      background: color,
-                      border: '1px solid rgba(255,255,255,0.7)',
-                      boxSizing: 'border-box',
-                    }} />
-                  ))}
-                  {totalCount > 8 && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ac)' }}>+</span>}
+                <div style={{
+                  display: 'flex', gap: 3, alignItems: 'center',
+                  height: 6,
+                }}>
+                  {eventCount > 0 && (
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--ac)' }} />
+                  )}
+                  {taskCount > 0 && (
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#F39C12' }} />
+                  )}
+                  {absenceCount > 0 && (
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#7C3AED' }} />
+                  )}
                 </div>
               )}
             </button>
@@ -1148,78 +1241,6 @@ function MonthGrid({ month, events, tasks = [], absences = [], members = [], fam
         })}
       </div>
       </div>{/* end month-slide-in wrapper */}
-      {selectedDay && (
-        <div style={{
-          background: 'var(--am)',
-          border: '1.5px solid var(--am)',
-          borderRadius: 12,
-          padding: '12px 16px',
-          margin: '12px 0 0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 14,
-          fontWeight: 600,
-          color: '#7A5A00',
-        }}>
-          <span>📌 {selectedDay.getDate()} {Array.isArray(t('months')) ? t('months')[selectedDay.getMonth()] : ''} selezionato</span>
-          <button onClick={() => onSelectDay(selectedDay)} style={{
-            background: 'none',
-            border: 'none',
-            fontSize: 18,
-            cursor: 'pointer',
-            padding: 0,
-            color: 'inherit',
-          }}>✕</button>
-        </div>
-      )}
-      {/* Legenda: gradient per eventi/task + chip per ogni membro con
-          assenze nel mese visualizzato (un colore unico per persona). */}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 8, fontSize: 11, color: 'var(--km)', flexWrap: 'wrap' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ac)' }} /> Eventi
-        </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F39C12' }} /> Incarichi
-        </span>
-        {(() => {
-          // Costruisce la legenda dei membri che hanno almeno un'assenza nel mese.
-          // Mostriamo nome + pallino del loro avatar_color.
-          const seen = new Map();
-          for (const a of relevantAbsences) {
-            const member = (members || []).find((mm) =>
-              (a.user_id && mm.user_id === a.user_id) ||
-              (a.member_name && mm.name === a.member_name));
-            const color = member?.avatar_color || '#7C3AED';
-            const name = member?.name || a.member_name || 'Membro';
-            // Controlla se intersect il mese visibile
-            const startMonth = a.start_date?.slice(0, 7);
-            const endMonth = a.end_date?.slice(0, 7);
-            const visMonth = `${year}-${String(m + 1).padStart(2, '0')}`;
-            if (startMonth <= visMonth && endMonth >= visMonth) {
-              if (!seen.has(name)) seen.set(name, color);
-            }
-          }
-          if (seen.size === 0) return null;
-          return (
-            <>
-              <span style={{ width: 1, height: 12, background: 'var(--sm)' }} />
-              <span style={{ fontWeight: 700, color: 'var(--km)' }}>✈️</span>
-              {Array.from(seen.entries()).slice(0, 6).map(([name, color]) => (
-                <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{
-                    width: 7, height: 7, borderRadius: '50%',
-                    background: color,
-                    border: '1px solid rgba(255,255,255,0.7)',
-                    boxSizing: 'border-box',
-                  }} />
-                  {name.split(' ')[0]}
-                </span>
-              ))}
-            </>
-          );
-        })()}
-      </div>
     </div>
   );
 }
