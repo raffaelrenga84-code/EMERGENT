@@ -10,6 +10,7 @@ import SwipeableRow from '../../components/SwipeableRow.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
+import CaregiverGreeting from '../../components/CaregiverGreeting.jsx';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
@@ -367,6 +368,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
 
   return (
     <>
+      <CaregiverGreeting session={session} members={members} me={me} />
+
       <BirthdayReminder members={members} session={session} familyId={familyId} families={families} />
 
       {/* Onboarding checklist progressiva (sparisce a setup completo o dismissato) */}

@@ -1,5 +1,44 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.10 (5 giugno 2026) — Saluto Caregiver in Bacheca
+
+### Feature — "🤝 Oggi sei caregiver di Pina"
+Nuovo componente `CaregiverGreeting.jsx` montato in cima alla Bacheca
+(sopra BirthdayReminder). Si nasconde se l'utente non è caregiver di nessuno.
+
+**Layout**:
+- Card pill verde gradient con icona 🤝
+- Header: "Oggi sei caregiver di {nome}" (singolare) o
+  "Oggi sei caregiver di N persone" (plurale)
+- Sub: "Tap per aprire il Care Hub di chi vuoi"
+- Sotto: card cliccabile per ogni assistito (avatar + nome + "💊 N medicine" oggi)
+- Tap su una card → apre direttamente il Care Hub di quell'assistito
+
+**Conteggio medicine**:
+- Query unica `medications` per tutti gli assistiti
+- Conta `times_of_day.length` come proxy di "medicine da prendere oggi"
+- Se 0 medicine → mostra "🩺 Care Hub" come fallback
+
+**Reattivo**: si auto-aggiorna quando cambia la lista di assistiti
+(membersChanged → BachecaTab re-render → CaregiverGreeting useEffect ri-fetch).
+
+### File nuovi
+- ➕ `/app/frontend/src/components/CaregiverGreeting.jsx`
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/BachecaTab.jsx` — import + mount in cima
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 6 nuove keys IT/EN (`cg_greet_one/many`, `cg_greet_sub`, `cg_med_one/many`, `cg_no_meds`)
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605111529`)
+- ⚠️ **Provalo tu** (richiede `fammy-caregivers.sql` già deployato):
+  1. Marca un membro come assistito e te stesso come caregiver
+  2. Apri Bacheca → vedi la card verde "🤝 Oggi sei caregiver di {nome}"
+  3. Tap sulla card → si apre il Care Hub direttamente
+
+---
+
 ## Iterazione 16.5.9 (5 giugno 2026) — Caregiver system + FAB Agenda allineato
 
 ### Feature 1 — FAB Agenda allineato a Bacheca + pulse "guarda qui!"
