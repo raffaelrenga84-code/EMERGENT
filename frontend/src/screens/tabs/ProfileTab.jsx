@@ -16,6 +16,7 @@ import ImportScheduleModal from '../../components/ImportScheduleModal.jsx';
 import ProfilePhoneCard from '../../components/ProfilePhoneCard.jsx';
 import MergeAccountModal from '../../components/MergeAccountModal.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
+import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
@@ -41,11 +42,14 @@ export default function ProfileTab({ session, profile, families = [], members = 
   // Care Hub di un assistito (quando l'utente è caregiver)
   const [careHubFor, setCareHubFor] = useState(null);
 
-  // Assistiti di cui l'utente loggato è caregiver
+  // Assistiti di cui l'utente loggato è caregiver — dedupe per user_id
+  // così se la stessa persona è in 4 famiglie appare una sola volta
   const myMemberIds = new Set(myMembers.map((m) => m.id));
-  const assistedByMe = (members || []).filter((m) =>
-    m.is_assisted && Array.isArray(m.cared_by) &&
-    m.cared_by.some((cgId) => myMemberIds.has(cgId))
+  const assistedByMe = dedupeByUser(
+    (members || []).filter((m) =>
+      m.is_assisted && Array.isArray(m.cared_by) &&
+      m.cared_by.some((cgId) => myMemberIds.has(cgId))
+    )
   );
 
   const toggleMyAssisted = async (next) => {

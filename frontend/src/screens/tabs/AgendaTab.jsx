@@ -13,6 +13,7 @@ import FamilySwitcher from '../../components/FamilySwitcher.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
+import { dedupeByUser } from '../../lib/memberDedupe.js';
 import { absenceLabel, fmtAbsenceRange } from '../../lib/useAbsences.js';
 
 const TASK_CAT_EMOJI = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
@@ -163,11 +164,15 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   }, [selectedDay]);
 
   // Membri assistiti accessibili (limitati al family scope se non "Tutte").
-  const assistedMembers = (members || []).filter((m) => {
-    if (!m.is_assisted) return false;
-    if (familyId) return m.family_id === familyId;
-    return (families || []).some((f) => f.id === m.family_id);
-  });
+  // DEDUPE: se sono membro di più famiglie, il mio stesso user_id appare
+  // in più member rows → mostro una sola entry per persona.
+  const assistedMembers = dedupeByUser(
+    (members || []).filter((m) => {
+      if (!m.is_assisted) return false;
+      if (familyId) return m.family_id === familyId;
+      return (families || []).some((f) => f.id === m.family_id);
+    })
+  );
 
   const onClickNewMed = () => {
     if (assistedMembers.length === 0) return;

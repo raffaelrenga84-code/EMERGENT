@@ -11,6 +11,7 @@ import AbsenceModal from '../../components/AbsenceModal.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
 import CaregiverGreeting from '../../components/CaregiverGreeting.jsx';
+import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
@@ -187,12 +188,15 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
 
   // Membri assistiti accessibili (limitati al family scope se non "Tutte").
   // Usati per popolare la voce FAB "💊 Nuova medicina".
-  const assistedMembers = (members || []).filter((m) => {
-    if (!m.is_assisted) return false;
-    if (familyId) return m.family_id === familyId;
-    // "Tutte": mostro solo gli assistiti delle famiglie a cui appartengo
-    return (families || []).some((f) => f.id === m.family_id);
-  });
+  // DEDUPE: se sono membro di più famiglie, il mio stesso user_id appare
+  // in più member rows → mostro una sola entry per persona (la prima).
+  const assistedMembers = dedupeByUser(
+    (members || []).filter((m) => {
+      if (!m.is_assisted) return false;
+      if (familyId) return m.family_id === familyId;
+      return (families || []).some((f) => f.id === m.family_id);
+    })
+  );
 
   const onClickNewMed = () => {
     if (assistedMembers.length === 0) return;

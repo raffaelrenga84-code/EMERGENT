@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { dedupeByUser } from '../lib/memberDedupe.js';
 import MedicationsModal from './MedicationsModal.jsx';
 
 /**
@@ -28,9 +29,11 @@ export default function CaregiverGreeting({ session, members = [], me }) {
   const myMemberIds = new Set(
     (members || []).filter((m) => m.user_id === session.user.id).map((m) => m.id)
   );
-  const assistedByMe = (members || []).filter(
-    (m) => m.is_assisted && Array.isArray(m.cared_by) &&
-      m.cared_by.some((cgId) => myMemberIds.has(cgId))
+  const assistedByMe = dedupeByUser(
+    (members || []).filter(
+      (m) => m.is_assisted && Array.isArray(m.cared_by) &&
+        m.cared_by.some((cgId) => myMemberIds.has(cgId))
+    )
   );
 
   // Carica il conteggio delle medicine di OGGI per ciascun assistito

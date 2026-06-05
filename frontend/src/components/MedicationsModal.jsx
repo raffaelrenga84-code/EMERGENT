@@ -5,6 +5,7 @@ import MedicalProfileSection from './MedicalProfileSection.jsx';
 import DailyDiarySection from './DailyDiarySection.jsx';
 import CareAttachments from './CareAttachments.jsx';
 import CareReportShare from './CareReportShare.jsx';
+import { getCanonicalMember } from '../lib/personScope.js';
 
 /**
  * MedicationsModal (alias Care Hub) — modale unica per la gestione delle
@@ -21,7 +22,7 @@ import CareReportShare from './CareReportShare.jsx';
  *   - onClose
  *   - initialTab?: 'meds' | 'profile' | 'diary' (default 'meds')
  */
-export default function MedicationsModal({ member, me, onClose, initialTab = 'meds' }) {
+export default function MedicationsModal({ member: rawMember, me, onClose, initialTab = 'meds' }) {
   const { t } = useT();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [meds, setMeds] = useState([]);
@@ -32,6 +33,31 @@ export default function MedicationsModal({ member, me, onClose, initialTab = 'me
   const [showShare, setShowShare] = useState(false);
   // Membri della famiglia (per derivare i caregiver assegnati)
   const [familyMembers, setFamilyMembers] = useState([]);
+  // CONSOLIDAMENTO: se la persona ha user_id, ridirigi al "primary member"
+  // canonico (la row con id più piccolo) così tutte le medicine, profilo
+  // medico, diario, allegati convergono lì → coerenti indipendentemente
+  // dalla famiglia da cui si apre il Care Hub.
+  const [member, setMember] = useState(rawMember);
+
+  // Risolvi canonical primary appena entra il modale (se utente con user_id)
+  useEffect(() => {
+    let cancelled = false;
+    if (!rawMember?.user_id) {
+      setMember(rawMember);
+      return;
+    }
+    supabase.from('members')
+      .select('*')
+      .eq('user_id', rawMember.user_id)
+      .order('id', { ascending: true })
+      .then(({ data }) => {
+        if (cancelled) return;
+        const all = data || [];
+        const canonical = getCanonicalMember(rawMember, all) || rawMember;
+        setMember(canonical);
+      });
+    return () => { cancelled = true; };
+  }, [rawMember]);
 
   // Carica i membri della famiglia (una volta)
   useEffect(() => {

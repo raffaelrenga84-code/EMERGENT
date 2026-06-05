@@ -1,5 +1,91 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.12 (5 giugno 2026) — Care Hub unificato per persona
+
+### Feature — Care Hub centralizzato sul "primary member" canonico
+**Problema risolto**: se sono in più famiglie, ogni famiglia ha la sua
+`members` row per me. Se aggiungevo le medicine viewing da RENGA, quando
+poi guardavo dal lens TOPOLINI le medicine sparivano (erano sotto un altro
+member_id). Risultato: 4 silos di Care Hub frammentati per la stessa persona.
+
+**Approccio** (no DB migration):
+- Concetto di **"primary member" canonico**: la row con `id` più piccolo
+  alfabetico tra tutti i member rows con stesso `user_id`
+- `MedicationsModal` adesso al mount fa una query
+  `select * from members where user_id = X order by id asc limit 1` e
+  swappa il `member` ricevuto in input con quello canonico
+- Tutti i reads/writes (`medications`, `medical_profiles`, `daily_diary`,
+  `care_attachments`) usano sempre `canonical.id` → dati coerenti
+  indipendentemente dalla famiglia da cui si apre il Care Hub
+- Per i placeholder (no user_id) nessun cambio: ogni placeholder è una persona
+
+**Determinismo `dedupeByUser`**:
+- Adesso sorta esplicitamente per `id` ascending prima del dedupe
+- Garantisce che la "first row" tenuta sia sempre la stessa
+- Coincide con la `getCanonicalMember()` di `personScope.js` → coerenza
+
+### File nuovi
+- ➕ `/app/frontend/src/lib/personScope.js` — `getCanonicalMember()`, `getPersonMemberIds()`
+
+### File modificati
+- ✏️ `/app/frontend/src/components/MedicationsModal.jsx` — auto-swap a canonical primary
+- ✏️ `/app/frontend/src/lib/memberDedupe.js` — sort by id per determinismo
+
+### ⚠️ Edge case noti (MVP, da valutare se serve fix)
+- Caregiver assegnati (`cared_by`) sono per-member-row. Le altre famiglie
+  non vedono i caregiver assegnati alla famiglia canonica. Per ora il
+  badge "🤝 Caregiver" nell'header mostra solo i caregiver del canonical.
+- Eventuali medicine create PRIMA di questa iterazione su un member non
+  canonical sono orfanate (non visibili). Numerica probabilmente bassa
+  visto che il Care Hub è stato introdotto recentemente.
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605123003`)
+- ⚠️ **Provalo tu**:
+  1. Apri il tuo Care Hub dal Profilo (sezione "Apri il mio Care Hub")
+  2. Aggiungi una medicina
+  3. Dalla FamilyTab della tua altra famiglia, apri lo stesso "Te" → tap 💊
+  4. ✅ La medicina è visibile anche lì
+
+---
+
+## Iterazione 16.5.11 (5 giugno 2026) — Hotfix: duplicati nel meds picker
+
+### Bug fix — Persona che è in più famiglie compariva N volte
+**Root cause**: in FAMMY ogni "persona" può essere membro di più famiglie
+contemporaneamente, e ogni appartenenza è una `members` row separata. Se
+l'utente Raffael è in 4 famiglie (RENGA, TOPOLINI, AMICI, OSPEDALE),
+esistono 4 rows `members` con stesso `user_id`. Quando attiva "Sono assistito"
+(che fa update batch su TUTTI i suoi member rows), nel picker delle medicine
+e nel "Persone che assisto" appaiono 4 voci "Raffael" identiche.
+
+**Fix**: nuovo helper `lib/memberDedupe.js` con funzione `dedupeByUser()`:
+- Membri con `user_id` → tenuto solo il primo (sono la stessa persona)
+- Membri SENZA `user_id` (placeholder) → tenuti tutti (sono persone fisiche distinte, es. una "Nonna senza account" è in una sola famiglia)
+
+**Applicato in 4 punti**:
+1. `BachecaTab.jsx` → `assistedMembers` (popolamento picker "💊 Nuova medicina")
+2. `AgendaTab.jsx` → idem
+3. `CaregiverGreeting.jsx` → `assistedByMe` (saluto in cima Bacheca)
+4. `ProfileTab.jsx` → `assistedByMe` (sezione "Persone che assisto")
+
+### File nuovi
+- ➕ `/app/frontend/src/lib/memberDedupe.js`
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/BachecaTab.jsx`
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx`
+- ✏️ `/app/frontend/src/components/CaregiverGreeting.jsx`
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx`
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605122509`)
+- ⚠️ **Provalo tu**: attiva "Sono assistito" sul tuo profilo → tap FAB + "💊 Nuova medicina" → ora vedi te stesso UNA volta sola (non più 4 entry duplicate).
+
+---
+
 ## Iterazione 16.5.10 (5 giugno 2026) — Saluto Caregiver in Bacheca
 
 ### Feature — "🤝 Oggi sei caregiver di Pina"
