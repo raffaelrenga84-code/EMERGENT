@@ -15,6 +15,7 @@ import DataPrivacyScreen from '../sub/DataPrivacyScreen.jsx';
 import ImportScheduleModal from '../../components/ImportScheduleModal.jsx';
 import ProfilePhoneCard from '../../components/ProfilePhoneCard.jsx';
 import MergeAccountModal from '../../components/MergeAccountModal.jsx';
+import MedicationsModal from '../../components/MedicationsModal.jsx';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
@@ -31,6 +32,24 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [showTour, setShowTour] = useState(false);
   const [showImportSchedule, setShowImportSchedule] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
+  // Membri "me" (uno per ogni famiglia a cui appartengo). Uso il primo
+  // come riferimento per Care Hub. Il toggle assistito li aggiorna tutti.
+  const myMembers = (members || []).filter((m) => m.user_id === session.user.id);
+  const iAmAssisted = myMembers.some((m) => m.is_assisted);
+  const [savingAssisted, setSavingAssisted] = useState(false);
+  const [openMyCareHub, setOpenMyCareHub] = useState(false);
+
+  const toggleMyAssisted = async (next) => {
+    if (myMembers.length === 0) return;
+    setSavingAssisted(true);
+    // Update tutti i miei member rows in batch
+    const ids = myMembers.map((m) => m.id);
+    await supabase.from('members')
+      .update({ is_assisted: next })
+      .in('id', ids);
+    setSavingAssisted(false);
+    onChanged && onChanged();
+  };
 
   if (view === 'plans') return <PricingScreen onBack={() => setView('main')} />;
   if (view === 'theme') return <ThemeScreen onBack={() => setView('main')} />;
@@ -224,6 +243,48 @@ export default function ProfileTab({ session, profile, families = [], members = 
             onChanged={onChanged}
           />
         </div>
+      </ProfileGroup>
+
+      {/* GRUPPO 1.5: SALUTE & ASSISTENZA (self-service) */}
+      <ProfileGroup icon="🩺" title={t('profile_card_health_t') || 'Salute & assistenza'} subtitle={t('profile_card_health_s') || 'Sblocca le medicine personali, profilo medico e diario'} testid="profile-group-health">
+        <div style={{
+          padding: 12, borderRadius: 12,
+          background: iAmAssisted ? 'var(--gnB)' : 'var(--ab)',
+          border: `1px solid ${iAmAssisted ? 'var(--gn)' : 'var(--sd)'}`,
+          transition: 'all 0.2s ease',
+        }}>
+          <label style={{
+            display: 'flex', alignItems: 'flex-start', gap: 12,
+            cursor: savingAssisted ? 'wait' : 'pointer', margin: 0,
+          }}>
+            <input
+              type="checkbox"
+              checked={iAmAssisted}
+              disabled={savingAssisted || myMembers.length === 0}
+              onChange={(e) => toggleMyAssisted(e.target.checked)}
+              data-testid="profile-self-assisted-toggle"
+              style={{ width: 18, height: 18, flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--k)' }}>
+                🩺 {t('profile_self_assisted_label') || 'Sono un membro assistito'}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2, lineHeight: 1.4 }}>
+                {t('profile_self_assisted_hint') || 'Attiva la gestione delle tue medicine con reminder, profilo medico e diario giornaliero.'}
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {iAmAssisted && myMembers.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setOpenMyCareHub(true)}
+            data-testid="profile-open-my-care-hub"
+            className="btn full"
+            style={{ marginTop: 12 }}>
+            🩺 {t('profile_open_care_hub') || 'Apri il mio Care Hub'}
+          </button>
+        )}
       </ProfileGroup>
 
       {/* GRUPPO 2: NOTIFICHE */}
@@ -459,6 +520,15 @@ export default function ProfileTab({ session, profile, families = [], members = 
             // Soft reload per ripopolare le famiglie / membri dell'utente B
             setTimeout(() => window.location.reload(), 1500);
           }}
+        />
+      )}
+
+      {/* Care Hub personale dell'utente loggato */}
+      {openMyCareHub && myMembers[0] && (
+        <MedicationsModal
+          member={myMembers[0]}
+          me={myMembers[0]}
+          onClose={() => { setOpenMyCareHub(false); onChanged && onChanged(); }}
         />
       )}
     </div>

@@ -1,5 +1,67 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.6 (5 giugno 2026) — Self-Care Hub + FAB "Nuova medicina" + traduzioni Care Hub
+
+### Feature 1 — Self-toggle "Sono un membro assistito" nel Profilo
+Prima il toggle "è assistito" esisteva solo in EditMemberModal (gestito da
+qualcun altro). Adesso ogni utente può marcarsi autonomamente come assistito
+dal proprio Profilo, sbloccando da subito Medicine + Profilo medico + Diario
+per sé stesso.
+
+Nuova `ProfileGroup` "🩺 Salute & assistenza" in `ProfileTab.jsx`:
+- Toggle "Sono un membro assistito" (stessa UI pill verde di AddMemberModal)
+- Aggiorna `is_assisted` su TUTTI i `member rows` dell'utente (across families) in batch via `update(...).in('id', ids)`
+- Quando attivo, mostra pulsante "🩺 Apri il mio Care Hub" → apre `MedicationsModal` direttamente sul proprio member
+
+### Feature 2 — FAB "💊 Nuova medicina" sulla Bacheca
+Aggiunta una nuova voce nel `FabSpeedDial` della Bacheca: "💊 Nuova medicina"
+(visibile SOLO se ci sono membri assistiti accessibili — l'utente stesso o
+familiari).
+
+Logica di apertura intelligente:
+- 0 assistiti → la voce non appare
+- 1 assistito → apre `MedicationsModal` direttamente
+- ≥2 assistiti → bottom-sheet picker che chiede "Per chi vuoi aggiungere medicine?"
+
+**Recommendation al posto di un "Promemoria generico"**: Le medicine in FAMMY
+hanno già `times_of_day[]` con reminder push automatici → sono di fatto
+**promemoria ricorrenti specializzati per la terapia**. Per promemoria
+generici (es. "Pagare bolletta") basta usare i Task con `recurring_days`.
+Quindi: nessun bisogno di un'entità "Promemoria" separata.
+
+### Feature 3 — Traduzioni complete Care Hub (Profilo medico + Diario)
+Prima molti label/placeholder mostravano la chiave raw (es. `mp_blood_type_label`,
+`dd_appetite_low`). Aggiunte ~35 nuove i18n keys × IT/EN:
+- `mp_blood_type_label`, `mp_blood_type`, `mp_emergency`, `mp_emergency_contact`
+- `mp_allergies_label/ph`, `mp_food_label/ph`, `mp_conditions_label/ph`
+- `mp_emergency_h`, `mp_ec_name_ph`, `mp_ec_phone_ph`, `mp_ec_relation_ph`
+- `mp_doctor_h`, `mp_doctor_name_ph`, `mp_doctor_phone_ph`
+- `mp_health_card_label/ph`, `mp_notes_label/ph`, `mp_last_updated`
+- `dd_today`, `dd_mood_label`, `dd_sleep_label`, `dd_weight_label`
+- `dd_appetite_label`, `dd_appetite_low`, `dd_appetite_med`, `dd_appetite_high`
+- `dd_notes_label`, `dd_notes_ph`, `dd_save_today`, `dd_history_h`, `loading`
+- `fab_new_med`, `meds_picker_h`
+- `profile_card_health_t/s`, `profile_self_assisted_label/hint`, `profile_open_care_hub`
+
+`care_tab_profile` ribattezzato da "Profilo" → "Profilo medico" per chiarire
+(evita confusione con il "Profilo" della bottom nav).
+
+FR/DE: fallback automatico a IT (sono lingue secondarie).
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/BachecaTab.jsx` — FAB con "Nuova medicina" + picker
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx` — nuova `ProfileGroup` Salute & assistenza
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — ~35 nuove keys IT/EN
+
+### Testing
+- Lint: ✅ tutti i file
+- ⚠️ **Provalo tu**:
+  1. Profilo → vedi "🩺 Salute & assistenza" → spunta "Sono un membro assistito" → appare bottone "🩺 Apri il mio Care Hub"
+  2. Bacheca → tap FAB "+" → se hai assistiti vedi "💊 Nuova medicina" come terza voce
+  3. Care Hub → tab "Profilo medico" e "Diario" ora completamente tradotte
+
+---
+
 ## Iterazione 16.5.5 (5 giugno 2026) — Upload foto in NewFamilyModal
 
 ### Feature — Foto famiglia caricabile già in creazione

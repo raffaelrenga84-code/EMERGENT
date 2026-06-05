@@ -9,6 +9,7 @@ import OnboardingChecklist from '../../components/OnboardingChecklist.jsx';
 import SwipeableRow from '../../components/SwipeableRow.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
+import MedicationsModal from '../../components/MedicationsModal.jsx';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
@@ -17,6 +18,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
   const [showAbsence, setShowAbsence] = useState(false);
+  const [medsForMember, setMedsForMember] = useState(null);
+  const [showMedsPicker, setShowMedsPicker] = useState(false);
   const [selTask, setSelTask] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [openSections, setOpenSections] = useState({ mine: true, all: true, done: false });
@@ -181,6 +184,43 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const targetFamilyId = familyId || families?.[0]?.id;
   const toggle = (k) => setOpenSections((s) => ({ ...s, [k]: !s[k] }));
 
+  // Membri assistiti accessibili (limitati al family scope se non "Tutte").
+  // Usati per popolare la voce FAB "💊 Nuova medicina".
+  const assistedMembers = (members || []).filter((m) => {
+    if (!m.is_assisted) return false;
+    if (familyId) return m.family_id === familyId;
+    // "Tutte": mostro solo gli assistiti delle famiglie a cui appartengo
+    return (families || []).some((f) => f.id === m.family_id);
+  });
+
+  const onClickNewMed = () => {
+    if (assistedMembers.length === 0) return;
+    if (assistedMembers.length === 1) {
+      setMedsForMember(assistedMembers[0]);
+    } else {
+      setShowMedsPicker(true);
+    }
+  };
+
+  // Costruisce le actions del FAB. La voce "Nuova medicina" appare solo
+  // se ci sono membri assistiti accessibili (anche se sei tu stesso).
+  const buildFabActions = (testidPrefix) => {
+    const list = [
+      { id: 'task',    icon: '📋', label: t('fab_new_task') || 'Nuovo incarico', onClick: () => setShowAdd(true), testid: `${testidPrefix}-new-task` },
+      { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza', onClick: () => setShowAbsence(true), testid: `${testidPrefix}-new-absence` },
+    ];
+    if (assistedMembers.length > 0) {
+      list.push({
+        id: 'med', icon: '💊',
+        label: t('fab_new_med') || 'Nuova medicina',
+        onClick: onClickNewMed,
+        testid: `${testidPrefix}-new-med`,
+        color: 'var(--gn)',
+      });
+    }
+    return list;
+  };
+
   const renderTaskList = (list) => (
     <div className="list">
       {list.map((task) => {
@@ -305,10 +345,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         </div>
         <FabSpeedDial
           testid="bacheca-fab"
-          actions={[
-            { id: 'task',    icon: '📋', label: t('fab_new_task') || 'Nuovo incarico', onClick: () => setShowAdd(true), testid: 'bacheca-fab-new-task' },
-            { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza', onClick: () => setShowAbsence(true), testid: 'bacheca-fab-new-absence' },
-          ]}
+          actions={buildFabActions('bacheca-fab')}
         />
         {showAdd && (
           <AddTaskModal familyId={targetFamilyId} families={families} members={allMembers}
@@ -424,10 +461,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
 
       <FabSpeedDial
         testid="bacheca-fab-2"
-        actions={[
-          { id: 'task',    icon: '📋', label: t('fab_new_task') || 'Nuovo incarico', onClick: () => setShowAdd(true), testid: 'bacheca-fab2-new-task' },
-          { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza', onClick: () => setShowAbsence(true), testid: 'bacheca-fab2-new-absence' },
-        ]}
+        actions={buildFabActions('bacheca-fab2')}
       />
 
       {showAdd && (
@@ -479,6 +513,95 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           onClose={() => setEditingTask(null)}
           onUpdated={() => { setEditingTask(null); onChanged(); }}
         />
+      )}
+
+      {/* Care Hub aperto dal FAB "💊 Nuova medicina" */}
+      {medsForMember && (
+        <MedicationsModal
+          member={medsForMember}
+          me={me}
+          initialTab="meds"
+          onClose={() => { setMedsForMember(null); onChanged && onChanged(); }}
+        />
+      )}
+
+      {/* Picker bottom-sheet: scegli per quale persona assistita.
+          Mostrato solo se ci sono ≥2 assistiti. */}
+      {showMedsPicker && (
+        <div
+          data-testid="meds-picker-backdrop"
+          onClick={() => setShowMedsPicker(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1500,
+            background: 'rgba(28,22,17,0.35)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            data-testid="meds-picker-sheet"
+            style={{
+              width: '100%', maxWidth: 520,
+              background: 'white',
+              borderTopLeftRadius: 22, borderTopRightRadius: 22,
+              padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
+              display: 'flex', flexDirection: 'column', gap: 8,
+              animation: 'fammy-sheet-up 220ms cubic-bezier(.2,.8,.3,1)',
+              maxHeight: '70vh', overflowY: 'auto',
+            }}>
+            <div style={{
+              width: 40, height: 4, borderRadius: 4, background: 'var(--sm)',
+              margin: '0 auto 8px',
+            }} />
+            <div style={{
+              fontSize: 11, fontWeight: 800, color: 'var(--km)',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              textAlign: 'center', marginBottom: 6,
+            }}>
+              {t('meds_picker_h') || 'Per chi vuoi aggiungere medicine?'}
+            </div>
+            {assistedMembers.map((m) => {
+              const fam = families?.find((f) => f.id === m.family_id);
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  data-testid={`meds-picker-item-${m.id}`}
+                  onClick={() => { setShowMedsPicker(false); setMedsForMember(m); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 14px', borderRadius: 14,
+                    border: '1.5px solid var(--sm)', background: 'white',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}>
+                  <span style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: m.avatar_color || 'var(--ac)', color: 'white',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: 15, flexShrink: 0,
+                  }}>{m.avatar_letter || (m.name || '?').charAt(0).toUpperCase()}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{m.name}</div>
+                    {fam && (
+                      <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>
+                        {fam.emoji} {fam.name}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowMedsPicker(false)}
+              data-testid="meds-picker-cancel"
+              style={{
+                marginTop: 6, padding: '12px', borderRadius: 12,
+                border: '1px solid var(--sm)', background: 'white',
+                fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
+              }}>{t('cancel') || 'Annulla'}</button>
+          </div>
+        </div>
       )}
 
       {/* Bottom-sheet priority menu (fuori dallo SwipeableRow per non essere
