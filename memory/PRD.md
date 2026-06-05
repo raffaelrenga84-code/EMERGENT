@@ -1,5 +1,31 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.4 (5 giugno 2026) — Toggle "è assistito" anche in AddMemberModal
+
+### Feature — Marca un membro come assistito già in creazione
+Prima il toggle "🩺 Questo membro è assistito" esisteva solo in
+`EditMemberModal` (modifica). Per attivarlo bisognava creare il membro,
+salvare, riaprirlo in modifica e spuntare la voce. UX scomoda.
+
+Fix in `AddMemberModal.jsx`:
+- Nuovo state `isAssisted` (default false)
+- Stessa pillola UI di EditMemberModal (sfondo verde se attivo, hint sotto)
+- Payload `members.insert` ora include `is_assisted: isAssisted`
+- Fallback graceful: se la colonna non esiste (migration `fammy-medications.sql`
+  non eseguita), ritenta senza `is_assisted` così il membro viene creato comunque
+- `data-testid="addmember-is-assisted-toggle"` per testing
+
+### File modificati
+- ✏️ `/app/frontend/src/components/AddMemberModal.jsx` — state + UI toggle + retry
+
+### Testing
+- Lint: ✅
+- ⚠️ **Provalo tu**: Famiglia → "+ Aggiungi membro" → ora vedi il toggle
+  "🩺 Questo membro è assistito" sotto al color picker. Spunta → crea →
+  immediatamente la card avrà il bottone 💊 Medicine.
+
+---
+
 ## Iterazione 16.5.3 (5 giugno 2026) — FamilySwitcher uniforme + Priorità nel tab Chat + No pallino verde
 
 ### Feature 1 — FamilySwitcher uniforme (Bacheca / Spese / Famiglia come Agenda)

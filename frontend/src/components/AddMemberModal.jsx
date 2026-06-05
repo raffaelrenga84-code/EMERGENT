@@ -29,6 +29,7 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
   const [customRole, setCustomRole] = useState('');
   const [color, setColor] = useState(COLORS[0]);
   const [birthDate, setBirthDate] = useState('');
+  const [isAssisted, setIsAssisted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -48,6 +49,7 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
         avatar_letter: name.trim().charAt(0).toUpperCase(),
         avatar_color: color,
         status: 'active',
+        is_assisted: isAssisted,
       };
       if (withBirth && birthDate) payload.birth_date = birthDate;
       const { data, error } = await supabase
@@ -65,6 +67,27 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
         error = null;
         setErr(t('schema_missing_birthdate'));
         // continua: il membro viene creato senza birthdate
+      }
+    }
+
+    // Se il DB non ha la colonna is_assisted (migration meds non eseguita)
+    // ritento senza, in modo che il membro venga comunque creato.
+    if (error && /is_assisted/i.test(error.message)) {
+      const retry = await (async () => {
+        const payload = {
+          family_id: familyId,
+          name: name.trim(),
+          role: finalRole,
+          avatar_letter: name.trim().charAt(0).toUpperCase(),
+          avatar_color: color,
+          status: 'active',
+        };
+        if (birthDate) payload.birth_date = birthDate;
+        return supabase.from('members').insert(payload).select().single();
+      })();
+      if (!retry.error) {
+        created = retry.data;
+        error = null;
       }
     }
 
@@ -167,6 +190,32 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
                   }} />
               ))}
             </div>
+          </div>
+
+          {/* Toggle "è assistito" — sblocca medicine + sezioni mediche */}
+          <div style={{
+            marginTop: 16, padding: 12, borderRadius: 12,
+            background: isAssisted ? 'var(--gnB)' : 'var(--ab)',
+            border: `1px solid ${isAssisted ? 'var(--gn)' : 'var(--sd)'}`,
+            transition: 'all 0.2s ease',
+          }}>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              cursor: 'pointer', margin: 0,
+            }}>
+              <input type="checkbox" checked={isAssisted}
+                onChange={(e) => setIsAssisted(e.target.checked)}
+                data-testid="addmember-is-assisted-toggle"
+                style={{ width: 18, height: 18, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--k)' }}>
+                  🩺 {t('em_assisted_label') || 'Questo membro è assistito'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2, lineHeight: 1.4 }}>
+                  {t('em_assisted_hint') || 'Anziano, bambino o persona con esigenze speciali. Sblocca la gestione delle medicine con reminder.'}
+                </div>
+              </div>
+            </label>
           </div>
 
           <div style={{
