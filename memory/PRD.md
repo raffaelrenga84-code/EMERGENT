@@ -32,6 +32,75 @@
 
 ### Iterazione 16.4 — Persone Assistite Fase 1: Medicine + Reminder
 
+### Iterazione 16.5 — Persone Assistite Fase 2: Profilo medico + Diario + Push background
+
+#### Feature 1 — Profilo medico
+Per ogni membro `is_assisted=true`, ora c'è un profilo medico 1:1 con:
+- Gruppo sanguigno (select)
+- Allergie a farmaci (tag input multi-valore)
+- Allergie/intolleranze alimentari (tag input)
+- Condizioni note (textarea)
+- 🚨 Contatto di emergenza (nome + telefono cliccabile + relazione)
+- 🩺 Medico curante (nome + telefono)
+- Numero tessera sanitaria
+- Note libere
+
+In cima alla card un **banner giallo emergenza** sempre visibile con
+gruppo sanguigno + contatto emergenza (visibile a caregivers per
+intervento rapido).
+
+#### Feature 2 — Diario giornaliero
+Per ogni giorno (UNIQUE su `member_id + diary_date`):
+- 😄 Mood 1-5 (5 emoji)
+- 💤 Ore di sonno (number step 0.5)
+- 🍽️ Appetito (poco / normale / molto)
+- ⚖️ Peso opzionale
+- 📝 Note libere
+
+Storico ultimi 14 giorni mostrato sotto con mood emoji + nota breve.
+
+#### Feature 3 — Care Hub UI (3 tab)
+Refactor del MedicationsModal in `Care Hub` con 3 tab strip in cima:
+- 💊 Medicine (esistente)
+- 🩺 Profilo (nuovo)
+- 📓 Diario (nuovo)
+
+#### Feature 4 — Push background (Edge Function cron)
+- ➕ `/app/frontend/supabase/_dashboard_standalone/medication-reminder-push.ts`:
+  Edge Function che ogni minuto (via pg_cron) controlla le medicine in
+  scadenza ±1 min e manda push a **tutti i membri della famiglia** del
+  paziente. Logica anti-spam: salta se già `taken/skipped`, e in caso
+  di `snoozed` rispetta `snoozed_until`.
+
+- ➕ `/app/frontend/fammy-medication-cron.sql`: registra il job pg_cron
+  `fammy-medication-reminder` ogni `* * * * *` (ogni minuto). Idempotente.
+
+#### File modificati / nuovi
+- ➕ `fammy-medical-profile-diary.sql` — tabelle medical_profiles + daily_diary
+- ➕ `fammy-medication-cron.sql` — schedule pg_cron
+- ➕ `supabase/_dashboard_standalone/medication-reminder-push.ts` — Edge Function
+- ➕ `MedicalProfileSection.jsx` — UI profilo medico
+- ➕ `DailyDiarySection.jsx` — UI diario
+- ✏️ `MedicationsModal.jsx` — refactor a 3 tab (Care Hub)
+- ✏️ `i18n.jsx` — 5 nuove key × IT/EN
+
+#### ⚠️ AZIONE UTENTE (5 step)
+1. Esegui `/app/frontend/fammy-medical-profile-diary.sql` su Supabase SQL Editor
+2. Deploy della Edge Function `medication-reminder-push` su Supabase
+   (Dashboard → Edge Functions → Deploy new function → copia
+   `medication-reminder-push.ts` come body, `verify_jwt = false`)
+3. Verifica che pg_cron sia abilitato: Database → Extensions → pg_cron ON
+4. Esegui `/app/frontend/fammy-medication-cron.sql` per registrare il job
+5. Testa: aggiungi una medicina con orario tra 2 min, chiudi l'app → push dovrebbe arrivare
+
+#### Testing
+- Lint: ✅ tutti file
+- Smoke screenshot: ✅
+- ⚠️ Test push background richiede SQL + Edge Function deployati → test manuale
+
+---
+
+
 #### Feature — Gestione medicine per membri assistiti
 Primo blocco della **sezione "Anziani / Badanti / Bambini assistiti"**.
 Permette di:

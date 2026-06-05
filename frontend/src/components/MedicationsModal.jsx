@@ -1,23 +1,27 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import MedicalProfileSection from './MedicalProfileSection.jsx';
+import DailyDiarySection from './DailyDiarySection.jsx';
 
 /**
- * MedicationsModal — gestione medicine di un membro assistito.
+ * MedicationsModal (alias Care Hub) — modale unica per la gestione delle
+ * funzioni di assistenza di un membro: medicine, profilo medico, diario.
  *
- * Mostra:
- *   - Lista medicine attive con orari
- *   - "+ Nuova medicina" → form inline (nome, dose, orari array, note)
- *   - "Storico oggi" → log delle prese di oggi (📋)
- *   - Per ogni medicina: edit / elimina
+ * Tab:
+ *   💊 Medicine — CRUD farmaci, lista presa oggi
+ *   🩺 Profilo medico — gruppo sanguigno, allergie, contatti emergenza
+ *   📓 Diario — mood/sonno/appetito/note giornaliere
  *
  * Props:
- *   - member: il member assistito di cui gestiamo le medicine
- *   - me: il member loggato (per `recorded_by` nei log e `created_by`)
+ *   - member: il member assistito
+ *   - me: il member loggato
  *   - onClose
+ *   - initialTab?: 'meds' | 'profile' | 'diary' (default 'meds')
  */
-export default function MedicationsModal({ member, me, onClose }) {
+export default function MedicationsModal({ member, me, onClose, initialTab = 'meds' }) {
   const { t } = useT();
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [meds, setMeds] = useState([]);
   const [todayLogs, setTodayLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +79,7 @@ export default function MedicationsModal({ member, me, onClose }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>
-              💊 {t('med_h') || 'Medicine'}
+              🩺 {t('care_hub_h') || 'Assistenza'}
             </h2>
             <div style={{ fontSize: 12, color: 'var(--km)' }}>
               {member.name}
@@ -84,8 +88,47 @@ export default function MedicationsModal({ member, me, onClose }) {
           <button onClick={onClose} className="profile-btn">✕</button>
         </div>
 
+        {/* Tab strip: 💊 Medicine · 🩺 Profilo · 📓 Diario */}
+        <div style={{
+          display: 'flex', gap: 4, marginBottom: 12,
+          padding: 4, background: 'var(--ab)', borderRadius: 12,
+        }}>
+          {[
+            { id: 'meds',    icon: '💊', label: t('care_tab_meds')    || 'Medicine' },
+            { id: 'profile', icon: '🩺', label: t('care_tab_profile') || 'Profilo'  },
+            { id: 'diary',   icon: '📓', label: t('care_tab_diary')   || 'Diario'   },
+          ].map((tab) => (
+            <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
+              data-testid={`care-tab-${tab.id}`}
+              style={{
+                flex: 1, padding: '8px 6px', borderRadius: 8,
+                background: activeTab === tab.id ? 'white' : 'transparent',
+                color: activeTab === tab.id ? 'var(--k)' : 'var(--km)',
+                border: 'none',
+                fontSize: 12, fontWeight: 700,
+                boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+              }}>
+              <span style={{ fontSize: 14 }}>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
         <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
-          {loading ? (
+          {/* TAB: PROFILO MEDICO */}
+          {activeTab === 'profile' && (
+            <MedicalProfileSection member={member} me={me} />
+          )}
+
+          {/* TAB: DIARIO */}
+          {activeTab === 'diary' && (
+            <DailyDiarySection member={member} me={me} />
+          )}
+
+          {/* TAB: MEDICINE */}
+          {activeTab === 'meds' && (loading ? (
             <div style={{ color: 'var(--km)', padding: 20, textAlign: 'center' }}>
               {t('loading') || 'Caricamento…'}
             </div>
@@ -170,7 +213,7 @@ export default function MedicationsModal({ member, me, onClose }) {
                 </>
               )}
             </>
-          )}
+          ))}
         </div>
       </div>
     </div>
