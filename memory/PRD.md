@@ -14,6 +14,49 @@
 
 ### Iterazione 16.3.7 — Deep-link PWA + push background fix
 
+### Iterazione 16.3.8 — Conferma "Sei tu?" per inviti dedicati
+
+#### Bug fix — Inviti dedicati saltavano la conferma
+Quando creavi un invito dedicato per un membro specifico (es. "Jenna"),
+chi cliccava il link e si loggava veniva aggiunto **automaticamente alla
+famiglia col profilo di Jenna**, senza alcuna conferma. Rischio: mio
+fratello loggato col suo account Google prendeva l'identità di Jenna.
+
+**Fix**: aggiunto uno **state `confirmedDedicated`** e una schermata
+intermedia DOPO il login MA PRIMA dell'`accept_invitation`:
+- Mostra "👨‍👩‍👧 Phillpott · Sei tu Jenna?"
+- Spiega "Questo invito è stato creato per Jenna nella famiglia
+  'Phillpott'. Conferma solo se sei davvero tu..."
+- Mostra l'email/telefono con cui sei loggato per facile verifica
+- 2 bottoni:
+  - ✅ "Sì, sono Jenna" → procede con `accept_invitation`
+  - ❌ "No, non sono io (esci e usa un altro account)" → `signOut()` +
+    redirect a `/`
+
+Solo dopo il click su "Sì, sono Jenna" parte il `RPC accept_invitation`.
+
+Inoltre traduzione dei testi della schermata claim placeholder (prima
+hardcoded in italiano) → key i18n:
+- `invite_claim_h`, `invite_claim_p`, `invite_claim_iam`,
+  `invite_claim_pending`, `invite_claim_none`.
+
+#### File modificati
+- ✏️ `/app/frontend/src/screens/InviteAcceptScreen.jsx` — nuovo state +
+  schermata conferma + i18n delle stringhe claim
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 11 nuove key × IT/EN (FR/DE
+  fallback a EN)
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- ⚠️ Test end-to-end richiede 2 utenti → **provalo tu**: 1) crea un membro
+  "Jenna", 2) genera il suo invito dedicato, 3) apri il link in incognito
+  e loggati col tuo account Google — DEVI vedere "Sei tu Jenna?" con
+  bottoni Sì/No.
+
+---
+
+
 #### Feature 1 — Deep-link PWA (manifest)
 Aggiornato `/app/frontend/public/manifest.json` con:
 - `"handle_links": "preferred"` → su Android Chrome, quando l'utente clicca

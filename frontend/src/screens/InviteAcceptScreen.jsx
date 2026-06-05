@@ -16,6 +16,11 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
   const [placeholders, setPlaceholders] = useState(null); // null = non caricati, [] = caricati nessuno
   const [pickedClaimId, setPickedClaimId] = useState(undefined);
   // undefined = utente non ha ancora scelto, null = "crea nuovo", uuid = claim quel placeholder
+  // Per inviti DEDICATI (invite.member_name presente): conferma esplicita
+  // "Sei tu {Jenna}?" prima di procedere. Evita che l'utente attualmente
+  // loggato col proprio account Google prenda accidentalmente l'identità
+  // del membro a cui era destinato l'invito.
+  const [confirmedDedicated, setConfirmedDedicated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,9 +65,9 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
     const userHasPicked = pickedClaimId !== undefined;
 
     const canProceed =
-      isDedicated ||
-      (placeholdersReady && !hasPlaceholders) ||
-      (placeholdersReady && hasPlaceholders && userHasPicked);
+      (isDedicated && confirmedDedicated) ||
+      (!isDedicated && placeholdersReady && !hasPlaceholders) ||
+      (!isDedicated && placeholdersReady && hasPlaceholders && userHasPicked);
 
     if (!canProceed) return;
 
@@ -82,7 +87,7 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
       }
       setAccepting(false);
     })();
-  }, [session, invite, placeholders, pickedClaimId, accepting, status, token]);
+  }, [session, invite, placeholders, pickedClaimId, accepting, status, token, confirmedDedicated]);
 
   const loginWithGoogle = async () => {
     setStatus('signing');
@@ -130,6 +135,66 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
     );
   }
 
+  // Utente loggato + invito DEDICATO (es. "per Jenna") + non ha ancora
+  // confermato → mostra una schermata "Sei tu Jenna?". Evita che chi è
+  // loggato con un altro account prenda accidentalmente l'identità del
+  // membro a cui era destinato l'invito.
+  if (
+    session &&
+    invite &&
+    invite.member_name &&
+    !confirmedDedicated &&
+    status !== 'done'
+  ) {
+    const meEmail = session.user?.email || session.user?.phone || '';
+    return (
+      <div className="login-wrap">
+        <div className="login-logo">{invite.family_emoji}</div>
+        <h1 className="login-h">{invite.family_name}</h1>
+        <p className="login-s" style={{ marginBottom: 4 }}>
+          {t('invite_confirm_dedicated_h', { name: invite.member_name })}
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--km)', textAlign: 'center', marginBottom: 18 }}>
+          {t('invite_confirm_dedicated_p', { name: invite.member_name, family: invite.family_name })}
+        </p>
+
+        {/* Riepilogo dell'identità con cui sei attualmente loggato */}
+        <div style={{
+          padding: 12, background: 'var(--ab)', borderRadius: 12,
+          border: '1px solid var(--sm)', marginBottom: 16,
+          fontSize: 12, color: 'var(--km)', lineHeight: 1.5,
+        }}>
+          <strong style={{ color: 'var(--k)' }}>
+            {t('invite_confirm_logged_as')}
+          </strong>
+          <div style={{ marginTop: 4, wordBreak: 'break-all' }}>{meEmail}</div>
+        </div>
+
+        <button
+          className="btn full"
+          onClick={() => setConfirmedDedicated(true)}
+          data-testid="invite-confirm-dedicated-yes"
+          style={{ marginBottom: 10 }}>
+          ✅ {t('invite_confirm_yes', { name: invite.member_name }) || `Sì, sono ${invite.member_name}`}
+        </button>
+
+        <button
+          className="btn secondary full"
+          onClick={async () => {
+            // L'utente NON è il destinatario → logout per liberare
+            // l'account e permettere a chi di dovere di accedere col
+            // proprio.
+            await supabase.auth.signOut();
+            window.location.href = '/';
+          }}
+          data-testid="invite-confirm-dedicated-no">
+          ❌ {t('invite_confirm_no')}
+        </button>
+        {error && <div className="login-msg error" style={{ marginTop: 12 }}>{error}</div>}
+      </div>
+    );
+  }
+
   // Utente loggato + invito generico + ci sono placeholder claimabili
   // + utente non ha ancora scelto → mostra la lista
   if (
@@ -145,18 +210,17 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
         <div className="login-logo">{invite.family_emoji}</div>
         <h1 className="login-h">{invite.family_name}</h1>
         <p className="login-s" style={{ marginBottom: 4 }}>
-          Sei già stato aggiunto da qualcuno?
+          {t('invite_claim_h')}
         </p>
-        <p style={{ fontSize: 13, color: 'var(--km)', textAlign: 'center', marginBottom: 16 }}>
-          Tocca il <strong>tuo</strong> nome per collegarti al profilo esistente. In questo modo
-          eredita compleanno, ruolo e tutto quello che la famiglia ha già impostato.
-        </p>
+        <p style={{ fontSize: 13, color: 'var(--km)', textAlign: 'center', marginBottom: 16 }}
+          dangerouslySetInnerHTML={{ __html: t('invite_claim_p') }} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {placeholders.map((p) => (
             <button
               key={p.id}
               onClick={() => setPickedClaimId(p.id)}
+              data-testid={`invite-claim-${p.id}`}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: 12, background: 'white', border: '1px solid var(--sm)',
@@ -174,9 +238,9 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
                 {p.avatar_letter || p.name?.[0]?.toUpperCase() || '?'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>Sono {p.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{t('invite_claim_iam', { name: p.name }) || `Sono ${p.name}`}</div>
                 <div style={{ fontSize: 11, color: 'var(--km)' }}>
-                  {p.role || 'altro'} · profilo da collegare
+                  {p.role || t('em_role_other') || 'altro'} · {t('invite_claim_pending') || 'profilo da collegare'}
                 </div>
               </div>
               <span style={{ fontSize: 18 }}>→</span>
@@ -187,9 +251,10 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
         <button
           className="btn secondary full"
           onClick={() => setPickedClaimId(null)}
+          data-testid="invite-claim-none"
           style={{ marginBottom: 8 }}
         >
-          Nessuno di questi — creami un nuovo profilo
+          {t('invite_claim_none') || 'Nessuno di questi — creami un nuovo profilo'}
         </button>
         {error && <div className="login-msg error">{error}</div>}
       </div>
