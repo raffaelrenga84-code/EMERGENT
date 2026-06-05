@@ -17,6 +17,9 @@ import ProfilePhoneCard from '../../components/ProfilePhoneCard.jsx';
 import MergeAccountModal from '../../components/MergeAccountModal.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
 import TabHeaderActions from '../../components/TabHeaderActions.jsx';
+import QuickActionsSheet from '../../components/QuickActionsSheet.jsx';
+import AddTaskModal from '../../components/AddTaskModal.jsx';
+import AbsenceModal from '../../components/AbsenceModal.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
@@ -42,6 +45,39 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [openMyCareHub, setOpenMyCareHub] = useState(false);
   // Care Hub di un assistito (quando l'utente è caregiver)
   const [careHubFor, setCareHubFor] = useState(null);
+  // Quick actions sheet (apre il "+" in alto a destra). Replica esatta
+  // del bottom-sheet dell'Agenda: Nuovo task / Nuova assenza / Nuova medicina.
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [showAbsence, setShowAbsence] = useState(false);
+  const [medsForMember, setMedsForMember] = useState(null);
+  const [showMedsPicker, setShowMedsPicker] = useState(false);
+
+  // Membri assistiti visibili — stessa logica di AgendaTab, scope = tutte le famiglie a cui appartengo.
+  const assistedMembersForQuick = dedupeByUser(
+    (members || []).filter((m) => {
+      if (!m.is_assisted) return false;
+      return (families || []).some((f) => f.id === m.family_id);
+    })
+  ).sort((a, b) => {
+    const aSelf = a.user_id === session.user.id ? 0 : 1;
+    const bSelf = b.user_id === session.user.id ? 0 : 1;
+    if (aSelf !== bSelf) return aSelf - bSelf;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  const onClickNewMedFromQuick = () => {
+    if (assistedMembersForQuick.length === 0) return;
+    if (assistedMembersForQuick.length === 1) setMedsForMember(assistedMembersForQuick[0]);
+    else setShowMedsPicker(true);
+  };
+
+  // FamilyId target per i modal: la famiglia attiva, o la prima disponibile.
+  const quickTargetFamilyId = activeFamilyId || families[0]?.id || null;
+  const quickAuthorMemberId = me?.id
+    || (members || []).find((m) => m.user_id === session.user.id && m.family_id === quickTargetFamilyId)?.id
+    || (members || []).find((m) => m.user_id === session.user.id)?.id
+    || null;
 
   // Assistiti di cui l'utente loggato è caregiver — include anche se stesso
   // se è marcato come assistito (UX coerente con CaregiverGreeting).
@@ -186,8 +222,8 @@ export default function ProfileTab({ session, profile, families = [], members = 
         <h1 className="profile-h" style={{ flex: 1, margin: 0 }}>{t('profile_h')}</h1>
         <TabHeaderActions
           onAI={onOpenAI}
-          onAdd={onNewFamily}
-          addLabel={t('family_new') || 'Nuova famiglia'}
+          onAdd={() => setShowQuickActions(true)}
+          addLabel={t('fab_new_title') || 'Nuovo'}
           aiLabel={t('ai_assistant') || 'Assistente AI'}
           testidPrefix="profile"
         />
@@ -638,6 +674,128 @@ export default function ProfileTab({ session, profile, families = [], members = 
           member={careHubFor}
           me={myMembers.find((mm) => mm.family_id === careHubFor.family_id) || myMembers[0]}
           onClose={() => { setCareHubFor(null); onChanged && onChanged(); }}
+        />
+      )}
+
+      {/* Quick actions sheet (apre dalla "+" in header). Identico a quello dell'Agenda. */}
+      <QuickActionsSheet
+        open={showQuickActions}
+        onClose={() => setShowQuickActions(false)}
+        onNewTask={() => setShowAddTask(true)}
+        onNewAbsence={() => setShowAbsence(true)}
+        onNewMed={assistedMembersForQuick.length > 0 ? onClickNewMedFromQuick : undefined}
+        t={t}
+        testidPrefix="profile-quick-actions"
+      />
+
+      {showAddTask && quickTargetFamilyId && (
+        <AddTaskModal
+          familyId={quickTargetFamilyId}
+          families={families}
+          members={members}
+          authorMemberId={quickAuthorMemberId}
+          onClose={() => setShowAddTask(false)}
+          onCreated={() => { setShowAddTask(false); onChanged && onChanged(); }}
+        />
+      )}
+
+      {showAbsence && (
+        <AbsenceModal
+          session={session}
+          profile={profile}
+          families={families}
+          tasks={tasks}
+          members={members}
+          onClose={() => setShowAbsence(false)}
+          onSaved={() => { setShowAbsence(false); onChanged && onChanged(); }}
+          onDeleted={() => { setShowAbsence(false); onChanged && onChanged(); }}
+        />
+      )}
+
+      {/* Picker "Per chi vuoi aggiungere medicine?" se > 1 assistito */}
+      {showMedsPicker && (
+        <div
+          data-testid="profile-meds-picker-backdrop"
+          onClick={() => setShowMedsPicker(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1600,
+            background: 'rgba(28,22,17,0.35)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            data-testid="profile-meds-picker-sheet"
+            style={{
+              width: '100%', maxWidth: 520, background: 'white',
+              borderTopLeftRadius: 22, borderTopRightRadius: 22,
+              padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
+              display: 'flex', flexDirection: 'column', gap: 6,
+              animation: 'fammy-sheet-up 220ms cubic-bezier(.2,.8,.3,1)',
+            }}>
+            <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--sm)', margin: '0 auto 8px' }} />
+            <div style={{
+              fontSize: 11, fontWeight: 800, color: 'var(--km)',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              textAlign: 'center', marginBottom: 6,
+            }}>
+              {t('meds_picker_h') || 'Per chi vuoi aggiungere medicine?'}
+            </div>
+            {assistedMembersForQuick.map((m) => {
+              const isSelf = m.user_id && m.user_id === session.user.id;
+              const fam = families?.find((f) => f.id === m.family_id);
+              const displayName = isSelf
+                ? (t('meds_picker_self_name') || 'Per me')
+                : m.name;
+              const displaySub = isSelf
+                ? (t('meds_picker_self_sub') || 'Le tue medicine')
+                : fam ? `${fam.emoji} ${fam.name}` : null;
+              return (
+                <button
+                  key={m.id} type="button"
+                  data-testid={`profile-meds-picker-item-${m.id}`}
+                  onClick={() => { setShowMedsPicker(false); setMedsForMember(m); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 14px', borderRadius: 14,
+                    border: `1.5px solid ${isSelf ? 'var(--ac)' : 'var(--sm)'}`,
+                    background: isSelf ? 'var(--ab)' : 'white',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}>
+                  <span style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: m.avatar_color || 'var(--ac)',
+                    color: 'white', fontWeight: 800,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 15, flexShrink: 0,
+                  }}>{(m.name || '?').charAt(0).toUpperCase()}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--k)' }}>{displayName}</div>
+                    {displaySub && (
+                      <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>{displaySub}</div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowMedsPicker(false)}
+              data-testid="profile-meds-picker-cancel"
+              style={{
+                marginTop: 6, padding: '12px', borderRadius: 12,
+                border: '1px solid var(--sm)', background: 'white',
+                fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
+              }}>{t('cancel') || 'Annulla'}</button>
+          </div>
+        </div>
+      )}
+
+      {medsForMember && (
+        <MedicationsModal
+          member={medsForMember}
+          me={myMembers.find((mm) => mm.family_id === medsForMember.family_id) || myMembers[0]}
+          onClose={() => { setMedsForMember(null); onChanged && onChanged(); }}
         />
       )}
     </div>

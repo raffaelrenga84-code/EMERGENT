@@ -113,8 +113,16 @@ export default function FamilyTab({ family, members, session, families, activeFa
       <>
         <div style={{
           padding: '0 22px 8px',
+          display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <div className="sh-l" style={{ padding: 0 }}>{t('nav_family')}</div>
+          <div className="sh-l" style={{ padding: 0, flex: 1 }}>{t('nav_family')}</div>
+          <TabHeaderActions
+            onAI={onOpenAI}
+            onAdd={onNewFamily}
+            addLabel={t('family_new') || 'Nuova famiglia'}
+            aiLabel={t('ai_assistant') || 'Assistente AI'}
+            testidPrefix="family"
+          />
         </div>
 
         {visibleFamilies.map((f) => {
