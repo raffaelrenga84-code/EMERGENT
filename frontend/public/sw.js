@@ -1,6 +1,14 @@
 // Service Worker for FAMMY - Notifications & Caching
-
-const CACHE_NAME = 'fammy-v1';
+//
+// IMPORTANTE: ad ogni release IMPORTANTE che vuoi pushare alle PWA installate,
+// bumpa il numero di versione di `CACHE_NAME` (es. fammy-v1 → fammy-v2). Il
+// browser scaricherà il nuovo SW, lo metterà in "waiting", e poi
+// l'UpdateBanner del client (vedi /src/components/UpdateBanner.jsx)
+// mostrerà il toast "App aggiornata · tocca per ricaricare".
+//
+// Il polling automatico (registration.update() ogni 30s nel client) scopre
+// nuove versioni anche con app in primo piano: l'utente non deve fare nulla.
+const CACHE_NAME = 'fammy-v2-2026-06-05';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -32,6 +40,43 @@ self.addEventListener('activate', event => {
     })
   );
   self.clients.claim();
+});
+
+// Fetch strategy: NETWORK-FIRST per index.html e API
+//   La causa #1 di "ho fatto deploy ma la app non si aggiorna" è che il
+//   browser serve dalla cache vecchia. Con network-first sull'HTML, ad ogni
+//   apertura proviamo prima il network → se OK aggiorna anche la cache.
+//   Per gli altri asset (JS/CSS hashed da Vite) il caching va bene.
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+
+  // Network-first per il documento HTML principale.
+  const isHTML = req.mode === 'navigate' ||
+    (req.headers.get('accept') || '').includes('text/html');
+
+  if (isHTML) {
+    event.respondWith((async () => {
+      try {
+        const res = await fetch(req);
+        // Aggiorna la cache in background
+        try {
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(req, res.clone());
+        } catch (_) {}
+        return res;
+      } catch (_) {
+        // Offline → ripiega su cache
+        const cached = await caches.match(req);
+        return cached || caches.match('/index.html');
+      }
+    })());
+    return;
+  }
+
+  // Per il resto: cache-first è OK perché Vite mette gli hash nei
+  // filename (vendor.abc123.js), quindi cambia il nome ad ogni build.
 });
 
 // Push notification handler

@@ -17,6 +17,7 @@ import OnboardingTour from '../components/OnboardingTour.jsx';
 import AIAssistantDrawer from '../components/AIAssistantDrawer.jsx';
 import AddTaskModal from '../components/AddTaskModal.jsx';
 import AddEventModal from '../components/AddEventModal.jsx';
+import { useUnreadTaskCount } from '../lib/useUnreadTaskCount.js';
 
 export default function HomeScreen({ session, profile, families, onRefresh, onFamilyUpdated }) {
   const { t } = useT();
@@ -172,13 +173,20 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   const myAssigneeIds = new Set(
     members.filter((m) => m.user_id === session.user.id).map((m) => m.id)
   );
+  // Hook unread: numero di task con messaggi non letti dopo la mia ultima
+  // apertura. Decrementa automaticamente quando apro un task (markTaskRead
+  // in TaskDetailModal).
+  const { count: unreadChatsCount } = useUnreadTaskCount(tasks, myAssigneeIds);
+
   const tasksAboutMe = tasks.filter((task) => {
     if (task.status === 'done' || task.status === 'paid') return false;
     if (task.author_id && myAssigneeIds.has(task.author_id)) return true;
     const linked = taskAssignees.filter((a) => a.task_id === task.id);
     return linked.some((a) => myAssigneeIds.has(a.member_id));
   });
-  const bachecaBadge = tasksAboutMe.length;
+  // Bacheca: prima ho i messaggi non letti (priorità), poi i task da fare
+  // come fallback (se non ci sono unread chat).
+  const bachecaBadge = unreadChatsCount > 0 ? unreadChatsCount : tasksAboutMe.length;
 
   const todayEvents = events.filter((ev) => {
     if (!ev.starts_at) return false;

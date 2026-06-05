@@ -6,6 +6,7 @@ import RecurringActionChoice from './RecurringActionChoice.jsx';
 import DetailTabs from './DetailTabs.jsx';
 import MessageReactions from './MessageReactions.jsx';
 import PhotoGalleryEditor from './PhotoGalleryEditor.jsx';
+import { markTaskRead } from '../lib/useUnreadTaskCount.js';
 
 const CAT_EMOJI = {
   care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌',
@@ -63,11 +64,15 @@ export default function TaskDetailModal({
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Auto-fetch dei task_responses
       const { data: commentsData } = await supabase
         .from('task_responses').select('*')
         .eq('task_id', realTaskId).order('created_at');
       if (!cancelled) {
         setComments(commentsData || []);
+        // Marca il task come letto: aggiorna il `lastRead` in localStorage
+        // così il badge "Bacheca" sulla home decrementa.
+        markTaskRead(realTaskId);
         // Auto-apri il tab "Chat" se ci sono già messaggi reali (non system),
         // così l'utente vede subito la conversazione invece dei dettagli.
         const hasRealMessage = (commentsData || []).some((c) => c.type !== 'system');

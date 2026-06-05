@@ -28,6 +28,61 @@
 
 ### Iterazione 16.3.14 — Badge WhatsApp + anteprima foto inline
 
+### Iterazione 16.3.15 — Badge "messaggi non letti" + Auto-update PWA
+
+#### Feature 1 — Badge intelligente (messaggi non letti)
+Prima il badge Bacheca contava "task non fatti che mi riguardano" (statico).
+Ora è **dinamico stile WhatsApp**: conta i task con **commenti non letti
+dopo la mia ultima apertura**.
+
+- ➕ `/app/frontend/src/lib/useUnreadTaskCount.js`:
+  - Query batch dei `task_responses` recenti per i task aperti
+  - Filtra commenti NON miei e NON system
+  - Confronta `latest_response.created_at > localStorage[fammy_task_lastread_<id>]`
+  - Sottoscrive realtime → ricalcola al volo
+  - Esporta `markTaskRead(taskId)` per resettare il counter
+- ✏️ `TaskDetailModal.jsx`: chiama `markTaskRead(realTaskId)` ogni volta che
+  il modal viene aperto → il badge decrementa istantaneamente
+- ✏️ `HomeScreen.jsx`: il `bachecaBadge` ora prende `unreadChatsCount` come
+  priorità, con fallback ai task da fare se non ci sono unread
+
+#### Feature 2 — Auto-update PWA (risposta alla tua domanda)
+**Risposta breve**: NO, la PWA installata NON si aggiorna automaticamente,
+e il pull-to-refresh non funziona in modalità standalone. Per fixarlo:
+
+- ✏️ `/app/frontend/public/sw.js`:
+  - `CACHE_NAME` versionato (`fammy-v2-2026-06-05`) — bumpa ad ogni release
+  - **Fetch network-first per HTML**: prima prova il network, poi cache
+    come fallback. Causa #1 di "ho fatto deploy ma l'app sta su vecchio".
+    Per asset JS/CSS Vite usa già hash nei nomi quindi cache-first OK.
+- ✏️ `/app/frontend/src/components/UpdateBanner.jsx`:
+  - Polling `registration.update()` ogni 30s (già c'era)
+  - **Nuovo**: check anche su `visibilitychange` quando l'utente torna
+    sull'app dopo essere stato fuori → cattura il caso PWA installata
+  - Quando il nuovo SW arriva in "waiting", mostra il toast "App aggiornata
+    · tocca per ricaricare"
+
+#### File modificati / nuovi
+- ➕ `/app/frontend/src/lib/useUnreadTaskCount.js`
+- ✏️ `/app/frontend/src/components/TaskDetailModal.jsx` — markTaskRead
+- ✏️ `/app/frontend/src/screens/HomeScreen.jsx` — usa hook unread
+- ✏️ `/app/frontend/public/sw.js` — bump cache + network-first HTML
+- ✏️ `/app/frontend/src/components/UpdateBanner.jsx` — visibility check
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- ⚠️ **Provalo tu**:
+  1. **Badge intelligente**: chiedi a un altro membro di scriverti un
+     commento su un task → il numero sulla home tab Bacheca aumenta;
+     apri il task → numero scende.
+  2. **Auto-update**: dopo il prossimo deploy, riapri la PWA → entro 30s
+     o al rientro sull'app, vedrai un toast "App aggiornata" → tap →
+     ricarica con la nuova versione.
+
+---
+
+
 #### Feature 1 — Badge numerici sulle tab (stile WhatsApp)
 La bottom navigation ora mostra un pallino rosso 🔴 con numero sopra
 l'icona delle tab che hanno "cose da fare":

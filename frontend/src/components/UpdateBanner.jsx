@@ -23,6 +23,18 @@ export default function UpdateBanner({ onDismiss }) {
       } catch (e) { console.error('Error checking for SW updates:', e); }
     }, 30000);
 
+    // Check anche al rientro sull'app (visibility change). Cattura il caso
+    // PWA installata: l'utente apre la home, l'app era in background, e
+    // nel frattempo è stato deployato un update.
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const r = await navigator.serviceWorker.getRegistration();
+        if (r) await r.update();
+      } catch (e) { /* silent */ }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     const onControllerChange = () => {
       if (!refreshing) { refreshing = true; setShowBanner(true); }
     };
@@ -52,6 +64,7 @@ export default function UpdateBanner({ onDismiss }) {
 
     return () => {
       clearInterval(checkInterval);
+      document.removeEventListener('visibilitychange', onVisible);
       navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
     };
   }, []);
