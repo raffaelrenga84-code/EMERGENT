@@ -30,6 +30,48 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const [quickFilter, setQuickFilter] = useState('todo');
   // Filtro temporale per archivio "Fatti": '7d' (default) | '30d' | 'all'
   const [donesRange, setDonesRange] = useState('7d');
+  // Idle-pulse: se l'utente non fa nulla per ~1s, il FAB "+" pulsa per
+  // richiamare l'attenzione. Si ripete ogni ~3s finché resta inattivo.
+  const [idlePulse, setIdlePulse] = useState(false);
+
+  useEffect(() => {
+    let idleStartTimer = null;
+    let pulseOffTimer = null;
+    let nextPulseTimer = null;
+
+    const stopAll = () => {
+      if (idleStartTimer) clearTimeout(idleStartTimer);
+      if (pulseOffTimer) clearTimeout(pulseOffTimer);
+      if (nextPulseTimer) clearTimeout(nextPulseTimer);
+    };
+
+    const pulseLoop = () => {
+      setIdlePulse(true);
+      // Animazione fammy-fab-attract dura 1400ms → lascia un piccolo cuscino
+      pulseOffTimer = setTimeout(() => {
+        setIdlePulse(false);
+        nextPulseTimer = setTimeout(pulseLoop, 1400); // pausa fra pulse
+      }, 1500);
+    };
+
+    const startIdle = () => {
+      idleStartTimer = setTimeout(pulseLoop, 1000); // 1s di idle → primo pulse
+    };
+
+    const reset = () => {
+      stopAll();
+      setIdlePulse(false);
+      startIdle();
+    };
+
+    startIdle();
+    const events = ['mousemove', 'mousedown', 'touchstart', 'touchmove', 'scroll', 'keydown', 'wheel'];
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    return () => {
+      stopAll();
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, []);
   // Mappa { taskId: [{id, text, created_at, author_id}] } caricata on-demand
   // quando il filtro 'followup' è attivo: mini-timeline degli ultimi system msg.
   const [followUpHistory, setFollowUpHistory] = useState({});
@@ -357,6 +399,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         <FabSpeedDial
           testid="bacheca-fab"
           actions={buildFabActions('bacheca-fab')}
+          pulse={idlePulse}
         />
         {showAdd && (
           <AddTaskModal familyId={targetFamilyId} families={families} members={allMembers}
@@ -475,6 +518,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
       <FabSpeedDial
         testid="bacheca-fab-2"
         actions={buildFabActions('bacheca-fab2')}
+        pulse={idlePulse}
       />
 
       {showAdd && (
