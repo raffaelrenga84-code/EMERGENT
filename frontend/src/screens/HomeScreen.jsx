@@ -292,6 +292,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             onChanged={refresh}
             pendingTask={pendingExpenseTask}
             onClearPendingTask={() => setPendingExpenseTask(null)}
+            onOpenAI={onOpenAI}
           />
         )}
         {activeTab === 'famiglia' && (
@@ -310,6 +311,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             onFamilyUpdated={onFamilyUpdated}
             onMemberUpdated={updateMemberLocally}
             onChanged={() => { refreshAll(); refreshAbsences(); }}
+            onOpenAI={onOpenAI}
           />
         )}
         {activeTab === 'profile' && (
@@ -319,6 +321,8 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             tasks={tasks} events={events}
             activeFamilyId={isAll ? null : activeFamily}
             onChanged={refreshAll}
+            onNewFamily={() => setShowNewFamily(true)}
+            onOpenAI={onOpenAI}
             notificationControl={notificationControl} />
         )}
       </div>

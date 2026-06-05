@@ -10,6 +10,7 @@ import JoinFamilyByCodeModal from '../../components/JoinFamilyByCodeModal.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
 import WhoIsWhereTimeline from '../../components/WhoIsWhereTimeline.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
+import TabHeaderActions from '../../components/TabHeaderActions.jsx';
 import { findActiveAbsence, absenceLabel, fmtAbsenceRange } from '../../lib/useAbsences.js';
 
 // Mostra il ruolo nella lingua corrente. Preset → traduzione `role_<id>`.
@@ -21,7 +22,7 @@ function translateRole(role, t) {
   return translated === key ? role : translated;
 }
 
-export default function FamilyTab({ family, members, session, families, activeFamily, isAll, absences = [], profile, tasks = [], onSwitchFamily, onNewFamily, onChanged, onFamilyUpdated, onMemberUpdated }) {
+export default function FamilyTab({ family, members, session, families, activeFamily, isAll, absences = [], profile, tasks = [], onSwitchFamily, onNewFamily, onChanged, onFamilyUpdated, onMemberUpdated, onOpenAI }) {
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -370,6 +371,13 @@ export default function FamilyTab({ family, members, session, families, activeFa
             ⚙️ {t('edit')}
           </button>
         )}
+        <TabHeaderActions
+          onAI={onOpenAI}
+          onAdd={onNewFamily}
+          addLabel={t('family_new') || 'Nuova famiglia'}
+          aiLabel={t('ai_assistant') || 'Assistente AI'}
+          testidPrefix="family-detail"
+        />
       </div>
 
       {/* Mini-row avatar membri (max 5 + overflow counter) */}

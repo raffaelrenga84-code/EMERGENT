@@ -16,11 +16,12 @@ import ImportScheduleModal from '../../components/ImportScheduleModal.jsx';
 import ProfilePhoneCard from '../../components/ProfilePhoneCard.jsx';
 import MergeAccountModal from '../../components/MergeAccountModal.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
+import TabHeaderActions from '../../components/TabHeaderActions.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
-export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, notificationControl = {} }) {
+export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, onNewFamily, onOpenAI, notificationControl = {} }) {
   const { t, lang, setLang } = useT();
   const [view, setView] = useState('main'); // main | plans | theme | a11y | privacy
   const [editingName, setEditingName] = useState(false);
@@ -178,7 +179,19 @@ export default function ProfileTab({ session, profile, families = [], members = 
   // Ognuno espone un titolo + sottotitolo + emoji icona + contenuto.
   return (
     <div className="profile-wrap">
-      <h1 className="profile-h">{t('profile_h')}</h1>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '0 4px',
+      }}>
+        <h1 className="profile-h" style={{ flex: 1, margin: 0 }}>{t('profile_h')}</h1>
+        <TabHeaderActions
+          onAI={onOpenAI}
+          onAdd={onNewFamily}
+          addLabel={t('family_new') || 'Nuova famiglia'}
+          aiLabel={t('ai_assistant') || 'Assistente AI'}
+          testidPrefix="profile"
+        />
+      </div>
 
       {header}
 
