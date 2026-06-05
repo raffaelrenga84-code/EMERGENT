@@ -1,5 +1,55 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.8 (5 giugno 2026) — Auto-bump CACHE_NAME ad ogni deploy
+
+### Bug fix definitivo — La PWA installata non si aggiornava ai deploy
+**Root cause**: il `CACHE_NAME` del service worker era hardcoded
+(`'fammy-v2-2026-06-05'`). Per pushare un update bisognava modificarlo a
+mano prima di ogni deploy. L'utente doveva ricordarselo ogni volta →
+spesso non lo facevamo → PWA restava sulla versione vecchia.
+
+**Fix automatico**:
+
+1. **`/app/frontend/public/sw.js`**: il `CACHE_NAME` ora usa il placeholder
+   `__BUILD_VERSION__`:
+   ```js
+   const BUILD_VERSION = '__BUILD_VERSION__';
+   const CACHE_NAME = `fammy-${BUILD_VERSION}`;
+   ```
+
+2. **`/app/frontend/vite.config.js`**: nuovo plugin Vite `swCacheBust()`
+   che a build-time (`apply: 'build'`) genera un timestamp del momento del
+   build (es. `20260605105344`) e sostituisce il placeholder dentro
+   `dist/sw.js`. Log in console: `[sw-cache-bust] CACHE_NAME → fammy-...`
+
+Ogni `git push` → Vercel/GitHub esegue `yarn build` → il plugin scrive un
+nuovo timestamp in `sw.js` → al primo refresh della PWA installata il
+browser scarica il SW diverso → entra in "waiting" → il polling 30s
+dell'`UpdateBanner` lo intercetta → l'utente vede il toast "App aggiornata
+· tocca per ricaricare" senza che tu debba dirmi nulla.
+
+**In dev mode** il SW resta con la stringa literal `__BUILD_VERSION__`
+(non viene processato perché `apply: 'build'`), ma il SW dev-mode non è
+installato dai browser quindi nessun problema.
+
+### Pulizia warning build
+Rimossi 2 `close:` duplicati che avevo introdotto in IT/EN
+(esistevano già da `cancel/save/close/delete` riga 20/920).
+
+### File modificati
+- ✏️ `/app/frontend/public/sw.js` — placeholder `__BUILD_VERSION__`
+- ✏️ `/app/frontend/vite.config.js` — plugin `swCacheBust()`
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — rimossi 2 `close:` duplicati
+
+### Testing
+- Build di prova ✅ (output: `[sw-cache-bust] CACHE_NAME → fammy-20260605105344`)
+- Verificato `dist/sw.js` contiene il timestamp corretto
+- ⚠️ **Provalo tu**: pusha su GitHub → al primo rientro nella PWA installata
+  vedrai il toast "App aggiornata · ricarica" entro 30s, senza che tu debba
+  dirmelo. Mai più "ah, ti devo dire ogni volta di aggiornare il SW".
+
+---
+
 ## Iterazione 16.5.7 (5 giugno 2026) — Care Hub: Allegati + Condivisione report
 
 ### Feature 1 — Allegati Care Hub (foto + PDF)

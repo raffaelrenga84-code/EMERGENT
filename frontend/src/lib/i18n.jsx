@@ -739,7 +739,6 @@ export const T = {
     crs_copy: 'Copia',
     crs_share_native: 'Condividi…',
     copied: 'Copiato',
-    close: 'Chiudi',
     // Medical profile (mp_*)
     mp_blood_type_label: 'Gruppo sanguigno',
     mp_blood_type: 'Gruppo sang.',
@@ -1612,7 +1611,6 @@ export const T = {
     crs_copy: 'Copy',
     crs_share_native: 'Share…',
     copied: 'Copied',
-    close: 'Close',
     // Medical profile (mp_*)
     mp_blood_type_label: 'Blood type',
     mp_blood_type: 'Blood type',

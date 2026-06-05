@@ -1,14 +1,13 @@
 // Service Worker for FAMMY - Notifications & Caching
 //
-// IMPORTANTE: ad ogni release IMPORTANTE che vuoi pushare alle PWA installate,
-// bumpa il numero di versione di `CACHE_NAME` (es. fammy-v1 → fammy-v2). Il
-// browser scaricherà il nuovo SW, lo metterà in "waiting", e poi
-// l'UpdateBanner del client (vedi /src/components/UpdateBanner.jsx)
-// mostrerà il toast "App aggiornata · tocca per ricaricare".
+// CACHE_NAME — auto-bumpato a ogni build di produzione dal plugin Vite
+// `swCacheBust` (vedi vite.config.js). In dev mode resta literal
+// `__BUILD_VERSION__` (innocuo, il SW non viene installato).
 //
-// Il polling automatico (registration.update() ogni 30s nel client) scopre
-// nuove versioni anche con app in primo piano: l'utente non deve fare nulla.
-const CACHE_NAME = 'fammy-v2-2026-06-05';
+// Quando il browser scarica un sw.js diverso → entra in "waiting" →
+// UpdateBanner del client mostra il toast "App aggiornata · ricarica".
+const BUILD_VERSION = '__BUILD_VERSION__';
+const CACHE_NAME = `fammy-${BUILD_VERSION}`;
 const urlsToCache = [
   '/',
   '/index.html',
