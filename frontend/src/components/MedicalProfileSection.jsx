@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import CareAttachments from './CareAttachments.jsx';
 
 /**
  * MedicalProfileSection — sub-tab del CareHub: profilo medico (gruppo
@@ -199,6 +200,16 @@ export default function MedicalProfileSection({ member, me }) {
           placeholder={t('mp_notes_ph') || 'Altre informazioni utili in caso di emergenza'}
           data-testid="mp-notes" />
       </Section>
+
+      {/* === DOCUMENTI ALLEGATI (referti, esami, ricette) === */}
+      <div style={{ marginTop: 16 }}>
+        <CareAttachments
+          memberId={member.id}
+          kind="profile"
+          parentId={null}
+          meId={me?.id}
+        />
+      </div>
 
       {edited && (
         <button type="button" onClick={save} disabled={saving}

@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import MedicalProfileSection from './MedicalProfileSection.jsx';
 import DailyDiarySection from './DailyDiarySection.jsx';
+import CareAttachments from './CareAttachments.jsx';
+import CareReportShare from './CareReportShare.jsx';
 
 /**
  * MedicationsModal (alias Care Hub) — modale unica per la gestione delle
@@ -27,6 +29,7 @@ export default function MedicationsModal({ member, me, onClose, initialTab = 'me
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [showShare, setShowShare] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -85,6 +88,14 @@ export default function MedicationsModal({ member, me, onClose, initialTab = 'me
               {member.name}
             </div>
           </div>
+          <button
+            onClick={() => setShowShare(true)}
+            data-testid="care-share-btn"
+            title={t('crs_share_h') || 'Condividi report'}
+            className="profile-btn"
+            style={{ marginRight: 4 }}>
+            📤
+          </button>
           <button onClick={onClose} className="profile-btn">✕</button>
         </div>
 
@@ -157,6 +168,8 @@ export default function MedicationsModal({ member, me, onClose, initialTab = 'me
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {meds.map((med) => (
                         <MedicationCard key={med.id} med={med}
+                          member={member}
+                          meId={me?.id}
                           todayLogs={todayLogs.filter((l) => l.medication_id === med.id)}
                           onEdit={() => setEditing(med)}
                           onRemove={() => removeMed(med)} />
@@ -216,11 +229,16 @@ export default function MedicationsModal({ member, me, onClose, initialTab = 'me
           ))}
         </div>
       </div>
+
+      {/* Bottom-sheet condivisione report sanitario */}
+      {showShare && (
+        <CareReportShare member={member} onClose={() => setShowShare(false)} />
+      )}
     </div>
   );
 }
 
-function MedicationCard({ med, todayLogs, onEdit, onRemove }) {
+function MedicationCard({ med, member, meId, todayLogs, onEdit, onRemove }) {
   const { t } = useT();
   // Per ogni `time_of_day`, controlla se è già stato preso oggi
   const todayTakenTimes = new Set(
@@ -288,6 +306,19 @@ function MedicationCard({ med, todayLogs, onEdit, onRemove }) {
           fontStyle: 'italic', lineHeight: 1.4,
         }}>
           {med.notes}
+        </div>
+      )}
+
+      {/* Allegati per la medicina (foto confezione, bugiardino, ricetta) */}
+      {member?.id && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--sm)' }}>
+          <CareAttachments
+            memberId={member.id}
+            kind="medication"
+            parentId={med.id}
+            meId={meId}
+            compact
+          />
         </div>
       )}
     </div>

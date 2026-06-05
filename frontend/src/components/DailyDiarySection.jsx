@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { toLocalYMD } from '../lib/dateUtils.js';
+import CareAttachments from './CareAttachments.jsx';
 
 /**
  * DailyDiarySection — diario giornaliero del membro assistito.
@@ -168,6 +169,26 @@ export default function DailyDiarySection({ member, me }) {
           data-testid="dd-save-btn">
           {saving ? <span className="spin" /> : `💾 ${t('dd_save_today') || 'Salva oggi'}`}
         </button>
+
+        {/* Allegati per la entry di oggi (visibili solo se la entry è già stata salvata) */}
+        {todayEntry?.id ? (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px dashed var(--sm)' }}>
+            <CareAttachments
+              memberId={member.id}
+              kind="diary"
+              parentId={todayEntry.id}
+              meId={me?.id}
+            />
+          </div>
+        ) : (
+          <div style={{
+            marginTop: 14, padding: '10px 12px',
+            background: 'var(--ab)', borderRadius: 10,
+            fontSize: 11, color: 'var(--km)', textAlign: 'center', lineHeight: 1.4,
+          }}>
+            📎 {t('dd_save_to_attach') || 'Salva il diario di oggi per allegare foto / referti.'}
+          </div>
+        )}
       </div>
 
       {/* Storico ultimi 14 giorni */}

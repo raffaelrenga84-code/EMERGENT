@@ -1,5 +1,77 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.7 (5 giugno 2026) — Care Hub: Allegati + Condivisione report
+
+### Feature 1 — Allegati Care Hub (foto + PDF)
+Ora si possono caricare foto e PDF (referti, esami, ricette, foto della
+confezione delle medicine, foto del giorno…) direttamente nel Care Hub.
+
+**SQL migration** (`fammy-care-attachments.sql`):
+- Nuovo bucket storage `care-attachments` (public, 10MB max, image/* + PDF)
+- Nuova tabella `care_attachments` (member_id, kind, parent_id, file_name, file_path, mime_type, size, note, uploaded_by)
+- RLS same-family su tabella + storage (chiunque della stessa famiglia può vedere/aggiungere/cancellare)
+- Aggiunto al realtime publication
+
+**Componente** `CareAttachments.jsx`:
+- 1 prop `kind`: 'profile' | 'medication' | 'diary'
+- Upload con preview, griglia 3-col responsive con thumbnail
+- PDF → icona 📄 + nome file truncato
+- ✕ overlay per delete (best-effort: storage + DB)
+- Variante `compact` (per medicine inline)
+
+**Wire-up nei 3 punti del Care Hub**:
+- 📋 Profilo medico → sezione "📎 Documenti & foto" full size in fondo
+- 💊 Medicine → compact (griglia inline sotto ogni card medicina)
+- 📓 Diario → in fondo alla entry di oggi (visibile solo dopo aver salvato)
+
+### Feature 2 — Bottone "📤" Condividi report sanitario
+Nuovo componente `CareReportShare.jsx` montato nel header del MedicationsModal
+(icona 📤 accanto al ✕):
+
+Genera un report testuale strutturato:
+- Anagrafica (nome, compleanno)
+- Profilo medico (gruppo sanguigno, allergie farmaci/cibo, condizioni, emergenza, medico, tessera)
+- Terapia in corso (lista medicine con dose + orari)
+- Diario ultimi 7 giorni (mood + sonno + appetito + peso + note)
+- Footer "Generato da FAMMY"
+
+4 opzioni di condivisione:
+- 📋 **Copia** (clipboard) — feedback "✓ Copiato" 2s
+- 📲 **Condividi…** (Web Share API nativa, se supportata)
+- 💬 **WhatsApp** diretto (apre `wa.me/?text=...`)
+- 📧 **Email** diretta (apre `mailto:` con subject + body precompilati)
+
+Anteprima del report in textarea readonly modificabile in altezza prima
+della condivisione. Niente file allegati inviati (per privacy + dimensione).
+
+### File nuovi
+- ➕ `/app/frontend/fammy-care-attachments.sql` — migration + RLS
+- ➕ `/app/frontend/src/components/CareAttachments.jsx` — componente uploader/galleria
+- ➕ `/app/frontend/src/components/CareReportShare.jsx` — bottom-sheet condivisione
+
+### File modificati
+- ✏️ `/app/frontend/src/components/MedicationsModal.jsx` — bottone 📤 share + allegati per medicina + mount CareReportShare
+- ✏️ `/app/frontend/src/components/MedicalProfileSection.jsx` — mount CareAttachments per profilo
+- ✏️ `/app/frontend/src/components/DailyDiarySection.jsx` — mount CareAttachments per entry diario di oggi
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — ~16 nuove keys IT/EN (`care_att_*`, `crs_*`, `dd_save_to_attach`, `copied`, `close`)
+
+### ⚠️ AZIONE UTENTE
+Esegui `/app/frontend/fammy-care-attachments.sql` su Supabase SQL Editor → Run.
+Senza la migration, la sezione allegati non funziona (tabella + bucket assenti).
+
+### Testing
+- Lint: ✅ tutti i file
+- Smoke screenshot landing: ✅
+- ⚠️ Test end-to-end (richiede login + SQL deployato) — **provalo tu**:
+  1. Care Hub di un membro assistito → tab "Profilo medico" → vedi la nuova
+     sezione "📎 Documenti & foto" in fondo → carica un PDF/foto → appare in griglia
+  2. Tab "Medicine" → sotto ogni medicina ora c'è una mini-griglia per le foto della confezione
+  3. Tab "Diario" → dopo aver salvato la entry di oggi, appare la sezione allegati
+  4. Header Care Hub → tap 📤 → bottom-sheet condivisione con anteprima report
+  5. Tap su 💬 WhatsApp → si apre `wa.me/?text=...` con il report già scritto
+
+---
+
 ## Iterazione 16.5.6 (5 giugno 2026) — Self-Care Hub + FAB "Nuova medicina" + traduzioni Care Hub
 
 ### Feature 1 — Self-toggle "Sono un membro assistito" nel Profilo
