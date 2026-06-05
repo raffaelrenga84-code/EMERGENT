@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toLocalYMD } from '../../lib/dateUtils.js';
 import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
@@ -963,6 +963,25 @@ function MonthGrid({ month, events, tasks = [], absences = [], members = [], fam
   const weekdays = t('weekday_short');
   const months = t('months');
 
+  // Swipe orizzontale per cambiare mese (mobile + desktop).
+  // Soglia: 60px orizzontale, max 40px verticale (per non confondere con scroll).
+  const touchStart = useRef({ x: 0, y: 0, active: false });
+  const onTouchStart = (e) => {
+    const tc = e.touches?.[0] || e;
+    touchStart.current = { x: tc.clientX, y: tc.clientY, active: true };
+  };
+  const onTouchEnd = (e) => {
+    if (!touchStart.current.active) return;
+    const tc = e.changedTouches?.[0] || e;
+    const dx = tc.clientX - touchStart.current.x;
+    const dy = tc.clientY - touchStart.current.y;
+    touchStart.current.active = false;
+    if (Math.abs(dy) > 40) return; // troppo verticale → è uno scroll
+    if (Math.abs(dx) < 60) return; // troppo poco → click/tap
+    if (dx > 0) onPrev && onPrev();
+    else onNext && onNext();
+  };
+
   const year = month.getFullYear();
   const m = month.getMonth();
   const firstDay = new Date(year, m, 1);
@@ -1025,7 +1044,12 @@ function MonthGrid({ month, events, tasks = [], absences = [], members = [], fam
   }
 
   return (
-    <div className="month-grid-wrap">
+    <div
+      className="month-grid-wrap"
+      data-testid="month-grid-swipe"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      style={{ touchAction: 'pan-y' }}>
       <div className="month-header">
         <button className="month-nav" onClick={onPrev} style={{ fontSize: 18 }}>‹</button>
         <span className="month-title" style={{ fontSize: 16, fontWeight: 700 }}>{Array.isArray(months) ? months[m] : ''} {year}</span>

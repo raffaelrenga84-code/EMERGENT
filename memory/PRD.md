@@ -1,5 +1,31 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.15 (5 giugno 2026) — Swipe orizzontale per cambiare mese in Agenda
+
+### Feature — Swipe gesture sul calendario
+Prima per passare da un mese all'altro bisognava cliccare ‹ o › piccoli
+negli angoli. Adesso basta uno **swipe orizzontale** sul calendario:
+- ➡️ swipe a destra → mese precedente
+- ⬅️ swipe a sinistra → mese successivo
+
+Implementato in `MonthGrid` con `onTouchStart`/`onTouchEnd` e ref `touchStart`.
+Soglie:
+- Delta orizzontale minimo: 60px
+- Delta verticale max: 40px (per non confondere con scroll verticale)
+- `touchAction: 'pan-y'` per permettere scroll verticale normale
+
+I pulsanti ‹ › sono rimasti per accessibilità desktop e fallback.
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — useRef + onTouchStart/End sulla div del calendario
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605143444`)
+- ⚠️ **Provalo tu** (mobile/touch): Agenda → swipe left/right sul calendario → cambia mese
+
+---
+
 ## Iterazione 16.5.14 (5 giugno 2026) — "Per me" coerente cross-feature
 
 ### UX consistency — "Per me" anche in CaregiverGreeting e Profilo
