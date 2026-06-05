@@ -1,5 +1,34 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.17 (5 giugno 2026) — UX modal "Nuovo incarico"
+
+### Fix multipli su `AddTaskModal`
+1. **Bottone ✕ chiusura** in alto a destra del header (32px pill grigia)
+2. **Bottone ✕ accanto al campo Time** per cancellare orario inserito per
+   sbaglio: visibile solo quando `dueTime` ha un valore, accanto all'input
+3. **FAB nascosto quando modal aperto**: nuova regola CSS
+   `body:has(.modal-bg) .fab { opacity: 0; pointer-events: none; transform: scale(0.85); }`.
+   Si applica a TUTTI i 24 modali esistenti (usano `.modal-bg`). Eliminato il
+   visual clutter del "+" rosso che spuntava sotto.
+4. **Safe-area top/bottom** su `.modal`: padding-top ora rispetta
+   `env(safe-area-inset-top)` per notch/dynamic island; padding-bottom
+   rispetta `env(safe-area-inset-bottom)`. max-height aumentato 90→92vh.
+
+### File modificati
+- ✏️ `/app/frontend/src/components/AddTaskModal.jsx` — header con ✕ + time clear button
+- ✏️ `/app/frontend/src/styles.css` — `:has()` rule per FAB + safe-area sulle modal
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605144734`)
+- ⚠️ **Provalo tu**:
+  1. Bacheca → "+" → "Nuovo incarico" → vedi ✕ in alto a destra
+  2. Imposta un orario → vedi ✕ accanto al campo → tap per cancellarlo
+  3. Il "+" floating non si vede più mentre il modal è aperto
+  4. Status bar del telefono non viene più tagliata sopra al modal
+
+---
+
 ## Iterazione 16.5.16 (5 giugno 2026) — Slide animation al cambio mese
 
 ### Feature — Animazione slide del calendario

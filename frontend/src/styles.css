@@ -146,6 +146,18 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--km); mar
   transition: transform .12s, box-shadow .12s; }
 .fab:active { transform: scale(0.92); }
 
+/* Quando un modal è aperto (`.modal-bg` esiste nel DOM), nascondi il FAB e
+   il suo speed-dial. Evita visual clutter del "+" rosso che spunta sotto.
+   `:has()` supportato su iOS Safari 15.4+, Chrome 105+. */
+body:has(.modal-bg) .fab,
+body:has(.modal-bg) .fab-actions,
+body:has(.modal-bg) .fab-action-label {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.85);
+  transition: all 180ms ease;
+}
+
 /* Bottom nav */
 .bnav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto;
   background: white; border-top: 1px solid var(--sm); display: flex;
@@ -161,7 +173,7 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--km); mar
   display: flex; align-items: flex-end; justify-content: center; }
 @media (min-width: 768px) { .modal-bg { align-items: center; } }
 .modal { background: var(--s); width: 100%; max-width: 480px; border-radius: 24px 24px 0 0;
-  padding: 24px; max-height: 90vh; overflow-y: auto; }
+  padding: max(24px, calc(20px + env(safe-area-inset-top, 0px))) 24px calc(24px + env(safe-area-inset-bottom, 0px)); max-height: 92vh; overflow-y: auto; }
 @media (min-width: 768px) { .modal { border-radius: 24px; } }
 .modal h2 { font-family: var(--fs); font-size: 22px; font-weight: 600; margin-bottom: 6px; }
 .modal .modal-sub { color: var(--km); font-size: 14px; margin-bottom: 20px; }

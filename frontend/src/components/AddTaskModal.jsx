@@ -363,6 +363,19 @@ export default function AddTaskModal({
           <h2 style={{ flex: 1, margin: 0, fontSize: 18 }} data-testid="add-task-modal-title">
             {isEdit ? t('edit_task_h') || 'Modifica incarico' : t('addtask_h')}
           </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            data-testid="add-task-close-btn"
+            aria-label={t('close') || 'Chiudi'}
+            style={{
+              width: 32, height: 32, borderRadius: '50%',
+              border: '1px solid var(--sm)', background: 'white',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, fontWeight: 600, color: 'var(--km)',
+              cursor: 'pointer', padding: 0, lineHeight: 1,
+              flexShrink: 0,
+            }}>✕</button>
         </div>
 
         <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -432,10 +445,27 @@ export default function AddTaskModal({
 
             <div style={{ marginTop: 16 }}>
               <label htmlFor="time">{t('addtask_time_label')}</label>
-              <input id="time" type="time" className="input"
-                data-testid="add-task-time-input"
-                value={dueTime} onChange={(e) => setDueTime(e.target.value)}
-                placeholder="HH:MM" />
+              <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+                <input id="time" type="time" className="input"
+                  data-testid="add-task-time-input"
+                  value={dueTime} onChange={(e) => setDueTime(e.target.value)}
+                  placeholder="HH:MM"
+                  style={{ flex: 1, minWidth: 0 }} />
+                {dueTime && (
+                  <button
+                    type="button"
+                    onClick={() => setDueTime('')}
+                    data-testid="add-task-time-clear-btn"
+                    aria-label={t('clear') || 'Cancella orario'}
+                    title={t('clear_time') || 'Rimuovi orario'}
+                    style={{
+                      width: 44, borderRadius: 12,
+                      border: '1.5px solid var(--sm)', background: 'white',
+                      color: 'var(--km)', fontSize: 16, fontWeight: 700,
+                      cursor: 'pointer', flexShrink: 0,
+                    }}>✕</button>
+                )}
+              </div>
             </div>
 
             {/* === LUOGO === */}
