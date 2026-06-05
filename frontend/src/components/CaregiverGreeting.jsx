@@ -25,16 +25,30 @@ export default function CaregiverGreeting({ session, members = [], me }) {
   const [medsCountByMember, setMedsCountByMember] = useState({});
   const [careHubFor, setCareHubFor] = useState(null);
 
-  // Calcola gli assistiti di cui io sono caregiver
+  // Calcola gli assistiti di cui io sono caregiver.
+  // INCLUDE anche me stesso se mi sono marcato come assistito (anche se
+  // non sono nel mio cared_by): è una semplice convenienza UX, perché
+  // l'assistito principale che gestirà le proprie medicine è l'utente
+  // stesso quando ha attivato il toggle dal profilo.
   const myMemberIds = new Set(
     (members || []).filter((m) => m.user_id === session.user.id).map((m) => m.id)
   );
-  const assistedByMe = dedupeByUser(
-    (members || []).filter(
-      (m) => m.is_assisted && Array.isArray(m.cared_by) &&
-        m.cared_by.some((cgId) => myMemberIds.has(cgId))
-    )
+  const mySelfAssisted = (members || []).filter(
+    (m) => m.is_assisted && m.user_id === session.user.id
   );
+  const othersIAssist = (members || []).filter(
+    (m) => m.is_assisted && m.user_id !== session.user.id &&
+      Array.isArray(m.cared_by) &&
+      m.cared_by.some((cgId) => myMemberIds.has(cgId))
+  );
+  // Dedupe + sort self-first per coerenza con il meds picker
+  const assistedByMe = dedupeByUser([...mySelfAssisted, ...othersIAssist])
+    .sort((a, b) => {
+      const aSelf = a.user_id === session.user.id ? 0 : 1;
+      const bSelf = b.user_id === session.user.id ? 0 : 1;
+      if (aSelf !== bSelf) return aSelf - bSelf;
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
   // Carica il conteggio delle medicine di OGGI per ciascun assistito
   useEffect(() => {
@@ -60,6 +74,10 @@ export default function CaregiverGreeting({ session, members = [], me }) {
 
   if (assistedByMe.length === 0) return null;
 
+  // Caso speciale: l'unico assistito sono io stesso → header dedicato
+  const onlySelf = assistedByMe.length === 1 &&
+    assistedByMe[0].user_id === session.user.id;
+
   return (
     <>
       <div
@@ -73,20 +91,24 @@ export default function CaregiverGreeting({ session, members = [], me }) {
           display: 'flex', flexDirection: 'column', gap: 10,
         }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 18 }}>🤝</span>
+          <span style={{ fontSize: 18 }}>{onlySelf ? '🩺' : '🤝'}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontSize: 13, fontWeight: 700, color: 'var(--k)',
               letterSpacing: '-0.01em',
             }}>
-              {assistedByMe.length === 1
+              {onlySelf
+                ? (t('cg_greet_self_only') || 'Oggi gestisci la tua terapia')
+                : assistedByMe.length === 1
                 ? (t('cg_greet_one') || 'Oggi sei caregiver di {name}')
                     .replace('{name}', assistedByMe[0].name)
                 : (t('cg_greet_many') || 'Oggi sei caregiver di {n} persone')
                     .replace('{n}', assistedByMe.length)}
             </div>
             <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 1 }}>
-              {t('cg_greet_sub') || 'Tap per aprire il Care Hub di chi vuoi'}
+              {onlySelf
+                ? (t('cg_greet_self_sub') || 'Tap per aprire il tuo Care Hub')
+                : (t('cg_greet_sub') || 'Tap per aprire il Care Hub di chi vuoi')}
             </div>
           </div>
         </div>
@@ -100,6 +122,10 @@ export default function CaregiverGreeting({ session, members = [], me }) {
         }}>
           {assistedByMe.map((m) => {
             const medCount = medsCountByMember[m.id] || 0;
+            const isSelf = m.user_id === session.user.id;
+            const displayName = isSelf
+              ? (t('meds_picker_self_name') || 'Per me')
+              : m.name;
             return (
               <button
                 key={m.id}
@@ -110,7 +136,7 @@ export default function CaregiverGreeting({ session, members = [], me }) {
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '8px 10px', borderRadius: 12,
                   background: 'white',
-                  border: '1px solid rgba(124,142,118,0.35)',
+                  border: `1px solid ${isSelf ? 'var(--ac)' : 'rgba(124,142,118,0.35)'}`,
                   cursor: 'pointer', textAlign: 'left',
                   transition: 'transform 0.12s ease, box-shadow 0.12s ease',
                 }}
@@ -128,14 +154,14 @@ export default function CaregiverGreeting({ session, members = [], me }) {
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   fontWeight: 700, fontSize: 13, flexShrink: 0,
                 }}>
-                  {m.avatar_letter || (m.name || '?').charAt(0).toUpperCase()}
+                  {isSelf ? '👤' : (m.avatar_letter || (m.name || '?').charAt(0).toUpperCase())}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     fontSize: 13, fontWeight: 700, color: 'var(--k)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
-                    {m.name}
+                    {displayName}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 1 }}>
                     {medCount > 0

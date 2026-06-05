@@ -1,5 +1,40 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.14 (5 giugno 2026) — "Per me" coerente cross-feature
+
+### UX consistency — "Per me" anche in CaregiverGreeting e Profilo
+
+**CaregiverGreeting (saluto Bacheca)**:
+- Aggiunto auto-include di se stesso se `is_assisted=true` (anche senza essere nel proprio cared_by)
+- Sort self-first (`Per me` sempre in cima, poi alfabetico)
+- Cards: quando rappresenta me, mostra "Per me · Le tue medicine" con avatar 👤 e bordo accent
+- **Header dedicato quando l'unico assistito sono io**:
+  - Icona 🩺 invece di 🤝
+  - Titolo "Oggi gestisci la tua terapia" invece di "Oggi sei caregiver di te stesso" (suonava strano)
+  - Sub: "Tap per aprire il tuo Care Hub"
+
+**ProfileTab → Salute & assistenza**:
+- Stesso include + sort self-first
+- Cards rendono "Per me" con avatar 👤 e bordo accent
+- **Header smart**: se l'unico è self → "🩺 La mia assistenza" altrimenti "👥 Persone che assisto"
+- **Rimosso il bottone separato "🩺 Apri il mio Care Hub"** (era ridondante, la card "Per me" già lo apre con un tap)
+
+### File modificati
+- ✏️ `/app/frontend/src/components/CaregiverGreeting.jsx`
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx`
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 3 nuove keys IT/EN (`cg_greet_self_only`, `cg_greet_self_sub`, `profile_my_care_h`)
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605124001`)
+- ⚠️ **Provalo tu**:
+  1. Attiva "Sono assistito" sul tuo Profilo
+  2. Bacheca → vedi "🩺 Oggi gestisci la tua terapia" con card "Per me · X medicine"
+  3. Profilo → sezione "🩺 La mia assistenza" con card "Per me" (niente più bottone duplicato)
+  4. Se sei anche caregiver di altri → header torna "👥 Persone che assisto" con "Per me" in cima
+
+---
+
 ## Iterazione 16.5.13 (5 giugno 2026) — Picker meds: "Per me" invece di famiglia random
 
 ### UX fix — Voce "Per me" personalizzata nel meds picker

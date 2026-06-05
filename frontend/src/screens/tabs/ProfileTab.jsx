@@ -42,15 +42,25 @@ export default function ProfileTab({ session, profile, families = [], members = 
   // Care Hub di un assistito (quando l'utente è caregiver)
   const [careHubFor, setCareHubFor] = useState(null);
 
-  // Assistiti di cui l'utente loggato è caregiver — dedupe per user_id
-  // così se la stessa persona è in 4 famiglie appare una sola volta
+  // Assistiti di cui l'utente loggato è caregiver — include anche se stesso
+  // se è marcato come assistito (UX coerente con CaregiverGreeting).
+  // Dedupe per user_id + self-first sort.
   const myMemberIds = new Set(myMembers.map((m) => m.id));
-  const assistedByMe = dedupeByUser(
-    (members || []).filter((m) =>
-      m.is_assisted && Array.isArray(m.cared_by) &&
-      m.cared_by.some((cgId) => myMemberIds.has(cgId))
-    )
+  const mySelfAssistedRows = (members || []).filter(
+    (m) => m.is_assisted && m.user_id === session.user.id
   );
+  const othersIAssist = (members || []).filter((m) =>
+    m.is_assisted && m.user_id !== session.user.id &&
+    Array.isArray(m.cared_by) &&
+    m.cared_by.some((cgId) => myMemberIds.has(cgId))
+  );
+  const assistedByMe = dedupeByUser([...mySelfAssistedRows, ...othersIAssist])
+    .sort((a, b) => {
+      const aSelf = a.user_id === session.user.id ? 0 : 1;
+      const bSelf = b.user_id === session.user.id ? 0 : 1;
+      if (aSelf !== bSelf) return aSelf - bSelf;
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
   const toggleMyAssisted = async (next) => {
     if (myMembers.length === 0) return;
@@ -288,7 +298,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
           </label>
         </div>
 
-        {iAmAssisted && myMembers.length > 0 && (
+        {iAmAssisted && myMembers.length > 0 && assistedByMe.length === 0 && (
           <button
             type="button"
             onClick={() => setOpenMyCareHub(true)}
@@ -310,11 +320,20 @@ export default function ProfileTab({ session, profile, families = [], members = 
               textTransform: 'uppercase', letterSpacing: '0.04em',
               marginBottom: 8,
             }}>
-              👥 {t('profile_assisted_by_me_h') || 'Persone che assisto'}
+              {assistedByMe.length === 1 && assistedByMe[0].user_id === session.user.id
+                ? `🩺 ${t('profile_my_care_h') || 'La mia assistenza'}`
+                : `👥 ${t('profile_assisted_by_me_h') || 'Persone che assisto'}`}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {assistedByMe.map((m) => {
+                const isSelf = m.user_id === session.user.id;
                 const fam = families.find((f) => f.id === m.family_id);
+                const displayName = isSelf
+                  ? (t('meds_picker_self_name') || 'Per me')
+                  : m.name;
+                const displaySub = isSelf
+                  ? (t('meds_picker_self_sub') || 'Le tue medicine')
+                  : (fam ? `${fam.emoji} ${fam.name}` : null);
                 return (
                   <button
                     key={m.id}
@@ -324,7 +343,8 @@ export default function ProfileTab({ session, profile, families = [], members = 
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '10px 12px', borderRadius: 12,
-                      border: '1.5px solid var(--sm)', background: 'white',
+                      border: `1.5px solid ${isSelf ? 'var(--ac)' : 'var(--sm)'}`,
+                      background: isSelf ? 'var(--ab)' : 'white',
                       cursor: 'pointer', textAlign: 'left',
                     }}>
                     <span style={{
@@ -333,15 +353,15 @@ export default function ProfileTab({ session, profile, families = [], members = 
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       fontWeight: 700, fontSize: 13, flexShrink: 0,
                     }}>
-                      {m.avatar_letter || (m.name || '?').charAt(0).toUpperCase()}
+                      {isSelf ? '👤' : (m.avatar_letter || (m.name || '?').charAt(0).toUpperCase())}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--k)' }}>
-                        {m.name}
+                        {displayName}
                       </div>
-                      {fam && (
+                      {displaySub && (
                         <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 1 }}>
-                          {fam.emoji} {fam.name}
+                          {displaySub}
                         </div>
                       )}
                     </div>
