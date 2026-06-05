@@ -37,7 +37,10 @@ export default function TaskDetailModal({
   const [photoUrls, setPhotoUrls] = useState({});
   const [linkedExpenses, setLinkedExpenses] = useState([]);
   const [lightbox, setLightbox] = useState(null);
-  const [activeTab, setActiveTab] = useState('details');
+  // Default tab = 'thread' (Chat) per UX: chi apre un task/evento di
+  // solito vuole leggere/scrivere commenti, non rivedere i dettagli che
+  // ha già appena visto nella card.
+  const [activeTab, setActiveTab] = useState('thread');
   const [didAutoOpen, setDidAutoOpen] = useState(false);
   // Numero di messaggi nuovi arrivati mentre il tab Chat NON è attivo.
   // Reset a 0 appena l'utente passa al tab Chat.
@@ -998,24 +1001,63 @@ export default function TaskDetailModal({
                   gap: 8,
                 }}>
                   {attachments.map((att) => (
-                    <button key={att.id} type="button"
-                      onClick={() => setLightbox(photoUrls[att.id])}
-                      data-testid={`task-photo-${att.id}`}
-                      style={{
-                        aspectRatio: '1', borderRadius: 10, overflow: 'hidden',
-                        border: '1px solid var(--sm)', padding: 0,
-                        background: 'var(--ab)', cursor: 'zoom-in',
-                      }}>
-                      {photoUrls[att.id] ? (
-                        <img src={photoUrls[att.id]} alt={att.file_name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                      ) : (
-                        <div style={{
-                          width: '100%', height: '100%', display: 'flex',
-                          alignItems: 'center', justifyContent: 'center', fontSize: 22,
-                        }}>🖼️</div>
+                    <div key={att.id} style={{ position: 'relative' }}>
+                      <button type="button"
+                        onClick={() => setLightbox(photoUrls[att.id])}
+                        data-testid={`task-photo-${att.id}`}
+                        style={{
+                          width: '100%',
+                          aspectRatio: '1', borderRadius: 10, overflow: 'hidden',
+                          border: '1px solid var(--sm)', padding: 0,
+                          background: 'var(--ab)', cursor: 'zoom-in',
+                        }}>
+                        {photoUrls[att.id] ? (
+                          <img src={photoUrls[att.id]} alt={att.file_name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        ) : (
+                          <div style={{
+                            width: '100%', height: '100%', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', fontSize: 22,
+                          }}>🖼️</div>
+                        )}
+                      </button>
+                      {/* Bottone elimina foto. Mostrato solo se l'utente è
+                          l'autore originale dell'allegato (per evitare che
+                          altri membri cancellino foto altrui per sbaglio). */}
+                      {att.uploaded_by === me?.id && (
+                        <button type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!confirm(t('td_remove_photo_confirm') || 'Rimuovere questa foto?')) return;
+                            // Best effort: rimuoviamo dallo storage e dal DB.
+                            try {
+                              if (att.file_path) {
+                                await supabase.storage.from('task-attachments').remove([att.file_path]);
+                              }
+                            } catch (_) {}
+                            const { error } = await supabase
+                              .from('task_attachments').delete().eq('id', att.id);
+                            if (error) {
+                              alert(error.message || 'Errore');
+                              return;
+                            }
+                            setAttachments((prev) => prev.filter((a) => a.id !== att.id));
+                          }}
+                          data-testid={`task-photo-remove-${att.id}`}
+                          title={t('td_remove_photo') || 'Rimuovi foto'}
+                          style={{
+                            position: 'absolute', top: 4, right: 4,
+                            width: 22, height: 22, borderRadius: '50%',
+                            background: 'rgba(0,0,0,0.65)',
+                            border: 'none', color: 'white',
+                            cursor: 'pointer', padding: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 12, lineHeight: 1, fontWeight: 700,
+                          }}>
+                          ✕
+                        </button>
                       )}
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}

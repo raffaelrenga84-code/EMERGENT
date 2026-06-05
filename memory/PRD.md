@@ -20,6 +20,47 @@
 
 ### Iterazione 16.3.10 — Permessi membri + "Esci dalla famiglia" + estetica
 
+### Iterazione 16.3.11 — Rimuovi foto + tab Chat di default su task
+
+#### Feature 1 — Rimuovi foto da task / event detail
+Prima, una volta allegata una foto, non c'era modo di rimuoverla → restava
+per sempre in Family Memories. Fix:
+
+- **TaskDetailModal**: aggiunto pulsante ✕ in overlay top-right su ogni
+  thumbnail. **Visibile solo se** `att.uploaded_by === me.id` (puoi
+  rimuovere solo le foto che hai caricato tu).
+- **EventDetailModal**: stesso pulsante. NB: `event_attachments` non ha
+  `uploaded_by`, quindi consentiamo a chiunque della famiglia (le RLS
+  finali sono gestite da Supabase).
+
+Operazione: storage `remove([file_path])` + DB `DELETE`. Best effort —
+se lo storage fallisce, il record DB viene comunque cancellato.
+
+#### Feature 2 — Tab Chat di default sui task
+Prima all'apertura di un task vedevi "Dettagli" (informazioni che hai già
+visto sulla card). Ora la tab di default è **"Chat"** — più diretto per
+leggere/scrivere commenti.
+
+Sugli **eventi** la chat non esiste ancora (no `event_responses`), quindi
+il default rimane "Dettagli".
+
+#### File modificati
+- ✏️ `/app/frontend/src/components/TaskDetailModal.jsx` — default tab
+  `'thread'` + bottone ✕ delete su thumbnail
+- ✏️ `/app/frontend/src/components/EventDetailModal.jsx` — bottone ✕ delete
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — `td_remove_photo`,
+  `td_remove_photo_confirm` × IT/EN
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- ⚠️ **Provalo tu**: apri un task con foto allegata → vai tab "Allegati" → tap ✕
+  in alto a destra sulla thumbnail → conferma → foto via. Poi apri qualsiasi
+  task → ora si apre direttamente in "Chat" invece che "Dettagli".
+
+---
+
+
 #### Bug fix 1 — La ✕ rossa appariva su Owner
 Prima la condizione era `!isMe` → un normale membro vedeva la ✕ accanto al
 proprietario della famiglia e poteva cancellarlo. Fix: nuova funzione
