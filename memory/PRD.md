@@ -1,5 +1,73 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.3 (5 giugno 2026) — FamilySwitcher uniforme + Priorità nel tab Chat + No pallino verde
+
+### Feature 1 — FamilySwitcher uniforme (Bacheca / Spese / Famiglia come Agenda)
+Prima il `Header` di HomeScreen renderizzava la `FamilySwitcher` con
+`variant="title"` (font Cormorant 36px + emoji 36px), che risultava grande e
+incoerente con l'Agenda dove invece era `variant="pill"` (compatto, pill
+bianca con border + ombra).
+
+Refactor di `Header` in `HomeScreen.jsx`:
+- Rimosso il wrapper `.hdr` (padding 24px) → ora un semplice flex column con padding 10px 16px 6px
+- `FamilySwitcher` passa a `variant="pill"`
+- Subtitle "N famiglie · M da fare" mostrato sotto come testo grigio 12px
+
+Risultato: tutte e 4 le tab principali ora hanno la stessa pill di selezione
+famiglia, esteticamente uniformi.
+
+### Feature 2 — Niente pallino verde per priorità "Normale" sulle task card
+Prima ogni `TaskCard` mostrava un pallino colorato `tc-check` con
+`background: priorityColor`: per priorità normale era verde (var(--gn)),
+creando rumore visivo non necessario.
+
+Fix in `BachecaTab.jsx` → `TaskCard`:
+- Priorità `normal` → cerchio neutro con bordo tratteggiato grigio
+  (`border: '1.5px dashed var(--sm)'`, sfondo trasparente)
+- Priorità `medium` / `high` → pallino colorato come prima (giallo / rosso)
+- Status `done` → cerchio verde con ✓ (invariato)
+
+Conserva il segnale visivo di urgenza solo dove serve davvero.
+
+### Feature 3 — Stato + Priorità in cima al tab Chat (TaskDetailModal)
+La sezione "Stato" era hidden dentro il tab "Dettagli", e la priorità non
+era impostabile dal modal del task (solo via long-press sulla TaskCard nella
+Bacheca). UX poco scopribile.
+
+Refactor in `TaskDetailModal.jsx`:
+- **Rimossa** la sezione "Stato" (4 righe) dal tab Dettagli
+- **Aggiunta** una nuova "Action bar" `data-testid="task-action-bar"` in
+  cima al tab **Chat** (tab di default) con 2 righe:
+  - **Stato**: 3 pill compatte (Da fare · Fatto · Da pagare). Click chiude
+    il modal (UX invariata).
+  - **Priorità**: 3 pill compatte (🟢 Normale · 🟠 Attenzione · 🔴 Urgente).
+    Click non chiude il modal (l'utente di solito continua a chattare).
+- Nuova funzione `updatePriority(p)` che aggiorna `tasks.priority` +
+  `tasks.urgent` (per backward compat).
+
+i18n: 4 nuove key × IT/EN/FR/DE:
+- `td_priority_label` — "Priorità"
+- `td_prio_normal` — "🟢 Normale"
+- `td_prio_medium` — "🟠 Attenzione"
+- `td_prio_high` — "🔴 Urgente"
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/HomeScreen.jsx` — Header refactor a pill
+- ✏️ `/app/frontend/src/screens/tabs/BachecaTab.jsx` — TaskCard: no pallino verde su priorità normale
+- ✏️ `/app/frontend/src/components/TaskDetailModal.jsx` — Stato + Priorità nel tab Chat, rimosso da Dettagli
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 4 nuove key × 4 lingue
+
+### Testing
+- Lint: ✅ tutti i file
+- Smoke screenshot landing: ✅
+- ⚠️ Test funzionale richiede login Google → **provalo tu**:
+  1. Apri Bacheca → vedi pill "🌍 Tutte" compatta come in Agenda
+  2. Vai in Spese e Famiglia → stessa pill
+  3. Sulla TaskCard "Da fare" il cerchio è grigio tratteggiato (non verde)
+  4. Apri un task → in cima alla tab Chat vedi 2 righe: Stato + Priorità
+
+---
+
 ## Iterazione 16.5.2 (5 giugno 2026) — Hotfix: Medicine button non apriva il modal
 
 ### Bug fix — `MedicationsModal` non montato nella vista "Tutte le famiglie"

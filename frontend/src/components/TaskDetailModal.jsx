@@ -26,6 +26,12 @@ export default function TaskDetailModal({
     { id: 'done',   label: t('td_status_done'),   color: 'var(--gn)' },
     { id: 'to_pay', label: t('td_status_to_pay'), color: 'var(--rd)' },
   ];
+  // 3 livelli di priorità (urgenza). Coerenti con il bottom-sheet in BachecaTab.
+  const PRIORITY = [
+    { id: 'normal', label: t('td_prio_normal') || '🟢 Normale',    color: 'var(--gn)' },
+    { id: 'medium', label: t('td_prio_medium') || '🟠 Attenzione', color: '#F39C12'   },
+    { id: 'high',   label: t('td_prio_high')   || '🔴 Urgente',    color: 'var(--rd)' },
+  ];
   const [title] = useState(task.title);
   // Per le istanze di ricorrenze l'id è "<orig>__<date>": le mutazioni DEVONO
   // andare sull'orig id, non sul finto id.
@@ -224,6 +230,20 @@ export default function TaskDetailModal({
     }
     onClosed();
   };
+
+  // Cambio priorità (urgenza). Non chiude il modale: l'utente di solito
+  // continua a chattare/agire dopo aver impostato l'urgenza.
+  const updatePriority = async (p) => {
+    setBusy(true);
+    await supabase.from('tasks').update({
+      priority: p,
+      urgent: p === 'high',
+    }).eq('id', realTaskId);
+    setBusy(false);
+    onChanged();
+  };
+
+  const currentPriority = task.priority || (task.urgent ? 'high' : 'normal');
 
   const canDelete = !task.author_id || task.author_id === me?.id;
   const isRecurring = !!(task.recurring_days && task.recurring_days.length > 0);
@@ -723,26 +743,6 @@ export default function TaskDetailModal({
           )}
         </div>
 
-        {/* Stato — click = chiude il modale */}
-        <div style={{ marginTop: 20 }}>
-          <label>{t('td_status')}</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {STATUS.map((s) => (
-              <button key={s.id} type="button" onClick={() => updateStatus(s.id)} disabled={busy}
-                style={{
-                  padding: '10px 16px', borderRadius: 100, border: '1.5px solid',
-                  borderColor: task.status === s.id ? s.color : 'var(--sm)',
-                  background: task.status === s.id ? s.color : 'white',
-                  color: task.status === s.id ? 'white' : 'var(--k)',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                }}>{s.label}</button>
-            ))}
-          </div>
-          <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 6 }}>
-            {t('td_status_hint')}
-          </p>
-        </div>
-
         {/* === FOTO ALLEGATE === (gestione inline) */}
         <div style={{ marginTop: 18 }}>
           <PhotoGalleryEditor
@@ -798,6 +798,76 @@ export default function TaskDetailModal({
         {/* ====== TAB: CHAT ====== */}
         {activeTab === 'thread' && (
           <div data-testid="task-detail-pane-thread">
+            {/* Action bar: Stato + Priorità in cima al tab Chat.
+                Prima erano nascosti dentro "Dettagli" — adesso sono subito
+                visibili nel tab di default (Chat) per accesso rapido. */}
+            <div
+              data-testid="task-action-bar"
+              style={{
+                marginBottom: 10,
+                padding: '10px 12px',
+                background: 'var(--ab)',
+                border: '1px solid var(--sm)',
+                borderRadius: 12,
+                display: 'flex', flexDirection: 'column', gap: 10,
+              }}>
+              {/* Riga Stato */}
+              <div>
+                <div style={{
+                  fontSize: 10, fontWeight: 800, color: 'var(--km)',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  marginBottom: 6,
+                }}>
+                  {t('td_status') || 'Stato'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {STATUS.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => updateStatus(s.id)}
+                      disabled={busy}
+                      data-testid={`task-status-${s.id}`}
+                      style={{
+                        padding: '6px 12px', borderRadius: 100, border: '1.5px solid',
+                        borderColor: task.status === s.id ? s.color : 'var(--sm)',
+                        background: task.status === s.id ? s.color : 'white',
+                        color: task.status === s.id ? 'white' : 'var(--k)',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      }}>{s.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Riga Priorità (urgenza). Non chiude il modale. */}
+              <div>
+                <div style={{
+                  fontSize: 10, fontWeight: 800, color: 'var(--km)',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  marginBottom: 6,
+                }}>
+                  {t('td_priority_label') || 'Priorità'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {PRIORITY.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => updatePriority(p.id)}
+                      disabled={busy}
+                      data-testid={`task-priority-${p.id}`}
+                      style={{
+                        padding: '6px 12px', borderRadius: 100, border: '1.5px solid',
+                        borderColor: currentPriority === p.id ? p.color : 'var(--sm)',
+                        background: currentPriority === p.id ? p.color : 'white',
+                        color: currentPriority === p.id ? 'white' : 'var(--k)',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      }}>{p.label}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Header chat: riepilogo "Chat con X persone" + chip avatar */}
             <div style={{
               padding: '10px 12px', marginBottom: 10,

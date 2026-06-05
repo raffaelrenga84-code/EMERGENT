@@ -585,10 +585,14 @@ function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLa
       <div className="tc-row" style={{ position: 'relative' }}>
         <button className="tc-check" onClick={onCheck}
           title={task.status === 'done' ? 'Fatto' : 'Imposta priorità'}
-          style={task.status !== 'done' ? {
+          style={task.status !== 'done' && priority !== 'normal' ? {
             background: priorityColor, color: 'white',
             border: `2px solid ${priorityColor}`,
-          } : {}}>
+          } : task.status === 'done' ? {} : {
+            // Priorità normale: niente pallino colorato, cerchio neutro vuoto
+            background: 'transparent', color: 'transparent',
+            border: '1.5px dashed var(--sm)',
+          }}>
           {task.status === 'done' ? '✓' : ' '}
         </button>
         <span className="tc-emoji">{CAT[task.category] || '📌'}</span>

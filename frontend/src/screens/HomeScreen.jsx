@@ -390,23 +390,27 @@ function Header({ family, members, allMembers, tasks, families, activeFamily, is
   const todoCount = tasks.filter((task) => task.status !== 'done').length;
 
   return (
-    <header className="hdr">
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <FamilySwitcher
-          families={families}
-          activeFamily={activeFamily}
-          isAll={isAll}
-          onSwitch={onSwitchFamily}
-          testidPrefix="header-family"
-          variant="title"
-        />
-        <p className="sub" style={{ marginTop: 4 }}>
-          {isAll
-            ? `${families.length} ${families.length === 1 ? t('family_one_label') : t('family_other_label')} · ${todoCount} ${t('todo_label')}`
-            : `${members.length} ${members.length === 1 ? t('member_one') : t('member_other')} · ${todoCount} ${t('todo_label')}`
-          }
-        </p>
-      </div>
+    <header style={{
+      padding: '10px 16px 6px',
+      display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+    }}>
+      <FamilySwitcher
+        families={families}
+        activeFamily={activeFamily}
+        isAll={isAll}
+        onSwitch={onSwitchFamily}
+        testidPrefix="header-family"
+        variant="pill"
+      />
+      <p style={{
+        margin: '2px 16px 0',
+        fontSize: 12, color: 'var(--km)', fontWeight: 500,
+      }}>
+        {isAll
+          ? `${families.length} ${families.length === 1 ? t('family_one_label') : t('family_other_label')} · ${todoCount} ${t('todo_label')}`
+          : `${members.length} ${members.length === 1 ? t('member_one') : t('member_other')} · ${todoCount} ${t('todo_label')}`
+        }
+      </p>
     </header>
   );
 }
