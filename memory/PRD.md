@@ -24,6 +24,50 @@
 
 ### Iterazione 16.3.12 — PhotoGalleryEditor (add + remove inline)
 
+### Iterazione 16.3.13 — Unificate Foto+Spese dentro Dettagli, 📎 inline nel chat
+
+#### Refactor — Da 3 tab a 2 (task) / da 2 a 1 (event)
+Risposta alla domanda "ha senso tenere allegati divisi dalla chat?": NO.
+Tutte le app moderne (WhatsApp, Slack, Telegram) integrano la condivisione
+nella conversazione.
+
+**Task** ora ha solo 2 tab:
+- 💬 **Chat** (default)
+- 📋 **Dettagli** (include in ordine: status + foto + spese collegate +
+  resto dei dettagli)
+
+**Event** ora ha 1 sola "schermata" (niente più tab):
+- 📋 Dettagli con foto inline sotto
+
+#### Feature — 📎 Paperclip nel composer chat (solo task)
+Nel composer del thread c'è un nuovo bottone 📎 a sinistra del campo testo:
+- Click → file picker (camera/galleria) → upload immediato in
+  `task-attachments` + INSERT in `task_attachments` (popolando
+  `uploaded_by`)
+- Crea anche un `task_response` di tipo `'photo'` con testo
+  `"📷 ha condiviso una foto"` per dare visibilità nella chat (apparirà
+  come messaggio sistema)
+- Manda push agli altri membri "📷 Marco ha condiviso una foto · <task title>"
+- La foto è poi visibile nella sezione "Foto" della tab Dettagli (stessa
+  galleria PhotoGalleryEditor)
+
+#### File modificati
+- ✏️ `TaskDetailModal.jsx` — solo 2 tab; sezioni Foto/Spese spostate
+  dentro Dettagli; 📎 inline nel composer chat
+- ✏️ `EventDetailModal.jsx` — rimossa tab Foto, galleria sotto i dettagli
+- ✏️ `i18n.jsx` — `td_attach_photo`, `td_chat_photo_shared` × IT/EN
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- ⚠️ **Provalo tu**: apri un task → vedi subito Chat (default). Tap 📎 →
+  scegli una foto → la foto si carica + appare un messaggio "📷 ha
+  condiviso una foto" nel thread + è visibile anche nella tab Dettagli
+  in "Foto".
+
+---
+
+
 #### Bug fix — ✕ delete non appariva mai
 Prima il bottone ✕ era condizionato a `att.uploaded_by === me.id` ma:
 1. `AddTaskModal` non popolava mai `uploaded_by` all'INSERT → tutte le

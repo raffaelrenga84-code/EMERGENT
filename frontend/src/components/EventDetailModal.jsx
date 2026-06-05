@@ -160,18 +160,8 @@ export default function EventDetailModal({ event, families = [], members = [], m
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: 12 }}>
-          {/* Tab orizzontali: Dettagli / Foto */}
-          <DetailTabs
-            tabs={[
-              { id: 'details', label: t('ed_tab_details') || 'Dettagli', icon: '📋' },
-              { id: 'photos',  label: t('ed_tab_photos')  || 'Foto',     icon: '📸', count: attachments.length },
-            ]}
-            active={activeTab}
-            onChange={setActiveTab}
-            testidPrefix="event-detail-tabs"
-          />
-
-          {/* ===== TAB: DETTAGLI ===== */}
+          {/* Single tab: Dettagli (include foto inline) — niente più
+              tab separata per le foto, ora c'è una galleria inline. */}
           {activeTab === 'details' && (
             <div data-testid="event-detail-pane-details">
           {event.location && (
@@ -226,25 +216,20 @@ export default function EventDetailModal({ event, families = [], members = [], m
               </div>
             )}
           </div>
-            </div>
-          )}
 
-          {/* ===== TAB: FOTO ===== */}
-          {activeTab === 'photos' && (
-            <div data-testid="event-detail-pane-photos" style={{ marginBottom: 8 }}>
-              {loading ? (
-                <div style={{ fontSize: 13, color: 'var(--km)' }}>{t('td_uploading') || 'Caricamento…'}</div>
-              ) : (
-                <PhotoGalleryEditor
-                  kind="event"
-                  parentId={event.id}
-                  attachments={attachments}
-                  photoUrls={photoUrls}
-                  onAdded={(att) => setAttachments((prev) => [...prev, att])}
-                  onRemoved={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
-                  onOpenLightbox={setLightbox}
-                />
-              )}
+          {/* === FOTO ALLEGATE === (gestione inline, sotto i dettagli) */}
+          <div style={{ marginTop: 18 }}>
+            <PhotoGalleryEditor
+              kind="event"
+              parentId={event.id}
+              attachments={attachments}
+              photoUrls={photoUrls}
+              onAdded={(att) => setAttachments((prev) => [...prev, att])}
+              onRemoved={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
+              onOpenLightbox={setLightbox}
+            />
+          </div>
+
             </div>
           )}
         </div>

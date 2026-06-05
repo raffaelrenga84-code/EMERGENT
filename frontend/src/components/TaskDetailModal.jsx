@@ -58,6 +58,7 @@ export default function TaskDetailModal({
   const [longPressPickerId, setLongPressPickerId] = useState(null);
   const longPressTimerRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
+  const chatPhotoInputRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -581,12 +582,13 @@ export default function TaskDetailModal({
           </p>
         )}
 
-        {/* Tab orizzontali: Dettagli / Chat / Allegati */}
+        {/* Solo 2 tab: 💬 Chat (default) + 📋 Dettagli con tutto (foto, info, spese).
+            Niente più tab Allegati separata — la sezione "Foto" vive sopra
+            i dettagli e si può caricare anche inline dalla chat (📎). */}
         <DetailTabs
           tabs={[
-            { id: 'details', label: t('td_tab_details') || 'Dettagli', icon: '📋' },
             { id: 'thread',  label: t('td_tab_thread')  || 'Chat',     icon: '💬', count: comments.length, dot: unreadCount > 0 },
-            { id: 'attach',  label: t('td_tab_attach')  || 'Allegati', icon: '📎', count: attachments.length + linkedExpenses.length, dot: unreadAttach > 0 },
+            { id: 'details', label: t('td_tab_details') || 'Dettagli', icon: '📋', count: attachments.length + linkedExpenses.length },
           ]}
           active={activeTab}
           onChange={setActiveTab}
@@ -735,6 +737,56 @@ export default function TaskDetailModal({
             {t('td_status_hint')}
           </p>
         </div>
+
+        {/* === FOTO ALLEGATE === (gestione inline) */}
+        <div style={{ marginTop: 18 }}>
+          <PhotoGalleryEditor
+            kind="task"
+            parentId={realTaskId}
+            meId={me?.id}
+            attachments={attachments}
+            photoUrls={photoUrls}
+            onAdded={(att) => setAttachments((prev) => [...prev, att])}
+            onRemoved={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
+            onOpenLightbox={setLightbox}
+          />
+        </div>
+
+        {/* === SPESE COLLEGATE === */}
+        {linkedExpenses.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: 'var(--km)',
+              textTransform: 'uppercase', marginBottom: 8,
+            }}>
+              💶 {t('td_attach_expenses') || 'Spese collegate'} ({linkedExpenses.length})
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {linkedExpenses.map((ex) => (
+                <div key={ex.id} className="card"
+                  data-testid={`task-expense-${ex.id}`}
+                  style={{
+                    padding: 10, display: 'flex', alignItems: 'center',
+                    gap: 10, fontSize: 13,
+                  }}>
+                  <span style={{ fontSize: 20 }}>💶</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700 }}>
+                      {ex.description || t('td_expense_untitled') || 'Spesa'}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--km)' }}>
+                      {new Date(ex.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                      {ex.category && <span> · {ex.category}</span>}
+                    </div>
+                  </div>
+                  <div style={{ fontWeight: 700, color: 'var(--ac)' }}>
+                    € {Number(ex.amount || 0).toFixed(2)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
           </div>
         )}
 
@@ -947,6 +999,81 @@ export default function TaskDetailModal({
               borderRadius: 100,
               boxShadow: '0 2px 6px rgba(28,22,17,0.04)',
             }}>
+              {/* 📎 Allega foto inline alla chat: upload immediato + crea
+                  un task_response di tipo `system` per dare visibilità nel
+                  thread ("📷 Marco ha allegato una foto"). La foto è
+                  comunque consultabile dalla tab Dettagli (sezione Foto). */}
+              <input
+                type="file" accept="image/*"
+                ref={chatPhotoInputRef}
+                style={{ display: 'none' }}
+                data-testid="task-chat-photo-input"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setBusy(true);
+                  try {
+                    const fileName = `${Date.now()}-${file.name}`;
+                    const filePath = `tasks/${realTaskId}/${fileName}`;
+                    const { error: upErr } = await supabase.storage
+                      .from('task-attachments').upload(filePath, file);
+                    if (upErr) { alert(upErr.message); setBusy(false); return; }
+                    const { data: created, error: dbErr } = await supabase
+                      .from('task_attachments')
+                      .insert({
+                        task_id: realTaskId,
+                        file_path: filePath,
+                        file_name: file.name,
+                        ...(me?.id ? { uploaded_by: me.id } : {}),
+                      })
+                      .select().single();
+                    if (dbErr) { alert(dbErr.message); setBusy(false); return; }
+                    setAttachments((prev) => [...prev, created]);
+
+                    // Crea anche un task_response visibile nel thread
+                    await supabase.from('task_responses').insert({
+                      task_id: realTaskId,
+                      author_id: me?.id || null,
+                      text: `📷 ${t('td_chat_photo_shared') || 'ha condiviso una foto'}`,
+                      type: 'photo',
+                    });
+                    // Push agli altri membri
+                    try {
+                      const recipientMemberIds = new Set();
+                      if (task.author_id && task.author_id !== me?.id) recipientMemberIds.add(task.author_id);
+                      for (const a of assignees) if (a?.id && a.id !== me?.id) recipientMemberIds.add(a.id);
+                      const userIds = await memberIdsToUserIds([...recipientMemberIds]);
+                      if (me?.user_id) userIds.delete(me.user_id);
+                      if (userIds.size > 0) {
+                        const authorName = (me?.name || '').split(' ')[0] || 'Qualcuno';
+                        sendPush({
+                          userIds: [...userIds],
+                          title: `📷 ${authorName} ha condiviso una foto`,
+                          body: task.title || '',
+                          tag: `task-photo-${realTaskId}`,
+                          data: { task_id: realTaskId, kind: 'task' },
+                        });
+                      }
+                    } catch (_) {}
+                  } finally {
+                    setBusy(false);
+                    if (chatPhotoInputRef.current) chatPhotoInputRef.current.value = '';
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => chatPhotoInputRef.current?.click()}
+                disabled={busy}
+                data-testid="task-chat-photo-btn"
+                aria-label={t('td_attach_photo') || 'Allega foto'}
+                style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  border: 'none', background: 'transparent',
+                  color: 'var(--km)', fontSize: 18,
+                  cursor: 'pointer', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>📎</button>
               <input
                 style={{
                   flex: 1, border: 'none', outline: 'none',
@@ -976,65 +1103,6 @@ export default function TaskDetailModal({
                 }}>
                 ➤
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* ====== TAB: ALLEGATI & SPESE ====== */}
-        {activeTab === 'attach' && (
-          <div data-testid="task-detail-pane-attach">
-            {/* Foto: gestione completa via PhotoGalleryEditor (add/remove/lightbox) */}
-            <div style={{ marginBottom: 18 }}>
-              <PhotoGalleryEditor
-                kind="task"
-                parentId={realTaskId}
-                meId={me?.id}
-                attachments={attachments}
-                photoUrls={photoUrls}
-                onAdded={(att) => setAttachments((prev) => [...prev, att])}
-                onRemoved={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
-                onOpenLightbox={setLightbox}
-              />
-            </div>
-
-            {/* Spese collegate */}
-            <div>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: 'var(--km)',
-                textTransform: 'uppercase', marginBottom: 8,
-              }}>
-                💶 {t('td_attach_expenses') || 'Spese collegate'} {linkedExpenses.length > 0 ? `(${linkedExpenses.length})` : ''}
-              </div>
-              {linkedExpenses.length === 0 ? (
-                <div style={{ fontSize: 13, color: 'var(--km)', fontStyle: 'italic', padding: '12px 0' }}>
-                  {t('td_no_linked_expenses') || 'Nessuna spesa collegata'}
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {linkedExpenses.map((ex) => (
-                    <div key={ex.id} className="card"
-                      data-testid={`task-expense-${ex.id}`}
-                      style={{
-                        padding: 10, display: 'flex', alignItems: 'center',
-                        gap: 10, fontSize: 13,
-                      }}>
-                      <span style={{ fontSize: 20 }}>💶</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700 }}>
-                          {ex.description || t('td_expense_untitled') || 'Spesa'}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--km)' }}>
-                          {new Date(ex.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                          {ex.category && <span> · {ex.category}</span>}
-                        </div>
-                      </div>
-                      <div style={{ fontWeight: 700, color: 'var(--ac)' }}>
-                        € {Number(ex.amount || 0).toFixed(2)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         )}
