@@ -1,5 +1,40 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.23 (5 giugno 2026) — Assenze altrui: view-only completo
+
+### Refactor — Modal assenza con 2 modalità distinte
+Prima il `readOnly` disabilitava solo la prima riga (chip motivo) lasciando
+gli altri campi (date, luogo, nota, famiglie) editabili. Adesso quando
+apri l'assenza di un altro membro vedi un **layout completamente
+diverso** (no form):
+
+**Nuovo componente `AbsenceViewOnly`** (locale a `AbsenceModal.jsx`):
+- Badge "👁️ Stai visualizzando l'assenza di un altro membro..."
+- Card riepilogo elegante con:
+  - Emoji motivo grande + nome autore + label
+  - 📅 Periodo formattato (locale-aware)
+  - 📍 Luogo (se presente)
+  - 📝 Nota (whitespace-pre-wrap per andare a capo)
+  - 👥 Famiglie destinatarie come chip
+- Sotto: thread commenti (motivo principale per cui sei lì)
+
+**Owner mode**: form completo invariato (motivo, date, luogo, nota,
+visibilità, conflitti ricorrenze, eliminazione).
+
+**Vantaggio**: niente più rischio di modifiche accidentali. RLS Supabase
+già impedirebbe l'update, ma adesso l'UX lo rende anche **visualmente**
+impossibile.
+
+### File modificati
+- ✏️ `/app/frontend/src/components/AbsenceModal.jsx` — 2 mode + `AbsenceViewOnly` component
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605160621`)
+- ⚠️ **Provalo tu**: Agenda → tap su assenza di un altro membro (es. Silvia) → vedi solo riepilogo + commenti, niente form editabile. Tap sulla tua → form completo.
+
+---
+
 ## Iterazione 16.5.22 (5 giugno 2026) — i18n completo Agenda (Solo a me + ora + tu + date)
 
 ### Bug fix — Stringhe hardcoded italiane in Agenda

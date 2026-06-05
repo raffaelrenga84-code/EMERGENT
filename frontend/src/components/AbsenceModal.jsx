@@ -224,21 +224,21 @@ export default function AbsenceModal({
 
         <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
-            {readOnly && (
-              <div style={{
-                marginBottom: 12, padding: '8px 12px',
-                background: 'var(--ab)', border: '1px solid var(--sm)',
-                borderRadius: 10, fontSize: 12, color: 'var(--km)',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <span style={{ fontSize: 14 }}>👁️</span>
-                <span>{t('absence_readonly_hint') || 'Stai visualizzando l\'assenza di un altro membro. Puoi commentarla sotto.'}</span>
-              </div>
-            )}
-
+            {readOnly ? (
+              // === VIEW-ONLY MODE per assenze di altri membri ===
+              // Solo summary + commenti, niente form modificabile.
+              <AbsenceViewOnly
+                absence={editingAbsence}
+                members={members}
+                families={families}
+                t={t}
+                lang={lang}
+              />
+            ) : (
+              <>
             {/* === MOTIVO === */}
             <label>{t('absence_reason') || 'Motivo'}</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4, opacity: readOnly ? 0.6 : 1, pointerEvents: readOnly ? 'none' : 'auto' }} data-testid="absence-reasons">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }} data-testid="absence-reasons">
               {REASONS.map((r) => (
                 <button key={r.id} type="button"
                   onClick={() => setReason(r.id)}
@@ -369,6 +369,8 @@ export default function AbsenceModal({
                 borderRadius: 12, color: 'var(--rd)', fontSize: 13, fontWeight: 600,
               }}>⚠️ {err}</div>
             )}
+              </>
+            )}
 
             {/* Commenti (solo in edit, l'assenza deve esistere per avere id) */}
             {isEdit && editingAbsence?.id && (
@@ -446,5 +448,111 @@ function ConflictRadio({ active, label, onClick, testid }) {
       }} />
       {label}
     </button>
+  );
+}
+
+/**
+ * AbsenceViewOnly — render compatto e read-only di un'assenza altrui.
+ * Mostra: motivo (emoji + label), periodo formattato, luogo, nota,
+ * famiglie destinatarie. Sotto si monta il thread commenti.
+ */
+function AbsenceViewOnly({ absence, members = [], families = [], t, lang }) {
+  if (!absence) return null;
+  const localeMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' };
+  const locale = localeMap[lang] || 'it-IT';
+
+  // Ritrova reason emoji + label
+  const REASONS = [
+    { id: 'trip', icon: '✈️', label: t('absence_reason_trip') || 'In viaggio' },
+    { id: 'work', icon: '💼', label: t('absence_reason_work') || 'Lavoro' },
+    { id: 'sick', icon: '🤒', label: t('absence_reason_sick') || 'Malattia' },
+    { id: 'family', icon: '🏠', label: t('absence_reason_family') || 'Famiglia' },
+    { id: 'other', icon: '📌', label: t('absence_reason_other') || 'Altro' },
+  ];
+  const reasonInfo = REASONS.find((r) => r.id === absence.reason) || REASONS[REASONS.length - 1];
+
+  const fmt = (d) => {
+    if (!d) return '';
+    try {
+      return new Date(d + 'T12:00:00').toLocaleDateString(locale, {
+        weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
+      });
+    } catch (_) { return d; }
+  };
+
+  const member = (members || []).find((m) => m.user_id === absence.user_id);
+  const authorName = member?.name || absence.member_name || t('member_one') || 'Membro';
+  const visibleFamilies = (families || []).filter((f) =>
+    Array.isArray(absence.visible_to_families) && absence.visible_to_families.includes(f.id)
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Hint read-only */}
+      <div style={{
+        padding: '8px 12px',
+        background: 'var(--ab)', border: '1px solid var(--sm)',
+        borderRadius: 10, fontSize: 12, color: 'var(--km)',
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <span style={{ fontSize: 14 }}>👁️</span>
+        <span>{t('absence_readonly_hint') || 'Stai visualizzando l\'assenza di un altro membro. Puoi commentarla sotto.'}</span>
+      </div>
+
+      {/* Card riepilogo */}
+      <div style={{
+        padding: 14, borderRadius: 14,
+        background: 'var(--ab)', border: '1px solid var(--sm)',
+        display: 'flex', flexDirection: 'column', gap: 10,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 26 }}>{reasonInfo.icon}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--k)' }}>
+              {authorName}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 1 }}>
+              {reasonInfo.label}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px dashed var(--sm)', paddingTop: 10, fontSize: 13, color: 'var(--k)' }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+            <span style={{ fontWeight: 700, color: 'var(--km)', minWidth: 60 }}>📅</span>
+            <span>
+              {fmt(absence.start_date)}
+              {absence.end_date !== absence.start_date && <> → {fmt(absence.end_date)}</>}
+            </span>
+          </div>
+          {absence.location && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+              <span style={{ fontWeight: 700, color: 'var(--km)', minWidth: 60 }}>📍</span>
+              <span>{absence.location}</span>
+            </div>
+          )}
+          {absence.note && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+              <span style={{ fontWeight: 700, color: 'var(--km)', minWidth: 60 }}>📝</span>
+              <span style={{ whiteSpace: 'pre-wrap' }}>{absence.note}</span>
+            </div>
+          )}
+          {visibleFamilies.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, color: 'var(--km)', minWidth: 60 }}>👥</span>
+              <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {visibleFamilies.map((f) => (
+                  <span key={f.id} style={{
+                    padding: '2px 8px', borderRadius: 100,
+                    background: 'white', border: '1px solid var(--sm)',
+                    fontSize: 11, fontWeight: 600,
+                  }}>{f.emoji} {f.name}</span>
+                ))}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
