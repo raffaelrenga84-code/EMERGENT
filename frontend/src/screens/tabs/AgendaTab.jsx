@@ -442,10 +442,12 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
               ✨
             </button>
           )}
-          {/* "+" azioni rapide: apre bottom-sheet con nuovo incarico/assenza/medicina */}
+          {/* "+" azioni rapide: apre bottom-sheet con nuovo incarico/assenza/medicina.
+              Pulsa quando l'utente seleziona un giorno nel calendario. */}
           <button
             type="button"
             data-testid="agenda-new-btn"
+            className={fabPulse ? 'fammy-pulse-attract' : ''}
             onClick={() => setShowQuickActions(true)}
             title={t('fab_new_title') || 'Nuovo'}
             aria-label={t('fab_new_title') || 'Nuovo'}
