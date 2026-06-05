@@ -301,6 +301,14 @@ export default function FamilyTab({ family, members, session, families, activeFa
             onDeleted={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
           />
         )}
+
+        {medsMember && (
+          <MedicationsModal
+            member={medsMember}
+            me={members.find((mm) => mm.user_id === session.user.id)}
+            onClose={() => setMedsMember(null)}
+          />
+        )}
       </>
     );
   }

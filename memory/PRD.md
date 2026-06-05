@@ -1,5 +1,29 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.2 (5 giugno 2026) — Hotfix: Medicine button non apriva il modal
+
+### Bug fix — `MedicationsModal` non montato nella vista "Tutte le famiglie"
+**Root cause**: in `FamilyTab.jsx` il componente `<MedicationsModal>` era
+renderizzato solo nel branch della singola famiglia (riga 536), ma NON nel
+branch `isAll` (vista "Tutte"). L'`onOpenMedications` impostava correttamente
+lo state `medsMember`, ma il modal non veniva mai renderizzato → tap su 💊
+Medicine nella vista "Tutte" non apriva nulla.
+
+**Fix**: aggiunto il mount `<MedicationsModal>` anche dentro il return della
+vista `isAll` (subito dopo `<AbsenceModal>`).
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/FamilyTab.jsx` — aggiunto mount
+  `MedicationsModal` nel branch isAll
+
+### Testing
+- Lint: ✅
+- ⚠️ Test funzionale richiede login Google → **provalo tu**: dalla vista
+  "Tutte le famiglie" espandi una famiglia → su un membro assistito tap
+  💊 Medicine → ora il modal Care Hub si apre correttamente.
+
+---
+
 ## Iterazione 16.3 (4 giugno 2026, notte) — Profilo riorganizzato + traduzioni mancanti
 
 ### Iterazione 16.3.2 — Apple login rimosso + lista prefissi internazionali estesa
