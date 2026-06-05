@@ -1,5 +1,67 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.20 (5 giugno 2026) — Agenda Apple-style + commenti sulle assenze
+
+### Feature 1 — Lista singolo giorno (stile Apple Calendar)
+Rimosse le 3 sezioni collapsible (Today / Upcoming / Past / Absences) sotto
+al calendario. Ora la lista è SINGOLA e mostra **solo cosa c'è nel giorno
+selezionato** (default = oggi):
+- Titolo dinamico bold "Oggi" o "lunedì 5 giugno" (capitalize)
+- Counter discreto · N items
+- Assenze active prima → poi eventi/task del giorno
+- Empty state friendly "🌤️ Nessun impegno per questo giorno"
+- Click su un giorno calendario → lista cambia subito
+- Lo skipped occurrences appaiono inline come "🚫 ... ↩️ tocca per ripristinare"
+
+**Comportamento attivo**: per vedere altri giorni → tap sul giorno nel
+calendario. Niente più 3 bottoni "Today/Upcoming/Past" sempre aperti.
+
+### Feature 2 — Commenti sulle assenze (thread chat-style)
+Nuova feature: ogni assenza ora supporta commenti (info di viaggio,
+raccomandazioni, contatti emergenza...).
+
+**SQL** (`fammy-absence-comments.sql`):
+- Nuova tabella `absence_responses` (id, absence_id, author_id, text, reactions jsonb, created_at)
+- RLS: leggere/commentare chi vede l'assenza (autore o famiglia con visibility)
+- Update/delete: solo autore del singolo commento
+- Realtime publication abilitata
+
+**Componente `AbsenceCommentsThread.jsx`**:
+- Lista commenti con bubble chat (own = accent destra, altri = bianco sx)
+- Avatar/nome (display_name da profiles)
+- Input + Enter per inviare
+- Auto-refresh 4s (no realtime per MVP)
+- Auto-scroll in fondo a nuovo messaggio
+- Empty state friendly "Lascia info di viaggio, contatti..."
+
+**AbsenceModal**:
+- Thread montato sotto al form (solo in edit con `editingAbsence.id`)
+- Logica `readOnly`: se l'assenza non è mia, badge "👁️ Stai visualizzando l'assenza di un altro membro. Puoi commentarla sotto."
+- Form fields disabilitati con opacity 0.6 + pointer-events: none
+- Bottone "Salva" nascosto; "Annulla" diventa "Chiudi"
+- AgendaTab: tap su qualsiasi card assenza apre il modal (anche di altri membri) → commenti accessibili a tutti
+
+### File nuovi
+- ➕ `/app/frontend/fammy-absence-comments.sql`
+- ➕ `/app/frontend/src/components/AbsenceCommentsThread.jsx`
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — refactor lista singolo giorno
+- ✏️ `/app/frontend/src/components/AbsenceModal.jsx` — readOnly mode + comments mount
+
+### ⚠️ AZIONE UTENTE
+Esegui `/app/frontend/fammy-absence-comments.sql` su Supabase SQL Editor.
+
+### Testing
+- Lint: ✅ tutti i file
+- Build: ✅ (`fammy-20260605151424`)
+- ⚠️ **Provalo tu**:
+  1. Agenda → tap su un giorno con eventi → vedi SOLO quello sotto (no più sezioni)
+  2. Tap su una propria assenza → form completo + sezione "💬 Commenti"
+  3. Tap su assenza altrui → modal read-only con badge + commenti accessibili
+
+---
+
 ## Iterazione 16.5.19 (5 giugno 2026) — Agenda redesign stile iPhone Calendar
 
 ### Refactor — Calendario pulito, minimal, iPhone-style

@@ -5,6 +5,7 @@ import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
 import NativeDateInput from './NativeDateInput.jsx';
 import ImportScheduleModal from './ImportScheduleModal.jsx';
+import AbsenceCommentsThread from './AbsenceCommentsThread.jsx';
 
 const REASONS = [
   { id: 'vacation', icon: '🏖️', label_it: 'Vacanza',  label_en: 'Vacation', label_fr: 'Vacances', label_de: 'Urlaub' },
@@ -32,6 +33,10 @@ export default function AbsenceModal({
 }) {
   const { t, lang } = useT();
   const isEdit = !!editingAbsence;
+  // L'assenza appartiene all'utente loggato? Se no, l'apertura del modal
+  // è in modalità "read-only" (per leggere e commentare l'assenza altrui).
+  const isOwner = !isEdit || editingAbsence?.user_id === session?.user?.id;
+  const readOnly = isEdit && !isOwner;
   const today = toLocalYMD();
   const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })();
   const inAWeek = (() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); })();
@@ -219,9 +224,21 @@ export default function AbsenceModal({
 
         <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+            {readOnly && (
+              <div style={{
+                marginBottom: 12, padding: '8px 12px',
+                background: 'var(--ab)', border: '1px solid var(--sm)',
+                borderRadius: 10, fontSize: 12, color: 'var(--km)',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <span style={{ fontSize: 14 }}>👁️</span>
+                <span>{t('absence_readonly_hint') || 'Stai visualizzando l\'assenza di un altro membro. Puoi commentarla sotto.'}</span>
+              </div>
+            )}
+
             {/* === MOTIVO === */}
             <label>{t('absence_reason') || 'Motivo'}</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }} data-testid="absence-reasons">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4, opacity: readOnly ? 0.6 : 1, pointerEvents: readOnly ? 'none' : 'auto' }} data-testid="absence-reasons">
               {REASONS.map((r) => (
                 <button key={r.id} type="button"
                   onClick={() => setReason(r.id)}
@@ -352,15 +369,31 @@ export default function AbsenceModal({
                 borderRadius: 12, color: 'var(--rd)', fontSize: 13, fontWeight: 600,
               }}>⚠️ {err}</div>
             )}
+
+            {/* Commenti (solo in edit, l'assenza deve esistere per avere id) */}
+            {isEdit && editingAbsence?.id && (
+              <div style={{
+                marginTop: 16, paddingTop: 14,
+                borderTop: '1px dashed var(--sm)',
+              }}>
+                <AbsenceCommentsThread
+                  absenceId={editingAbsence.id}
+                  session={session}
+                  profile={profile}
+                />
+              </div>
+            )}
           </div>
 
           <div className="row" style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--sm)' }}>
             <button type="button" className="btn secondary" onClick={onClose} disabled={busy}>
-              {t('cancel') || 'Annulla'}
+              {readOnly ? (t('close') || 'Chiudi') : (t('cancel') || 'Annulla')}
             </button>
-            <button type="submit" className="btn" disabled={busy} data-testid="absence-submit-btn">
-              {busy ? <span className="spin" /> : (isEdit ? (t('save_changes') || 'Salva') : (t('absence_create_btn') || 'Crea assenza'))}
-            </button>
+            {!readOnly && (
+              <button type="submit" className="btn" disabled={busy} data-testid="absence-submit-btn">
+                {busy ? <span className="spin" /> : (isEdit ? (t('save_changes') || 'Salva') : (t('absence_create_btn') || 'Crea assenza'))}
+              </button>
+            )}
           </div>
         </form>
       </div>

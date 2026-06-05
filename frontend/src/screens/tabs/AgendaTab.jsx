@@ -446,124 +446,102 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         </div>
       ) : (
         <>
-          <CollapsibleSection
-            label={todayLabel}
-            count={todayCount + todayAbsences.length}
-            open={openSections.today}
-            onToggle={() => toggle('today')}
-            accent="var(--am)"
-          >
-            {todayAbsences.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px 8px' }}>
-                {todayAbsences.map((a) => {
-                  const member = members.find((m) => m.user_id === a.user_id);
-                  const isMine = a.user_id === userId;
-                  return (
-                    <AbsenceCard key={`day-${a.id}`}
-                      absence={a}
-                      memberName={member?.name || a.member_name || 'Membro'}
-                      isMine={isMine} isOngoing={true}
-                      onClick={isMine ? () => { setEditingAbsence(a); setShowAbsence(true); } : undefined}
-                    />
-                  );
-                })}
-              </div>
-            )}
-            {todayCount > 0 ? renderItems(todayEvents, todayTasks, false) : (
-              skippedForDay.length === 0 && todayAbsences.length === 0 && <p style={{ padding: '0 22px 12px', color: 'var(--km)', fontSize: 13 }}>—</p>
-            )}
-            {skippedForDay.length > 0 && (
-              <div style={{ padding: '4px 16px 8px' }}>
-                {skippedForDay.map((s) => (
-                  <button key={s.id} data-testid={s.id}
-                    type="button"
-                    onClick={() => restoreSkippedOccurrence(s)}
-                    title="Tocca per ripristinare questa occorrenza"
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '10px 12px', marginBottom: 6, width: '100%',
-                      background: 'var(--ab)', border: '1px dashed var(--sm)',
-                      borderRadius: 12, opacity: 0.75, cursor: 'pointer',
-                      textAlign: 'left', fontFamily: 'inherit',
-                      transition: 'opacity 0.15s ease, transform 0.1s ease',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.75'; }}
-                  >
-                    <span style={{ fontSize: 18 }}>🚫</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 13, fontWeight: 600, color: 'var(--km)',
-                        textDecoration: 'line-through',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>{s.title}</div>
-                      <div style={{ fontSize: 10, color: 'var(--km)', marginTop: 1, opacity: 0.85 }}>
-                        Sospeso · {s.kind === 'event' ? 'evento ricorrente' : 'incarico ricorrente'} · ↩️ tocca per ripristinare
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            label={futureLabel}
-            count={futureCount}
-            open={openSections.future}
-            onToggle={() => toggle('future')}
-          >
-            {futureCount > 0 ? renderItems(futureEvents, futureTasks, false) : <p style={{ padding: '0 22px 12px', color: 'var(--km)', fontSize: 13 }}>—</p>}
-          </CollapsibleSection>
-
-          {pastCount > 0 && (
-            <CollapsibleSection
-              label={pastLabel}
-              count={pastCount}
-              open={openSections.past}
-              onToggle={() => toggle('past')}
-            >
-              {renderItems(pastEvents, pastTasks, true)}
-            </CollapsibleSection>
-          )}
-
-          {/* Sezione "✈️ Assenze": mostra solo quelle visibili a questa famiglia
-              (o tutte quelle dell'utente se isAll). Card cliccabili per le
-              proprie assenze → apre AbsenceModal in edit. */}
+          {/* === LISTA ITEMS DEL GIORNO === stile Apple Calendar:
+              quando l'utente tappa un giorno (o default = oggi) vede SOLO
+              quello che c'è in quel giorno. Niente più 3 sezioni
+              Today/Upcoming/Past. */}
           {(() => {
-            const userId = session?.user?.id;
-            const visibleAbsences = (absences || []).filter((a) => {
-              if (isAll) return true;
-              if (a.user_id === userId) return true;
-              return Array.isArray(a.visible_to_families) && a.visible_to_families.includes(familyId);
-            });
-            if (visibleAbsences.length === 0) return null;
-            const today = toLocalYMD();
-            const inFuture = visibleAbsences.filter((a) => a.end_date >= today)
-              .sort((a, b) => a.start_date.localeCompare(b.start_date));
-            return inFuture.length > 0 ? (
-              <CollapsibleSection
-                label={`✈️ ${t('agenda_absences') || 'Assenze'}`}
-                count={inFuture.length}
-                open={false}
-                onToggle={() => { /* default collapsed */ }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px 8px' }}>
-                  {inFuture.map((a) => {
-                    const member = members.find((m) => m.user_id === a.user_id);
-                    const isMine = a.user_id === userId;
-                    const isOngoing = a.start_date <= today && a.end_date >= today;
-                    return (
-                      <AbsenceCard key={a.id}
-                        absence={a} memberName={member?.name || a.member_name || 'Membro'}
-                        isMine={isMine} isOngoing={isOngoing}
-                        onClick={isMine ? () => { setEditingAbsence(a); setShowAbsence(true); } : undefined}
-                      />
-                    );
-                  })}
+            const dayItems = todayEvents.length > 0 || todayTasks.length > 0;
+            const hasAnything = dayItems || todayAbsences.length > 0 || skippedForDay.length > 0;
+            const dayLabel = isViewingOtherDay
+              ? selectedDay.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+              : t('agenda_today') || 'Oggi';
+
+            return (
+              <div style={{ padding: '4px 16px 0' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'baseline', gap: 8,
+                  marginBottom: 10,
+                }}>
+                  <h3 style={{
+                    margin: 0, fontSize: 18, fontWeight: 700,
+                    color: 'var(--k)',
+                    textTransform: 'capitalize',
+                    fontFamily: 'var(--fs)',
+                  }}>{dayLabel}</h3>
+                  {hasAnything && (
+                    <span style={{ fontSize: 12, color: 'var(--km)', fontWeight: 600 }}>
+                      · {todayEvents.length + todayTasks.length + todayAbsences.length}
+                    </span>
+                  )}
                 </div>
-              </CollapsibleSection>
-            ) : null;
+
+                {/* Items: assenze prima (chi è via), poi eventi/task */}
+                {todayAbsences.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+                    {todayAbsences.map((a) => {
+                      const member = members.find((m) => m.user_id === a.user_id);
+                      const isMine = a.user_id === userId;
+                      return (
+                        <AbsenceCard key={`day-${a.id}`}
+                          absence={a}
+                          memberName={member?.name || a.member_name || 'Membro'}
+                          isMine={isMine} isOngoing={true}
+                          onClick={() => { setEditingAbsence(a); setShowAbsence(true); }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                {dayItems && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {renderItems(todayEvents, todayTasks, false)}
+                  </div>
+                )}
+
+                {skippedForDay.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {skippedForDay.map((s) => (
+                      <button key={s.id} data-testid={s.id}
+                        type="button"
+                        onClick={() => restoreSkippedOccurrence(s)}
+                        title="Tocca per ripristinare questa occorrenza"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 12px', marginBottom: 6, width: '100%',
+                          background: 'var(--ab)', border: '1px dashed var(--sm)',
+                          borderRadius: 12, opacity: 0.75, cursor: 'pointer',
+                          textAlign: 'left', fontFamily: 'inherit',
+                        }}
+                      >
+                        <span style={{ fontSize: 18 }}>🚫</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 13, fontWeight: 600, color: 'var(--km)',
+                            textDecoration: 'line-through',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>{s.title}</div>
+                          <div style={{ fontSize: 10, color: 'var(--km)', marginTop: 1, opacity: 0.85 }}>
+                            ↩️ tocca per ripristinare
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {!hasAnything && (
+                  <div style={{
+                    padding: '32px 16px', textAlign: 'center',
+                    color: 'var(--km)', fontSize: 14,
+                  }}>
+                    <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.5 }}>🌤️</div>
+                    {t('agenda_day_empty') || 'Nessun impegno per questo giorno'}
+                  </div>
+                )}
+              </div>
+            );
           })()}
         </>
       )}
