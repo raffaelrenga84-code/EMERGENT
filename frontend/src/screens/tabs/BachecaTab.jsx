@@ -190,13 +190,19 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   // Usati per popolare la voce FAB "💊 Nuova medicina".
   // DEDUPE: se sono membro di più famiglie, il mio stesso user_id appare
   // in più member rows → mostro una sola entry per persona (la prima).
+  // SORT: me stesso ("Per me") sempre in cima per discoverability.
   const assistedMembers = dedupeByUser(
     (members || []).filter((m) => {
       if (!m.is_assisted) return false;
       if (familyId) return m.family_id === familyId;
       return (families || []).some((f) => f.id === m.family_id);
     })
-  );
+  ).sort((a, b) => {
+    const aSelf = a.user_id === session.user.id ? 0 : 1;
+    const bSelf = b.user_id === session.user.id ? 0 : 1;
+    if (aSelf !== bSelf) return aSelf - bSelf;
+    return (a.name || '').localeCompare(b.name || '');
+  });
 
   const onClickNewMed = () => {
     if (assistedMembers.length === 0) return;
@@ -568,7 +574,14 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
               {t('meds_picker_h') || 'Per chi vuoi aggiungere medicine?'}
             </div>
             {assistedMembers.map((m) => {
+              const isSelf = m.user_id && m.user_id === session.user.id;
               const fam = families?.find((f) => f.id === m.family_id);
+              const displayName = isSelf
+                ? (t('meds_picker_self_name') || 'Per me')
+                : m.name;
+              const displaySub = isSelf
+                ? (t('meds_picker_self_sub') || 'Le tue medicine')
+                : fam ? `${fam.emoji} ${fam.name}` : null;
               return (
                 <button
                   key={m.id}
@@ -578,7 +591,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '12px 14px', borderRadius: 14,
-                    border: '1.5px solid var(--sm)', background: 'white',
+                    border: `1.5px solid ${isSelf ? 'var(--ac)' : 'var(--sm)'}`,
+                    background: isSelf ? 'var(--ab)' : 'white',
                     cursor: 'pointer', textAlign: 'left',
                   }}>
                   <span style={{
@@ -586,12 +600,14 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
                     background: m.avatar_color || 'var(--ac)', color: 'white',
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     fontWeight: 700, fontSize: 15, flexShrink: 0,
-                  }}>{m.avatar_letter || (m.name || '?').charAt(0).toUpperCase()}</span>
+                  }}>
+                    {isSelf ? '👤' : (m.avatar_letter || (m.name || '?').charAt(0).toUpperCase())}
+                  </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700 }}>{m.name}</div>
-                    {fam && (
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{displayName}</div>
+                    {displaySub && (
                       <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>
-                        {fam.emoji} {fam.name}
+                        {displaySub}
                       </div>
                     )}
                   </div>

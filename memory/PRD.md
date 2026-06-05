@@ -1,5 +1,33 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.13 (5 giugno 2026) — Picker meds: "Per me" invece di famiglia random
+
+### UX fix — Voce "Per me" personalizzata nel meds picker
+Prima nel bottom-sheet "Who are you adding meds for?" la propria entry
+mostrava una famiglia random (es. "Raffael · 🍎 AMICI"). Confusionario:
+le proprie medicine non sono per "famiglia AMICI", sono per la persona.
+
+**Fix in BachecaTab + AgendaTab**:
+- Quando `m.user_id === session.user.id` → la card mostra:
+  - Avatar: `👤` (universal "person")
+  - Nome: "**Per me**" (i18n `meds_picker_self_name`)
+  - Sub: "Le tue medicine" (i18n `meds_picker_self_sub`)
+  - Bordo accent + sfondo `--ab` per distinguerla visivamente
+- Sort: "Per me" sempre in cima (sorted by self-first), poi alfabetico
+- Per gli altri: stessa UI di prima (nome + 🏠 famiglia)
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/BachecaTab.jsx` — sort + render condizionale picker
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — idem
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 2 nuove keys IT/EN
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605123539`)
+- ⚠️ **Provalo tu**: Bacheca/Agenda → tap FAB "+" → "💊 Nuova medicina" → vedi "Per me" in cima con bordo accent (al posto della famiglia random)
+
+---
+
 ## Iterazione 16.5.12 (5 giugno 2026) — Care Hub unificato per persona
 
 ### Feature — Care Hub centralizzato sul "primary member" canonico
