@@ -13,6 +13,35 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
   const [showArchive, setShowArchive] = useState(false);
   // Pagamento parziale: {expense, share, member} oppure null
   const [payingShare, setPayingShare] = useState(null);
+  // Idle-pulse: dopo ~1s di inattività il FAB "+" pulsa per attirare attenzione
+  const [idlePulse, setIdlePulse] = useState(false);
+
+  useEffect(() => {
+    let idleStartTimer = null;
+    let pulseOffTimer = null;
+    let nextPulseTimer = null;
+    const stopAll = () => {
+      if (idleStartTimer) clearTimeout(idleStartTimer);
+      if (pulseOffTimer) clearTimeout(pulseOffTimer);
+      if (nextPulseTimer) clearTimeout(nextPulseTimer);
+    };
+    const pulseLoop = () => {
+      setIdlePulse(true);
+      pulseOffTimer = setTimeout(() => {
+        setIdlePulse(false);
+        nextPulseTimer = setTimeout(pulseLoop, 1400);
+      }, 1500);
+    };
+    const startIdle = () => { idleStartTimer = setTimeout(pulseLoop, 1000); };
+    const reset = () => { stopAll(); setIdlePulse(false); startIdle(); };
+    startIdle();
+    const events = ['mousemove', 'mousedown', 'touchstart', 'touchmove', 'scroll', 'keydown', 'wheel'];
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    return () => {
+      stopAll();
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, []);
 
   useEffect(() => {
     if (pendingTask) setShowAdd(true);
@@ -278,6 +307,7 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
 
       <FabSpeedDial
         testid="spese-fab"
+        pulse={idlePulse}
         actions={[
           {
             id: 'expense',
