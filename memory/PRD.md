@@ -1,5 +1,26 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.22 (5 giugno 2026) — i18n completo Agenda (Solo a me + ora + tu + date)
+
+### Bug fix — Stringhe hardcoded italiane in Agenda
+Sostituito hardcoded → i18n keys in 4 lingue (IT/EN/FR/DE):
+- `agenda_only_mine` — "Solo a me" / "Only mine" / "Seulement moi" / "Nur ich"
+- `agenda_result_one` / `_many` — "risultato/i" / "result(s)" / "résultat(s)" / "Ergebnis(se)"
+- `absence_now_badge` — "ora" / "now" / "maintenant" / "jetzt"
+- `you` — "Tu" / "You" / "Toi" / "Du" (era hardcoded "(tu)")
+- Date `toLocaleDateString('it-IT', ...)` → ora usa `lang` mappato a BCP47 (it-IT, en-US, fr-FR, de-DE)
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — useT lang + dateLocale + i18n keys
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 5 nuove keys × 4 lingue
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605155934`)
+- ⚠️ **Provalo tu** (in EN): Agenda → "Only mine" / "0 results" + date in inglese (es. "Monday, June 1") + badge assenza attiva "● NOW"
+
+---
+
 ## Iterazione 16.5.21 (5 giugno 2026) — i18n date + chiavi commenti assenza
 
 ### Bug fix 1 — Date in lingua dell'app (non del browser)

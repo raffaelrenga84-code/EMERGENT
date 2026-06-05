@@ -119,7 +119,9 @@ function expandTasks(tasks) {
 
 
 export default function AgendaTab({ familyId, families, events, tasks = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily }) {
-  const { t } = useT();
+  const { t, lang } = useT();
+  const localeMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' };
+  const dateLocale = localeMap[lang] || 'it-IT';
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -327,7 +329,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   // i bucket "Oggi/Futuri/Passati" diventano "📌 <data> / Dopo / Prima di".
   const isViewingOtherDay = selectedDay && !sameDay(selectedDay, today);
   const fmtSel = selectedDay
-    ? selectedDay.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })
+    ? selectedDay.toLocaleDateString(dateLocale, { day: 'numeric', month: 'long' })
     : '';
   const todayLabel = isViewingOtherDay ? `📌 ${fmtSel}` : t('agenda_today');
   const futureLabel = isViewingOtherDay ? `🗓️ ${t('agenda_after_label') || 'Dopo'} ${fmtSel}` : t('agenda_future');
@@ -456,7 +458,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
             const dayItems = todayEvents.length > 0 || todayTasks.length > 0;
             const hasAnything = dayItems || todayAbsences.length > 0 || skippedForDay.length > 0;
             const dayLabel = isViewingOtherDay
-              ? selectedDay.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+              ? selectedDay.toLocaleDateString(dateLocale, { weekday: 'long', day: 'numeric', month: 'long' })
               : t('agenda_today') || 'Oggi';
 
             return (
