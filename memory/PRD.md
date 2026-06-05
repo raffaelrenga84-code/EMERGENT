@@ -18,6 +18,50 @@
 
 ### Iterazione 16.3.9 — Conferma "Sei tu Jenna?" anche per inviti generici con placeholder
 
+### Iterazione 16.3.10 — Permessi membri + "Esci dalla famiglia" + estetica
+
+#### Bug fix 1 — La ✕ rossa appariva su Owner
+Prima la condizione era `!isMe` → un normale membro vedeva la ✕ accanto al
+proprietario della famiglia e poteva cancellarlo. Fix: nuova funzione
+`canRemoveMember(member, family)` con permessi corretti:
+- **Owner** può rimuovere chiunque tranne se stesso
+- **Non-owner** può rimuovere SOLO placeholder o SE STESSO
+- **Nessuno** può rimuovere l'owner direttamente (deve passare ownership)
+
+#### Bug fix 2 — Non potevi uscire dalla famiglia
+Prima `removeMember` mostrava `alert('Non puoi rimuovere te stesso')` →
+non c'era modo di lasciare una famiglia. Fix: il pulsante per ME stesso
+ora è `🚪 Esci` invece di ✕. Conferma → DELETE del proprio member row +
+soft reload.
+
+Se sei OWNER e provi a uscire → messaggio: "Cedi prima la proprietà o
+elimina la famiglia da Modifica famiglia."
+
+#### Estetica
+- Rimossi i grossi badge OWNER/MEMBER laterali rossi (rumorosi)
+- Aggiunto un chip piccolo "👑 Owner" inline accanto al nome del proprietario
+- Aggiunto un chip "Tu" verde inline per identificare l'utente loggato
+- "(tu)" → sostituito col chip più moderno
+- Nascosto "· Account associato" (era ridondante): mostriamo SOLO il caso
+  "· Profilo da collegare" in arancione per i placeholder
+
+#### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/FamilyTab.jsx` — logica permessi +
+  remove flow + refactor MemberCard
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 7 nuove key × IT/EN
+  (`fam_leave_btn`, `fam_leave_btn_short`, `fam_leave_confirm`,
+  `fam_remove_confirm`, `fam_owner_cant_leave`, `you_chip`)
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- ⚠️ **Provalo tu**: 1) come membro NON owner, ora vedi 🚪 Esci accanto al
+  tuo nome e ✕ NON appare più su Owner; 2) tap 🚪 Esci → conferma →
+  esci dalla famiglia.
+
+---
+
+
 #### Bug fix — Il tap su "Sono Jenna" partiva accept SUBITO
 Negli inviti GENERICI con placeholder, dopo il login l'utente vedeva la
 lista "Sono Jenna / Sono Mario / Nessuno di questi". Toccando "Sono

@@ -39,14 +39,59 @@ export default function FamilyTab({ family, members, session, families, activeFa
 
   const isOwner = family?.created_by === session.user.id;
 
-  const removeMember = async (member) => {
-    if (member.user_id === session.user.id) {
-      alert('Non puoi rimuovere te stesso da una famiglia.');
+  /**
+   * Permessi rimozione membro (più sicuri di prima):
+   *  - L'OWNER della famiglia: può rimuovere chiunque tranne se stesso
+   *    (deve prima cedere ownership o eliminare la famiglia).
+   *  - Un non-owner: può rimuovere SOLO placeholder (senza user_id) o SE
+   *    STESSO. Mai membri reali (con account) — solo l'owner può farlo.
+   *  - Nessuno può rimuovere l'owner direttamente.
+   */
+  const canRemoveMember = (member, currentFamily) => {
+    const myUid = session.user.id;
+    const familyOwnerUid = currentFamily?.created_by;
+    const isFamilyOwner = familyOwnerUid === myUid;
+    const targetIsOwner = member.user_id && member.user_id === familyOwnerUid;
+    const targetIsMe = member.user_id === myUid;
+    const targetIsPlaceholder = !member.user_id;
+    if (targetIsOwner) return false;            // mai rimuovere owner direttamente
+    if (isFamilyOwner) return true;             // owner rimuove tutti gli altri
+    if (targetIsMe) return true;                // chiunque può lasciare la famiglia
+    if (targetIsPlaceholder) return true;       // chiunque può rimuovere placeholder
+    return false;
+  };
+
+  const removeMember = async (member, currentFamily) => {
+    const myUid = session.user.id;
+    const isLeaving = member.user_id === myUid;
+    const familyName = currentFamily?.name || 'famiglia';
+
+    // L'owner non può lasciare la famiglia direttamente
+    if (isLeaving && currentFamily?.created_by === myUid) {
+      alert(t('fam_owner_cant_leave') ||
+        'Sei il proprietario di questa famiglia. Per uscire, prima cedi la proprietà a un altro membro o elimina la famiglia da "Modifica famiglia".');
       return;
     }
-    if (!confirm(`Rimuovere ${member.name} dalla famiglia?`)) return;
-    await supabase.from('members').delete().eq('id', member.id);
-    onChanged();
+
+    const confirmMsg = isLeaving
+      ? (t('fam_leave_confirm', { family: familyName }) ||
+         `Vuoi davvero uscire dalla famiglia "${familyName}"? Perderai accesso a task, eventi e spese di questa famiglia.`)
+      : (t('fam_remove_confirm', { name: member.name }) ||
+         `Rimuovere ${member.name} dalla famiglia?`);
+    if (!confirm(confirmMsg)) return;
+
+    const { error } = await supabase.from('members').delete().eq('id', member.id);
+    if (error) {
+      alert(error.message || 'Errore');
+      return;
+    }
+    if (isLeaving) {
+      // Lasciare la famiglia: ricaricamento soft per pulire UI
+      onChanged && onChanged();
+      setTimeout(() => window.location.reload(), 300);
+    } else {
+      onChanged && onChanged();
+    }
   };
 
   const otherFamiliesFor = (member, currentFamilyId) => {
@@ -149,10 +194,11 @@ export default function FamilyTab({ family, members, session, families, activeFa
                           member={m}
                           isMe={m.user_id === session.user.id}
                           isOwner={m.user_id === f.created_by}
+                          canRemove={canRemoveMember(m, f)}
                           otherFamilies={otherFamiliesFor(m, f.id)}
                           activeAbsence={activeAbs}
                           onEdit={() => setEditingMember(m)}
-                          onRemove={() => removeMember(m)}
+                          onRemove={() => removeMember(m, f)}
                           onInvite={() => setShowFamilyInvite(f)}
                           onSetAbsence={
                             m.user_id === session.user.id
@@ -362,10 +408,11 @@ export default function FamilyTab({ family, members, session, families, activeFa
               member={m}
               isMe={m.user_id === session.user.id}
               isOwner={m.user_id === family.created_by}
+              canRemove={canRemoveMember(m, family)}
               otherFamilies={otherFamiliesFor(m, family.id)}
               activeAbsence={activeAbs}
               onEdit={() => setEditingMember(m)}
-              onRemove={() => removeMember(m)}
+              onRemove={() => removeMember(m, family)}
               onInvite={() => setShowFamilyInvite(family)}
               onSetAbsence={
                 m.user_id === session.user.id
@@ -486,9 +533,40 @@ export default function FamilyTab({ family, members, session, families, activeFa
   );
 }
 
-function MemberCard({ member, isMe, isOwner, otherFamilies = [], activeAbsence, onEdit, onRemove, onInvite, onSetAbsence }) {
+function MemberCard({ member, isMe, isOwner, canRemove, otherFamilies = [], activeAbsence, onEdit, onRemove, onInvite, onSetAbsence }) {
   const { t } = useT();
   const canInvite = !isMe && !member.user_id;
+
+  // L'icona/azione "rimuovi" varia in base al contesto:
+  //  - isMe (e canRemove): pulsante "🚪 Esci" (= esci dalla famiglia)
+  //  - altrimenti (e canRemove): vecchia ✕ rossa (rimuovi membro)
+  const removeButton = canRemove ? (
+    isMe ? (
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        data-testid={`member-leave-btn-${member.id}`}
+        title={t('fam_leave_btn') || 'Esci dalla famiglia'}
+        style={{
+          background: 'transparent', border: '1px solid var(--rd)',
+          color: 'var(--rd)', fontSize: 11, fontWeight: 700,
+          padding: '6px 10px', borderRadius: 100, cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}>
+        🚪 {t('fam_leave_btn_short') || 'Esci'}
+      </button>
+    ) : (
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        data-testid={`member-remove-btn-${member.id}`}
+        title={t('remove')}
+        style={{
+          background: 'none', border: 'none',
+          color: 'var(--rd)', fontSize: 18, padding: 8, cursor: 'pointer',
+        }}>
+        ✕
+      </button>
+    )
+  ) : null;
 
   return (
     <div className="member-card" onClick={onEdit}>
@@ -500,9 +578,23 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], activeAbsence, 
         size={40}
       />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {member.name}
-          {isMe && <span style={{ fontSize: 11, color: 'var(--km)', fontWeight: 500 }}>(tu)</span>}
+        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span>{member.name}</span>
+          {isOwner && (
+            <span title="Proprietario della famiglia" style={{
+              fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+              background: 'rgba(255,107,107,0.15)', color: '#C73838',
+              border: '1px solid rgba(255,107,107,0.4)',
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+            }}>👑 Owner</span>
+          )}
+          {isMe && (
+            <span style={{
+              fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+              background: 'var(--gnB)', color: 'var(--gn)',
+              border: '1px solid var(--gn)',
+            }}>{t('you_chip') || 'Tu'}</span>
+          )}
           {activeAbsence && (
             <span
               data-testid={`member-absence-badge-${member.id}`}
@@ -520,7 +612,11 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], activeAbsence, 
         </div>
         <div style={{ color: 'var(--km)', fontSize: 13 }}>
           {translateRole(member.role, t) || t('member_one_label')}
-          {member.user_id ? ' · ' + t('has_account') : ' · ' + t('no_account')}
+          {!member.user_id && (
+            <> · <span style={{ color: 'var(--ac)', fontWeight: 600 }}>
+              {t('no_account')}
+            </span></>
+          )}
         </div>
         {otherFamilies.length > 0 && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
@@ -560,21 +656,7 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], activeAbsence, 
         )}
       </div>
 
-      {isOwner && (
-        <span style={{
-          fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
-          background: '#FF6B6B', color: 'white', textTransform: 'uppercase',
-          letterSpacing: 0.5,
-        }}>OWNER</span>
-      )}
-      {!isOwner && member.user_id && (
-        <span style={{
-          fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
-          background: 'var(--km)', color: 'white', textTransform: 'uppercase',
-          letterSpacing: 0.5, opacity: 0.6,
-        }}>MEMBER</span>
-      )}
-
+      {/* Bottone Invita (mostrato solo per placeholder, no isMe) */}
       {canInvite && (
         <button
           onClick={(e) => { e.stopPropagation(); onInvite(); }}
@@ -603,14 +685,7 @@ function MemberCard({ member, isMe, isOwner, otherFamilies = [], activeAbsence, 
           <span>{t('invite_btn')}</span>
         </button>
       )}
-      {!isMe && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          style={{ background: 'none', border: 'none', color: 'var(--rd)', fontSize: 18, padding: 8 }}
-          title={t('remove')}>
-          ✕
-        </button>
-      )}
+      {removeButton}
     </div>
   );
 }
