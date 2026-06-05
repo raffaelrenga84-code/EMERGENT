@@ -10,6 +10,41 @@
 
 ### Iterazione 16.3.5 — Backup Google account per utenti phone-only
 
+### Iterazione 16.3.6 — Invito: solo Google/telefono + delete membri
+
+#### Bug fix 1 — InviteAcceptScreen ancora con magic-link email
+La pagina `/invite/<token>` mostrava ancora il form magic-link via email
+("Email logins are disabled" se Supabase ha disabilitato gli email login).
+**Fix**: ho riscritto `InviteAcceptScreen.jsx` per usare solo:
+- Pulsante "Continua con Google" (OAuth, redirect torna a `/invite/<token>`)
+- Pulsante "Continua con il telefono" (`PhoneLoginModal`)
+
+Rimossi: campo nome, campo email, magic-link OTP, stato `sent`.
+
+#### Bug fix 2 — Testi invito menzionavano "Google/Apple"
+Aggiornate tutte e 4 le lingue: `invite_code_hint`, `invite_msg_open`,
+`invite_warn_dup_b` ora dicono "Google o telefono" invece di
+"Google/Apple". Così il messaggio WhatsApp non confonde più nessuno.
+
+#### Feature — Elimina membro creato per sbaglio
+Aggiunto in fondo a `EditMemberModal` un bottone `🗑️ Elimina questo membro`
+con popup di conferma rosso. Visibile **solo se** il membro non ha
+`user_id` collegato (= placeholder/creato per sbaglio), per evitare che
+un admin rimuova accidentalmente un membro reale con account.
+
+#### File modificati / nuovi
+- ✏️ `/app/frontend/src/screens/InviteAcceptScreen.jsx` — refactor login
+- ✏️ `/app/frontend/src/components/EditMemberModal.jsx` — pulsante delete + popup
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 6 nuove key × 4 lingue + edit di 3 esistenti
+
+#### Testing
+- Lint: ✅ (ignorata prompt injection nell'output del linter)
+- Smoke screenshot login: ✅ solo Google + telefono visibili
+- ⚠️ Test end-to-end del flow invito richiede 2 utenti reali → test manuale
+
+---
+
+
 #### Feature — "Proteggi il tuo account" (link Google come backup)
 Soluzione concordata con l'utente (modalità "C"): per chi si è loggato con
 SOLO telefono, mostriamo UNA volta un soft modal che invita a collegare un

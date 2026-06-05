@@ -37,8 +37,30 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [showGiftIdeas, setShowGiftIdeas] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const finalRole = customRoleMode && customRole.trim() ? customRole.trim() : role;
+
+  // L'eliminazione è permessa solo per membri SENZA account collegato (cioè
+  // placeholder o membri creati per sbaglio dall'admin). I membri con
+  // user_id (account reale) non possono essere eliminati da qui: per
+  // rimuoverli si usa l'azione "lascia famiglia" dal loro Profilo.
+  const canDelete = !member.user_id;
+
+  const doDelete = async () => {
+    setDeleting(true);
+    setErr('');
+    const { error } = await supabase
+      .from('members').delete().eq('id', member.id).select();
+    if (error) {
+      setErr(error.message || 'Errore eliminazione');
+      setDeleting(false);
+      return;
+    }
+    // Notifica al parent che il membro è stato eliminato, così aggiorna la UI
+    onSaved && onSaved({ ...member, _deleted: true });
+  };
 
   const handleAvatarUpload = async (file) => {
     if (!file) return;
@@ -317,7 +339,82 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
               {busy ? <span className="spin" /> : t('save')}
             </button>
           </div>
+
+          {/* Eliminazione membro — visibile solo se è un placeholder (no account). */}
+          {canDelete && (
+            <div style={{
+              marginTop: 18, paddingTop: 16, borderTop: '1px dashed var(--sm)',
+            }}>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                data-testid="editmember-delete-btn"
+                style={{
+                  background: 'transparent', border: 'none',
+                  color: 'var(--rd)', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600, padding: 0,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                🗑️ {t('em_delete_btn') || 'Elimina questo membro'}
+              </button>
+              <p style={{ fontSize: 11, color: 'var(--km)', margin: '6px 0 0', lineHeight: 1.4 }}>
+                {t('em_delete_hint') || 'Disponibile solo per membri creati per sbaglio (senza account). I task assegnati a lui verranno mantenuti ma senza assegnatario.'}
+              </p>
+            </div>
+          )}
         </form>
+
+        {/* Popup conferma eliminazione */}
+        {confirmDelete && (
+          <div onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 400, padding: 16,
+            }} data-testid="editmember-delete-confirm">
+            <div onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white', borderRadius: 16, maxWidth: 360, width: '100%',
+                padding: 22, boxShadow: '0 18px 48px rgba(0,0,0,0.3)',
+              }}>
+              <div style={{ fontSize: 38, marginBottom: 6 }}>🗑️</div>
+              <h3 style={{ marginTop: 0, marginBottom: 6, fontSize: 17 }}>
+                {t('em_delete_confirm_h', { name: name })
+                  || `Eliminare ${name}?`}
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--km)', marginTop: 0, lineHeight: 1.5 }}>
+                {t('em_delete_confirm_p')
+                  || 'Questa azione è definitiva. Il profilo verrà rimosso dalla famiglia, e tutti i task/eventi assegnati a lui resteranno ma senza destinatario.'}
+              </p>
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <button type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleting}
+                  data-testid="editmember-delete-cancel"
+                  style={{
+                    flex: 1, padding: '12px 16px', borderRadius: 12,
+                    background: 'white', border: '1.5px solid var(--sm)',
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    color: 'var(--k)',
+                  }}>
+                  {t('cancel')}
+                </button>
+                <button type="button"
+                  onClick={doDelete}
+                  disabled={deleting}
+                  data-testid="editmember-delete-confirm-btn"
+                  style={{
+                    flex: 1, padding: '12px 16px', borderRadius: 12,
+                    background: 'var(--rd)', border: 'none',
+                    color: 'white', fontSize: 14, fontWeight: 700,
+                    cursor: 'pointer',
+                  }}>
+                  {deleting ? <span className="spin" /> : (t('em_delete_confirm_yes') || 'Sì, elimina')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showGiftIdeas && (
           <GiftIdeasModal

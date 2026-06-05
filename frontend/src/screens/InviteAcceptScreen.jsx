@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT, LANGS } from '../lib/i18n.jsx';
+import PhoneLoginModal from '../components/PhoneLoginModal.jsx';
 
 export default function InviteAcceptScreen({ token, session, onAccepted }) {
   const { t, lang, setLang } = useT();
   const [loading, setLoading] = useState(true);
   const [invite, setInvite] = useState(null);
   const [error, setError] = useState('');
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
   const [status, setStatus] = useState('idle');
   const [accepting, setAccepting] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
 
   // Claim placeholder flow (solo per inviti generici)
   const [placeholders, setPlaceholders] = useState(null); // null = non caricati, [] = caricati nessuno
@@ -84,22 +84,19 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
     })();
   }, [session, invite, placeholders, pickedClaimId, accepting, status, token]);
 
-  const sendMagicLink = async (e) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setStatus('sending');
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
+  const loginWithGoogle = async () => {
+    setStatus('signing');
+    setError('');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: {
-        emailRedirectTo: `${window.location.origin}/invite/${token}`,
-        data: {
-          ...(name.trim() ? { display_name: name.trim() } : {}),
-          language: lang,
-        },
+        // Dopo il login Google torniamo a /invite/<token> dove il flow
+        // `accept_invitation` parte automatico.
+        redirectTo: `${window.location.origin}/invite/${token}`,
+        queryParams: { prompt: 'select_account' },
       },
     });
     if (error) { setError(error.message); setStatus('error'); }
-    else setStatus('sent');
   };
 
   if (loading) {
@@ -233,34 +230,62 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
           : t('invite_invited_generic')}
       </p>
 
-      {status === 'sent' ? (
-        <div className="login-msg success">
-          <strong>{t('check_email')}</strong><br/>
-          {t('check_email_desc', { email }).split(email).map((part, i, arr) => (
-            <span key={i}>{part}{i < arr.length - 1 && <strong>{email}</strong>}</span>
-          ))}
+      <div className="login-form" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <button
+          type="button"
+          className="oauth-btn"
+          onClick={loginWithGoogle}
+          disabled={status === 'signing'}
+          data-testid="invite-login-google"
+          style={{ padding: '12px 16px', fontSize: 14 }}>
+          <GoogleIcon />
+          <span>
+            {status === 'signing'
+              ? (t('phone_sending') || '...')
+              : t('login_with_google')}
+          </span>
+        </button>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          margin: '4px 0', color: 'var(--km)', fontSize: 11,
+        }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--sm)' }} />
+          <span>{t('login_or') || 'oppure'}</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--sm)' }} />
         </div>
-      ) : (
-        <form className="login-form" onSubmit={sendMagicLink}>
-          <div>
-            <label htmlFor="name">{t('name_label')}</label>
-            <input id="name" className="input" placeholder={t('name_ph')} value={name}
-              onChange={(e) => setName(e.target.value)} autoFocus />
-          </div>
-          <div>
-            <label htmlFor="email">{t('invite_email_label')}</label>
-            <input id="email" type="email" className="input" placeholder={t('email_ph')}
-              value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <button type="submit" className="btn full" disabled={status === 'sending' || !email.trim()}>
-            {status === 'sending' ? <span className="spin" /> : t('invite_join_btn', { family: invite.family_name })}
-          </button>
-          {error && <div className="login-msg error">{error}</div>}
-          <p style={{ fontSize: 12, color: 'var(--km)', textAlign: 'center', marginTop: 12 }}>
-            {t('no_password_hint')}
-          </p>
-        </form>
+
+        <button
+          type="button"
+          className="oauth-btn"
+          onClick={() => setShowPhone(true)}
+          data-testid="invite-login-phone"
+          style={{ padding: '12px 16px', fontSize: 14 }}>
+          <span style={{ fontSize: 16 }}>📱</span>
+          <span>{t('login_with_phone') || 'Continua con il telefono'}</span>
+        </button>
+
+        {error && <div className="login-msg error">{error}</div>}
+
+        <p style={{ fontSize: 12, color: 'var(--km)', textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
+          {t('invite_join_hint') || 'Accedi per unirti alla famiglia. Verrai aggiunto al volo, senza dover compilare nulla.'}
+        </p>
+      </div>
+
+      {showPhone && (
+        <PhoneLoginModal onClose={() => setShowPhone(false)} />
       )}
     </div>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.836.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
   );
 }
