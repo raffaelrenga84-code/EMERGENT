@@ -963,6 +963,24 @@ function MonthGrid({ month, events, tasks = [], absences = [], members = [], fam
   const weekdays = t('weekday_short');
   const months = t('months');
 
+  // Animazione slide al cambio mese: setta una direzione (l/r) prima di
+  // notificare il parent, poi la cleara dopo 300ms (durata animazione CSS).
+  const [slideDir, setSlideDir] = useState(null);
+  const prevMonthRef = useRef(month?.getTime());
+  useEffect(() => {
+    const cur = month?.getTime();
+    if (prevMonthRef.current && cur !== prevMonthRef.current) {
+      // Solo se l'animazione non è già stata settata dallo swipe
+      const id = setTimeout(() => setSlideDir(null), 320);
+      prevMonthRef.current = cur;
+      return () => clearTimeout(id);
+    }
+    prevMonthRef.current = cur;
+  }, [month]);
+
+  const goPrev = () => { setSlideDir('right'); onPrev && onPrev(); };
+  const goNext = () => { setSlideDir('left');  onNext && onNext(); };
+
   // Swipe orizzontale per cambiare mese (mobile + desktop).
   // Soglia: 60px orizzontale, max 40px verticale (per non confondere con scroll).
   const touchStart = useRef({ x: 0, y: 0, active: false });
@@ -978,8 +996,8 @@ function MonthGrid({ month, events, tasks = [], absences = [], members = [], fam
     touchStart.current.active = false;
     if (Math.abs(dy) > 40) return; // troppo verticale → è uno scroll
     if (Math.abs(dx) < 60) return; // troppo poco → click/tap
-    if (dx > 0) onPrev && onPrev();
-    else onNext && onNext();
+    if (dx > 0) goPrev();
+    else goNext();
   };
 
   const year = month.getFullYear();
@@ -1049,12 +1067,15 @@ function MonthGrid({ month, events, tasks = [], absences = [], members = [], fam
       data-testid="month-grid-swipe"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      style={{ touchAction: 'pan-y' }}>
+      style={{ touchAction: 'pan-y', overflow: 'hidden' }}>
       <div className="month-header">
-        <button className="month-nav" onClick={onPrev} style={{ fontSize: 18 }}>‹</button>
+        <button className="month-nav" onClick={goPrev} style={{ fontSize: 18 }}>‹</button>
         <span className="month-title" style={{ fontSize: 16, fontWeight: 700 }}>{Array.isArray(months) ? months[m] : ''} {year}</span>
-        <button className="month-nav" onClick={onNext} style={{ fontSize: 18 }}>›</button>
+        <button className="month-nav" onClick={goNext} style={{ fontSize: 18 }}>›</button>
       </div>
+      <div
+        key={`${year}-${m}`}
+        className={slideDir === 'left' ? 'month-slide-in-r' : slideDir === 'right' ? 'month-slide-in-l' : ''}>
       <div className="month-weekdays">
         {Array.isArray(weekdays) && weekdays.map((w, i) => <div key={i} className="month-weekday" style={{ fontSize: 11, fontWeight: 700, padding: '6px 4px' }}>{w}</div>)}
       </div>
@@ -1126,6 +1147,7 @@ function MonthGrid({ month, events, tasks = [], absences = [], members = [], fam
           );
         })}
       </div>
+      </div>{/* end month-slide-in wrapper */}
       {selectedDay && (
         <div style={{
           background: 'var(--am)',

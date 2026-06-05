@@ -566,6 +566,10 @@ html[data-theme="dark"] .ai-pill-btn { background: rgba(255,255,255,.05); color:
 @keyframes fammy-flash { 0% { transform: scale(1); } 30% { transform: scale(1.015); } 100% { transform: scale(1); } }
 @keyframes fammy-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes fammy-fab-pop { from { opacity: 0; transform: translateY(8px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes fammy-month-slide-l { from { opacity: 0.4; transform: translateX(24%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fammy-month-slide-r { from { opacity: 0.4; transform: translateX(-24%); } to { opacity: 1; transform: translateX(0); } }
+.month-slide-in-l { animation: fammy-month-slide-l 280ms cubic-bezier(.2,.8,.3,1); }
+.month-slide-in-r { animation: fammy-month-slide-r 280ms cubic-bezier(.2,.8,.3,1); }
 @keyframes fammy-fab-attract {
   0%, 100% { transform: scale(1); box-shadow: 0 12px 30px rgba(193,98,75,.38); }
   20% { transform: scale(1.18); box-shadow: 0 14px 36px rgba(193,98,75,.55), 0 0 0 0 rgba(193,98,75,.7); }

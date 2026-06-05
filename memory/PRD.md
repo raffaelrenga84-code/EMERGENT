@@ -1,5 +1,32 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.16 (5 giugno 2026) — Slide animation al cambio mese
+
+### Feature — Animazione slide del calendario
+Aggiunta animazione slide-in del calendario quando cambi mese:
+- ➡️ swipe destra / tap ‹ → slide IN da sinistra (280ms)
+- ⬅️ swipe sinistra / tap › → slide IN da destra (280ms)
+- Easing `cubic-bezier(.2,.8,.3,1)` per movimento naturale
+- Opacità che parte da 0.4 per dare profondità
+
+Nuove keyframes `fammy-month-slide-l/r` + classi `.month-slide-in-l/r`
+applicate al wrapper della griglia con `key={year-month}` per forzare
+remount e riavviare l'animazione.
+
+`overflow: hidden` sul container per non far "uscire" la griglia durante
+lo slide-in.
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — slideDir state + class
+- ✏️ `/app/frontend/src/styles.css` — keyframes + classi animation
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260605143746`)
+- ⚠️ **Provalo tu**: Agenda → swipe / tap ‹ › → vedi il calendario scivolare nella direzione opposta
+
+---
+
 ## Iterazione 16.5.15 (5 giugno 2026) — Swipe orizzontale per cambiare mese in Agenda
 
 ### Feature — Swipe gesture sul calendario
