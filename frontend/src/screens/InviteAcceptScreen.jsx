@@ -21,6 +21,10 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
   // loggato col proprio account Google prenda accidentalmente l'identità
   // del membro a cui era destinato l'invito.
   const [confirmedDedicated, setConfirmedDedicated] = useState(false);
+  // Per inviti GENERICI con placeholder: dopo il tap su "Sono Jenna"
+  // entriamo in stato "pending" e mostriamo la stessa conferma "Sei tu
+  // Jenna?". Solo dopo il "Sì" partirà l'accept_invitation.
+  const [pendingClaim, setPendingClaim] = useState(null); // null | placeholder obj
 
   useEffect(() => {
     let cancelled = false;
@@ -195,6 +199,86 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
     );
   }
 
+  // Utente loggato + invito generico + ha toccato "Sono Jenna" ma non
+  // ha ancora confermato → mostra "Sei tu Jenna?" come per gli inviti
+  // dedicati. Doppio click esplicito = sicurezza in più contro errori.
+  if (
+    session &&
+    invite &&
+    !invite.member_name &&
+    pendingClaim &&
+    pickedClaimId === undefined
+  ) {
+    const p = pendingClaim;
+    const meEmail = session.user?.email || session.user?.phone || '';
+    return (
+      <div className="login-wrap">
+        <div className="login-logo">{invite.family_emoji}</div>
+        <h1 className="login-h">{invite.family_name}</h1>
+        <p className="login-s" style={{ marginBottom: 4 }}>
+          {t('invite_confirm_dedicated_h', { name: p.name })}
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--km)', textAlign: 'center', marginBottom: 18 }}>
+          {t('invite_confirm_dedicated_p', { name: p.name, family: invite.family_name })}
+        </p>
+
+        {/* Card preview del profilo che stai per "indossare" */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: 12, background: 'var(--ab)', borderRadius: 12,
+          border: '1px solid var(--sm)', marginBottom: 12,
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: '50%',
+            background: p.avatar_color || '#1C1611', color: 'white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, fontWeight: 700, flexShrink: 0,
+          }}>
+            {p.avatar_letter || p.name?.[0]?.toUpperCase() || '?'}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
+            <div style={{ fontSize: 11, color: 'var(--km)' }}>
+              {p.role || t('em_role_other') || 'altro'}
+            </div>
+          </div>
+        </div>
+
+        {/* Identità con cui sei loggato */}
+        <div style={{
+          padding: 12, background: 'var(--ab)', borderRadius: 12,
+          border: '1px solid var(--sm)', marginBottom: 16,
+          fontSize: 12, color: 'var(--km)', lineHeight: 1.5,
+        }}>
+          <strong style={{ color: 'var(--k)' }}>
+            {t('invite_confirm_logged_as')}
+          </strong>
+          <div style={{ marginTop: 4, wordBreak: 'break-all' }}>{meEmail}</div>
+        </div>
+
+        <button
+          className="btn full"
+          onClick={() => {
+            // Conferma definitiva → setto pickedClaimId per far partire l'accept
+            setPickedClaimId(p.id);
+            setPendingClaim(null);
+          }}
+          data-testid="invite-claim-confirm-yes"
+          style={{ marginBottom: 10 }}>
+          ✅ {t('invite_confirm_yes', { name: p.name }) || `Sì, sono ${p.name}`}
+        </button>
+
+        <button
+          className="btn secondary full"
+          onClick={() => setPendingClaim(null)}
+          data-testid="invite-claim-confirm-no">
+          ← {t('invite_confirm_back') || 'Torna indietro'}
+        </button>
+        {error && <div className="login-msg error" style={{ marginTop: 12 }}>{error}</div>}
+      </div>
+    );
+  }
+
   // Utente loggato + invito generico + ci sono placeholder claimabili
   // + utente non ha ancora scelto → mostra la lista
   if (
@@ -219,7 +303,7 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
           {placeholders.map((p) => (
             <button
               key={p.id}
-              onClick={() => setPickedClaimId(p.id)}
+              onClick={() => setPendingClaim(p)}
               data-testid={`invite-claim-${p.id}`}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,

@@ -16,6 +16,42 @@
 
 ### Iterazione 16.3.8 — Conferma "Sei tu?" per inviti dedicati
 
+### Iterazione 16.3.9 — Conferma "Sei tu Jenna?" anche per inviti generici con placeholder
+
+#### Bug fix — Il tap su "Sono Jenna" partiva accept SUBITO
+Negli inviti GENERICI con placeholder, dopo il login l'utente vedeva la
+lista "Sono Jenna / Sono Mario / Nessuno di questi". Toccando "Sono
+Jenna" partiva immediatamente `accept_invitation` senza una conferma
+esplicita: rischio di prendere l'identità sbagliata con un tap accidentale.
+
+**Fix**: aggiunto state `pendingClaim` + nuova schermata intermedia.
+Flow ora:
+1. Lista placeholder → tap su "Sono Jenna"
+2. Schermata "Sei tu Jenna?" con:
+   - Card preview del profilo che stai per "indossare" (avatar+nome+ruolo)
+   - Riepilogo dell'account con cui sei loggato (email/telefono)
+   - ✅ "Sì, sono Jenna" → procede con accept
+   - ← "Torna indietro" → ritorna alla lista (non logout)
+3. Solo dopo "Sì" parte l'`accept_invitation`.
+
+Stessa identica schermata già esistente per inviti dedicati — coerenza UX.
+
+#### File modificati
+- ✏️ `/app/frontend/src/screens/InviteAcceptScreen.jsx` — state `pendingClaim`
+  + nuova schermata conferma + cambio `onClick` su card placeholder
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 1 nuova key `invite_confirm_back`
+  × IT/EN (FR/DE fallback)
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- ⚠️ Test end-to-end → **provalo tu**: crea membro "Jenna" → genera invito
+  generico → apri link → loggati → tap "Sono Jenna" → DEVE apparire
+  schermata conferma con preview + email.
+
+---
+
+
 #### Bug fix — Inviti dedicati saltavano la conferma
 Quando creavi un invito dedicato per un membro specifico (es. "Jenna"),
 chi cliccava il link e si loggava veniva aggiunto **automaticamente alla
