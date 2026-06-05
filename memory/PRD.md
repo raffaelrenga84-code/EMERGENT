@@ -1,5 +1,32 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.5 (5 giugno 2026) — Upload foto in NewFamilyModal
+
+### Feature — Foto famiglia caricabile già in creazione
+Prima si poteva impostare la foto della famiglia solo entrando in
+"Modifica famiglia" DOPO averla creata. Adesso lo stesso uploader è
+presente direttamente in `NewFamilyModal`.
+
+Refactor di `NewFamilyModal.jsx`:
+- State `photoFile` / `photoPreview` + ref input file (stesso pattern di EditFamilyModal)
+- UI uploader 84×84 px con bordo tratteggiato + ✕ overlay rosso per rimuovere
+- Bottone "📸 Carica foto / Cambia foto" + hint UX
+- Label "Emoji (fallback)" quando c'è foto, "Emoji" quando non c'è
+- Flusso di creazione a 3 step:
+  1. INSERT `families`
+  2. Upload foto nel bucket `family-photos/family-{id}/cover-{ts}.{ext}` + UPDATE photo_url (best-effort: se fallisce la famiglia resta creata con solo emoji)
+  3. INSERT `members` owner
+
+### File modificati
+- ✏️ `/app/frontend/src/components/NewFamilyModal.jsx` — refactor completo
+
+### Testing
+- Lint: ✅
+- ⚠️ **Provalo tu**: Famiglia → "+ Nuova famiglia" → ora c'è la sezione
+  "Foto famiglia" → carica → crea → la nuova famiglia avrà già la foto.
+
+---
+
 ## Iterazione 16.5.4 (5 giugno 2026) — Toggle "è assistito" anche in AddMemberModal
 
 ### Feature — Marca un membro come assistito già in creazione
