@@ -158,6 +158,43 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   // viene reso inline nelle altre tab.
   const showHeader = activeTab !== 'profile' && activeTab !== 'agenda';
 
+  // ===== Badge numerici sulle tab home (stile WhatsApp) =====
+  // Bacheca: numero task NON ancora fatti che mi riguardano (assegnati a me
+  //          o creati da me, escludendo "done" e "paid").
+  // Agenda: numero eventi di OGGI (mostra "cose in arrivo" oggi).
+  // Spese: numero spese in cui devo a qualcuno (non pagate da me).
+  const today = (() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  })();
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+  const myAssigneeIds = new Set(
+    members.filter((m) => m.user_id === session.user.id).map((m) => m.id)
+  );
+  const tasksAboutMe = tasks.filter((task) => {
+    if (task.status === 'done' || task.status === 'paid') return false;
+    if (task.author_id && myAssigneeIds.has(task.author_id)) return true;
+    const linked = taskAssignees.filter((a) => a.task_id === task.id);
+    return linked.some((a) => myAssigneeIds.has(a.member_id));
+  });
+  const bachecaBadge = tasksAboutMe.length;
+
+  const todayEvents = events.filter((ev) => {
+    if (!ev.starts_at) return false;
+    const d = new Date(ev.starts_at);
+    return d >= today && d < tomorrow;
+  });
+  const agendaBadge = todayEvents.length;
+
+  // Spese da pagare: per ogni spesa NON saldata, conto 1 se sono uno degli
+  // expense_shares con paid_amount < amount. Fallback: spese non saldate
+  // in cui sono debtor/creditor.
+  // NB: gli expense_shares non sono caricati qui per non appesantire la
+  // home. Uso un'euristica: spese create da qualcun altro e non ancora
+  // dello stato "settled".
+  const speseBadge = expenses.filter((ex) => !ex.settled && ex.created_by_member_id && !myAssigneeIds.has(ex.created_by_member_id)).length;
+
   return (
     <div className="scr">
       {pullIndicator}
@@ -274,9 +311,9 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
       )}
 
       <nav className="bnav">
-        <NavBtn icon="🏠" label={t('nav_bacheca')} active={activeTab === 'bacheca'} onClick={() => { setActiveTab('bacheca'); setActiveFamily('all'); }} />
-        <NavBtn icon="📅" label={t('nav_agenda')} active={activeTab === 'agenda'} onClick={() => { setActiveTab('agenda'); if (families.length > 1) setActiveFamily('all'); }} />
-        <NavBtn icon="💶" label={t('nav_spese')} active={activeTab === 'spese'} onClick={() => { setActiveTab('spese'); if (families.length > 1) setActiveFamily('all'); }} />
+        <NavBtn icon="🏠" label={t('nav_bacheca')} active={activeTab === 'bacheca'} badge={bachecaBadge} onClick={() => { setActiveTab('bacheca'); setActiveFamily('all'); }} />
+        <NavBtn icon="📅" label={t('nav_agenda')} active={activeTab === 'agenda'} badge={agendaBadge} onClick={() => { setActiveTab('agenda'); if (families.length > 1) setActiveFamily('all'); }} />
+        <NavBtn icon="💶" label={t('nav_spese')} active={activeTab === 'spese'} badge={speseBadge} onClick={() => { setActiveTab('spese'); if (families.length > 1) setActiveFamily('all'); }} />
         <NavBtn icon="👥" label={t('nav_family')} active={activeTab === 'famiglia'} onClick={() => { setActiveTab('famiglia'); setActiveFamily('all'); }} />
         <NavBtn icon="👤" label={t('nav_profile')} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
       </nav>
@@ -351,10 +388,36 @@ function Header({ family, members, allMembers, tasks, families, activeFamily, is
   );
 }
 
-function NavBtn({ icon, label, active, onClick }) {
+function NavBtn({ icon, label, active, badge, onClick }) {
+  // Badge stile WhatsApp: pallino rosso sopra all'icona con il numero.
+  // - 0 → nascosto
+  // - 1-99 → numero
+  // - 100+ → "99+"
+  const showBadge = typeof badge === 'number' && badge > 0;
+  const badgeText = badge > 99 ? '99+' : String(badge);
   return (
     <button className={active ? 'active' : ''} onClick={onClick}>
-      <span className="ic">{icon}</span>
+      <span className="ic" style={{ position: 'relative', display: 'inline-block' }}>
+        {icon}
+        {showBadge && (
+          <span
+            data-testid="nav-badge"
+            style={{
+              position: 'absolute',
+              top: -6, right: -10,
+              minWidth: 18, height: 18,
+              padding: '0 5px',
+              borderRadius: 100,
+              background: '#FF3B30',
+              color: 'white',
+              fontSize: 10, fontWeight: 800,
+              lineHeight: '18px',
+              textAlign: 'center',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+              border: '1.5px solid white',
+            }}>{badgeText}</span>
+        )}
+      </span>
       <span>{label}</span>
     </button>
   );

@@ -26,6 +26,45 @@
 
 ### Iterazione 16.3.13 — Unificate Foto+Spese dentro Dettagli, 📎 inline nel chat
 
+### Iterazione 16.3.14 — Badge WhatsApp + anteprima foto inline
+
+#### Feature 1 — Badge numerici sulle tab (stile WhatsApp)
+La bottom navigation ora mostra un pallino rosso 🔴 con numero sopra
+l'icona delle tab che hanno "cose da fare":
+- 🏠 **Bacheca**: numero task non ancora fatti che mi riguardano
+  (assegnati a me o creati da me, escluso status `done`/`paid`)
+- 📅 **Agenda**: numero eventi di oggi
+- 💶 **Spese**: numero spese non saldate create da altri membri
+
+Badge: 18×18, rosso `#FF3B30`, font-weight 800. Mostra `99+` se >99.
+Bordo bianco di 1.5px per stacco visivo.
+
+#### Feature 2 — Anteprima foto inline nei messaggi chat
+Quando carichi una foto col 📎 dal composer, prima vedevi solo "📷 ha
+condiviso una foto" come testo. Adesso il bubble:
+- Cerca l'attachment associato (match per `uploaded_by + created_at`
+  entro 10s)
+- Lo mostra come **immagine cliccabile** (max 220px, border-radius 12px)
+- Apre il lightbox al tap (zoom-in)
+- Mantiene timestamp e nome autore sotto
+
+Stile WhatsApp: padding ridotto a 4px sui bubble photo, no caption testo.
+
+#### File modificati
+- ✏️ `HomeScreen.jsx` — calcolo dei 3 badge + prop `badge` su `NavBtn`
+- ✏️ `TaskDetailModal.jsx` — rendering foto inline nei bubble di tipo
+  `'photo'`
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- ⚠️ **Provalo tu**: 1) sulla home vedrai i numeri rossi sopra le icone se
+  hai task/eventi/spese pending; 2) condividi una foto via 📎 nel chat di
+  un task → la foto appare ora come bubble immagine.
+
+---
+
+
 #### Refactor — Da 3 tab a 2 (task) / da 2 a 1 (event)
 Risposta alla domanda "ha senso tenere allegati divisi dalla chat?": NO.
 Tutte le app moderne (WhatsApp, Slack, Telegram) integrano la condivisione

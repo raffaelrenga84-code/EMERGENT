@@ -880,6 +880,20 @@ export default function TaskDetailModal({
                   );
                 }
 
+                const isPhoto = c.type === 'photo';
+                // Trova la foto associata a questo messaggio (match per
+                // author + created_at). Cerchiamo l'attachment caricato
+                // entro 10s dal messaggio dallo stesso utente.
+                let linkedPhoto = null;
+                if (isPhoto) {
+                  const msgTime = new Date(c.created_at).getTime();
+                  linkedPhoto = attachments.find((a) => {
+                    if (a.uploaded_by !== c.author_id) return false;
+                    const aTime = new Date(a.created_at).getTime();
+                    return Math.abs(aTime - msgTime) < 10000;
+                  });
+                }
+
                 return (
                   <div key={c.id} style={{
                     display: 'flex', gap: 8,
@@ -921,7 +935,7 @@ export default function TaskDetailModal({
                         }}
                         data-testid={`task-chat-bubble-${c.id}`}
                         style={{
-                          padding: '8px 12px',
+                          padding: isPhoto && linkedPhoto ? 4 : '8px 12px',
                           borderRadius: 16,
                           background: isMine ? 'var(--ac)' : 'white',
                           color: isMine ? 'white' : 'var(--k)',
@@ -932,8 +946,9 @@ export default function TaskDetailModal({
                           userSelect: 'none',
                           WebkitUserSelect: 'none',
                           WebkitTouchCallout: 'none',
+                          overflow: 'hidden',
                         }}>
-                        {!isMine && (
+                        {!isMine && !isPhoto && (
                           <div style={{
                             fontSize: 10, fontWeight: 700, marginBottom: 2,
                             color: author?.avatar_color || 'var(--ac)',
@@ -941,15 +956,51 @@ export default function TaskDetailModal({
                             {author?.name?.split(' ')[0] || t('td_someone')}
                           </div>
                         )}
-                        <div style={{ fontSize: 14, lineHeight: 1.35, wordBreak: 'break-word' }}>
-                          {c.text}
-                        </div>
-                        <div style={{
-                          fontSize: 10, opacity: 0.65, marginTop: 4,
-                          textAlign: isMine ? 'right' : 'left',
-                        }}>
-                          {new Date(c.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                        </div>
+                        {/* Anteprima foto se messaggio è di tipo photo
+                            e abbiamo trovato l'attachment associato */}
+                        {isPhoto && linkedPhoto && photoUrls[linkedPhoto.id] ? (
+                          <>
+                            <button type="button"
+                              onClick={() => setLightbox(photoUrls[linkedPhoto.id])}
+                              style={{
+                                background: 'transparent', border: 'none',
+                                padding: 0, cursor: 'zoom-in',
+                                borderRadius: 12, overflow: 'hidden',
+                                display: 'block',
+                              }}
+                              data-testid={`task-chat-photo-${c.id}`}>
+                              <img
+                                src={photoUrls[linkedPhoto.id]}
+                                alt={linkedPhoto.file_name}
+                                style={{
+                                  display: 'block', maxWidth: 220,
+                                  width: '100%', height: 'auto',
+                                  borderRadius: 12,
+                                }} />
+                            </button>
+                            <div style={{
+                              fontSize: 10,
+                              opacity: 0.65,
+                              marginTop: 4, padding: '0 8px 4px',
+                              textAlign: isMine ? 'right' : 'left',
+                              color: isMine ? 'white' : 'var(--km)',
+                            }}>
+                              {new Date(c.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: 14, lineHeight: 1.35, wordBreak: 'break-word' }}>
+                              {c.text}
+                            </div>
+                            <div style={{
+                              fontSize: 10, opacity: 0.65, marginTop: 4,
+                              textAlign: isMine ? 'right' : 'left',
+                            }}>
+                              {new Date(c.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </>
+                        )}
                       </div>
                       {/* Reactions: bollini + picker (icona 😊 sempre visibile +
                           long-press apre il picker da bubble) */}
