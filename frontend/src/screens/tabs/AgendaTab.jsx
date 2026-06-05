@@ -428,11 +428,13 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
               fontSize: 12, fontWeight: 600, cursor: 'pointer',
               display: 'inline-flex', alignItems: 'center', gap: 6,
             }}>
-            {onlyMine ? '✓ Solo a me' : '👤 Solo a me'}
+            {onlyMine ? `✓ ${t('agenda_only_mine') || 'Solo a me'}` : `👤 ${t('agenda_only_mine') || 'Solo a me'}`}
           </button>
           {onlyMine && (
             <span style={{ fontSize: 11, color: 'var(--km)' }}>
-              {filteredEvents.length + filteredTasks.length} risultat{(filteredEvents.length + filteredTasks.length) === 1 ? 'o' : 'i'}
+              {filteredEvents.length + filteredTasks.length} {(filteredEvents.length + filteredTasks.length) === 1
+                ? (t('agenda_result_one') || 'risultato')
+                : (t('agenda_result_many') || 'risultati')}
             </span>
           )}
         </div>
@@ -773,9 +775,11 @@ const ABSENCE_TONE = {
 };
 
 function AbsenceCard({ absence, memberName, isMine, isOngoing, onClick }) {
+  const { t, lang } = useT();
+  const localeMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' };
   const tone = ABSENCE_TONE[absence.reason] || ABSENCE_TONE.other;
   const label = absenceLabel(absence);
-  const range = fmtAbsenceRange(absence);
+  const range = fmtAbsenceRange(absence, localeMap[lang] || 'it-IT');
   return (
     <button
       type="button"
@@ -801,7 +805,7 @@ function AbsenceCard({ absence, memberName, isMine, isOngoing, onClick }) {
               padding: '1px 8px', borderRadius: 100,
               background: 'white', border: `1px solid ${tone.color}`,
               color: tone.color, fontSize: 10, fontWeight: 700,
-            }}>(tu)</span>
+            }}>({t('you') || 'tu'})</span>
           )}
           {isOngoing && (
             <span style={{
@@ -809,7 +813,7 @@ function AbsenceCard({ absence, memberName, isMine, isOngoing, onClick }) {
               background: tone.color, color: 'white',
               fontSize: 10, fontWeight: 700,
               textTransform: 'uppercase', letterSpacing: '0.04em',
-            }}>● ora</span>
+            }}>● {t('absence_now_badge') || 'ora'}</span>
           )}
         </div>
         <div style={{ fontSize: 13, color: tone.color, fontWeight: 600, marginTop: 2 }}>
