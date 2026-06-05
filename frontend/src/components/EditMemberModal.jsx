@@ -34,6 +34,7 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url || '');
   const [uploading, setUploading] = useState(false);
   const [birthDate, setBirthDate] = useState(member.birth_date || '');
+  const [isAssisted, setIsAssisted] = useState(!!member.is_assisted);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [showGiftIdeas, setShowGiftIdeas] = useState(false);
@@ -96,6 +97,8 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
       };
       if (withAvatarUrl) payload.avatar_url = avatarUrl || null;
       if (withBirth) payload.birth_date = birthDate || null;
+      // Toggle "è assistito": sblocca la sezione medicine nel profilo.
+      payload.is_assisted = isAssisted;
       // .select() per detettare RLS che blocca silenziosamente (rows vuote)
       return supabase.from('members').update(payload).eq('id', member.id).select();
     };
@@ -280,6 +283,32 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
                 ✨ {t('gift_ideas_btn') === 'gift_ideas_btn' ? 'Idee regalo AI' : t('gift_ideas_btn')}
               </button>
             )}
+          </div>
+
+          {/* Toggle "è assistito" — sblocca medicine + sezioni mediche */}
+          <div style={{
+            marginTop: 16, padding: 12, borderRadius: 12,
+            background: isAssisted ? 'var(--gnB)' : 'var(--ab)',
+            border: `1px solid ${isAssisted ? 'var(--gn)' : 'var(--sd)'}`,
+            transition: 'all 0.2s ease',
+          }}>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              cursor: 'pointer', margin: 0,
+            }}>
+              <input type="checkbox" checked={isAssisted}
+                onChange={(e) => setIsAssisted(e.target.checked)}
+                data-testid="member-is-assisted-toggle"
+                style={{ width: 18, height: 18, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--k)' }}>
+                  🩺 {t('em_assisted_label') || 'Questo membro è assistito'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2, lineHeight: 1.4 }}>
+                  {t('em_assisted_hint') || 'Anziano, bambino o persona con esigenze speciali. Sblocca la gestione delle medicine con reminder.'}
+                </div>
+              </div>
+            </label>
           </div>
 
           <div style={{ marginTop: 16 }}>

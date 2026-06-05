@@ -17,7 +17,9 @@ import OnboardingTour from '../components/OnboardingTour.jsx';
 import AIAssistantDrawer from '../components/AIAssistantDrawer.jsx';
 import AddTaskModal from '../components/AddTaskModal.jsx';
 import AddEventModal from '../components/AddEventModal.jsx';
+import MedicationReminderToast from '../components/MedicationReminderToast.jsx';
 import { useUnreadTaskCount } from '../lib/useUnreadTaskCount.js';
+import { useMedicationReminders } from '../lib/useMedicationReminders.js';
 
 export default function HomeScreen({ session, profile, families, onRefresh, onFamilyUpdated }) {
   const { t } = useT();
@@ -178,6 +180,11 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   // in TaskDetailModal).
   const { count: unreadChatsCount } = useUnreadTaskCount(tasks, myAssigneeIds);
 
+  // Hook reminder medicine: monta i reminder per i membri "assistiti"
+  // della famiglia. Aggiorna in tempo reale (realtime + polling ogni 60s).
+  const myMember = members.find((mm) => mm.user_id === session.user.id);
+  const meds = useMedicationReminders(members, myMember?.id || null);
+
   const tasksAboutMe = tasks.filter((task) => {
     if (task.status === 'done' || task.status === 'paid') return false;
     if (task.author_id && myAssigneeIds.has(task.author_id)) return true;
@@ -317,6 +324,14 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
           onCreated={() => { setShowNewFamily(false); refreshAll(); }}
         />
       )}
+
+      {/* Toast reminder medicine — posizionato sopra la bottom-nav */}
+      <MedicationReminderToast
+        reminders={meds.pendingReminders}
+        onTaken={meds.markTaken}
+        onSnooze={meds.snooze}
+        onSkip={meds.skip}
+      />
 
       <nav className="bnav">
         <NavBtn icon="🏠" label={t('nav_bacheca')} active={activeTab === 'bacheca'} badge={bachecaBadge} onClick={() => { setActiveTab('bacheca'); setActiveFamily('all'); }} />

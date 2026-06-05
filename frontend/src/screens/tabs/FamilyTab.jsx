@@ -9,6 +9,7 @@ import FamilyInviteModal from '../../components/FamilyInviteModal.jsx';
 import JoinFamilyByCodeModal from '../../components/JoinFamilyByCodeModal.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
 import WhoIsWhereTimeline from '../../components/WhoIsWhereTimeline.jsx';
+import MedicationsModal from '../../components/MedicationsModal.jsx';
 import { findActiveAbsence, absenceLabel, fmtAbsenceRange } from '../../lib/useAbsences.js';
 
 // Mostra il ruolo nella lingua corrente. Preset → traduzione `role_<id>`.
@@ -28,6 +29,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
   const [showFamilyInvite, setShowFamilyInvite] = useState(null); // family object o null
   const [showAbsence, setShowAbsence] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState(null);
+  const [medsMember, setMedsMember] = useState(null);
   const [expandedFamilies, setExpandedFamilies] = useState({});
   const [editingFamilyAll, setEditingFamilyAll] = useState(null);
   const [addMemberToFamily, setAddMemberToFamily] = useState(null); // family object da vista Tutte
@@ -200,6 +202,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
                           onEdit={() => setEditingMember(m)}
                           onRemove={() => removeMember(m, f)}
                           onInvite={() => setShowFamilyInvite(f)}
+                          onOpenMedications={() => setMedsMember(m)}
                           onSetAbsence={
                             m.user_id === session.user.id
                               ? () => { setEditingAbsence(activeAbs); setShowAbsence(true); }
@@ -414,6 +417,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
               onEdit={() => setEditingMember(m)}
               onRemove={() => removeMember(m, family)}
               onInvite={() => setShowFamilyInvite(family)}
+              onOpenMedications={() => setMedsMember(m)}
               onSetAbsence={
                 m.user_id === session.user.id
                   ? () => { setEditingAbsence(activeAbs); setShowAbsence(true); }
@@ -529,11 +533,18 @@ export default function FamilyTab({ family, members, session, families, activeFa
           onDeleted={() => { setShowAbsence(false); setEditingAbsence(null); onChanged && onChanged(); }}
         />
       )}
+      {medsMember && (
+        <MedicationsModal
+          member={medsMember}
+          me={members.find((mm) => mm.user_id === session.user.id)}
+          onClose={() => setMedsMember(null)}
+        />
+      )}
     </>
   );
 }
 
-function MemberCard({ member, isMe, isOwner, canRemove, otherFamilies = [], activeAbsence, onEdit, onRemove, onInvite, onSetAbsence }) {
+function MemberCard({ member, isMe, isOwner, canRemove, otherFamilies = [], activeAbsence, onEdit, onRemove, onInvite, onSetAbsence, onOpenMedications }) {
   const { t } = useT();
   const canInvite = !isMe && !member.user_id;
 
@@ -652,6 +663,23 @@ function MemberCard({ member, isMe, isOwner, canRemove, otherFamilies = [], acti
               display: 'inline-flex', alignItems: 'center', gap: 4,
             }}>
             ✈️ {activeAbsence ? (t('manage_absence') || 'Gestisci assenza') : (t('set_absence') || 'Imposta assenza')}
+          </button>
+        )}
+        {/* Medicine: visibile per ogni membro contrassegnato come "assistito".
+            Chiunque della famiglia può aprire (privacy mod. 2a). */}
+        {member.is_assisted && onOpenMedications && (
+          <button
+            type="button"
+            data-testid={`member-meds-btn-${member.id}`}
+            onClick={(e) => { e.stopPropagation(); onOpenMedications(); }}
+            style={{
+              marginTop: 6, marginLeft: 6, padding: '4px 10px',
+              fontSize: 11, fontWeight: 600,
+              border: '1px solid var(--ac)', borderRadius: 100,
+              background: 'var(--ab)', color: 'var(--ac)', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+            💊 {t('em_meds_btn') || 'Medicine'}
           </button>
         )}
       </div>

@@ -30,6 +30,55 @@
 
 ### Iterazione 16.3.15 — Badge "messaggi non letti" + Auto-update PWA
 
+### Iterazione 16.4 — Persone Assistite Fase 1: Medicine + Reminder
+
+#### Feature — Gestione medicine per membri assistiti
+Primo blocco della **sezione "Anziani / Badanti / Bambini assistiti"**.
+Permette di:
+1. Marcare un membro come "assistito" (toggle `is_assisted` nel suo profilo)
+2. Aggiungere medicine con nome, dose, note, orari multipli giornalieri
+3. Ricevere reminder in-app real-time quando è ora di una medicina
+4. Marcare ogni dose come **✅ Presa** / **⏰ Posticipa (10/30/60 min)** /
+   **⏭️ Salta**
+5. Vedere lo "Storico oggi" con tutte le azioni registrate
+
+#### Privacy (modalità 2a)
+Tutti i membri della stessa famiglia possono vedere e gestire le medicine.
+RLS Supabase: chi NON è membro della famiglia non può fare nemmeno SELECT.
+
+#### Database (`fammy-medications.sql`)
+- `members.is_assisted boolean DEFAULT false`
+- `medications` (id, member_id, name, dose, notes, times_of_day[], active, created_by)
+- `medication_logs` (id, medication_id, scheduled_at, action: taken/snoozed/skipped, snoozed_until, recorded_by)
+- RLS policies per same-family
+- Aggiunto al realtime publication
+
+⚠️ **AZIONE UTENTE**: esegui `/app/frontend/fammy-medications.sql` su
+Supabase SQL Editor.
+
+#### File modificati / nuovi
+- ➕ `/app/frontend/fammy-medications.sql` (migration)
+- ➕ `/app/frontend/src/components/MedicationsModal.jsx` (CRUD + form)
+- ➕ `/app/frontend/src/components/MedicationReminderToast.jsx` (UI popup reminder)
+- ➕ `/app/frontend/src/lib/useMedicationReminders.js` (hook polling + realtime)
+- ✏️ `/app/frontend/src/components/EditMemberModal.jsx` (toggle is_assisted)
+- ✏️ `/app/frontend/src/screens/tabs/FamilyTab.jsx` (button "💊 Medicine" su card assistiti)
+- ✏️ `/app/frontend/src/screens/HomeScreen.jsx` (monta hook + toast globale)
+- ✏️ `/app/frontend/src/lib/i18n.jsx` (~30 nuove key × IT/EN, FR/DE fallback EN)
+
+#### Testing
+- Lint: ✅ tutti file
+- Smoke screenshot: ✅
+- ⚠️ Test end-to-end richiede SQL deployato → **provalo tu**:
+  1. Esegui la migration su Supabase
+  2. Vai in Famiglia → tocca un membro → spunta "Questo membro è assistito" → Salva
+  3. Sulla card del membro vedrai un nuovo bottone "💊 Medicine" → tap
+  4. Aggiungi una medicina con orario impostato a "tra 1 minuto"
+  5. Attendi → il reminder dovrebbe apparire come popup in basso
+
+---
+
+
 #### Feature 1 — Badge intelligente (messaggi non letti)
 Prima il badge Bacheca contava "task non fatti che mi riguardano" (statico).
 Ora è **dinamico stile WhatsApp**: conta i task con **commenti non letti
