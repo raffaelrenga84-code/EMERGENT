@@ -5,6 +5,7 @@ import { useT } from '../lib/i18n.jsx';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
 import DetailTabs from './DetailTabs.jsx';
 import MessageReactions from './MessageReactions.jsx';
+import PhotoGalleryEditor from './PhotoGalleryEditor.jsx';
 
 const CAT_EMOJI = {
   care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌',
@@ -982,85 +983,18 @@ export default function TaskDetailModal({
         {/* ====== TAB: ALLEGATI & SPESE ====== */}
         {activeTab === 'attach' && (
           <div data-testid="task-detail-pane-attach">
-            {/* Foto */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: 'var(--km)',
-                textTransform: 'uppercase', marginBottom: 8,
-              }}>
-                📸 {t('td_attach_photos') || 'Foto'} {attachments.length > 0 ? `(${attachments.length})` : ''}
-              </div>
-              {attachments.length === 0 ? (
-                <div style={{ fontSize: 13, color: 'var(--km)', fontStyle: 'italic', padding: '12px 0' }}>
-                  {t('td_no_attachments') || 'Nessuna foto allegata'}
-                </div>
-              ) : (
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-                  gap: 8,
-                }}>
-                  {attachments.map((att) => (
-                    <div key={att.id} style={{ position: 'relative' }}>
-                      <button type="button"
-                        onClick={() => setLightbox(photoUrls[att.id])}
-                        data-testid={`task-photo-${att.id}`}
-                        style={{
-                          width: '100%',
-                          aspectRatio: '1', borderRadius: 10, overflow: 'hidden',
-                          border: '1px solid var(--sm)', padding: 0,
-                          background: 'var(--ab)', cursor: 'zoom-in',
-                        }}>
-                        {photoUrls[att.id] ? (
-                          <img src={photoUrls[att.id]} alt={att.file_name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                        ) : (
-                          <div style={{
-                            width: '100%', height: '100%', display: 'flex',
-                            alignItems: 'center', justifyContent: 'center', fontSize: 22,
-                          }}>🖼️</div>
-                        )}
-                      </button>
-                      {/* Bottone elimina foto. Mostrato solo se l'utente è
-                          l'autore originale dell'allegato (per evitare che
-                          altri membri cancellino foto altrui per sbaglio). */}
-                      {att.uploaded_by === me?.id && (
-                        <button type="button"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (!confirm(t('td_remove_photo_confirm') || 'Rimuovere questa foto?')) return;
-                            // Best effort: rimuoviamo dallo storage e dal DB.
-                            try {
-                              if (att.file_path) {
-                                await supabase.storage.from('task-attachments').remove([att.file_path]);
-                              }
-                            } catch (_) {}
-                            const { error } = await supabase
-                              .from('task_attachments').delete().eq('id', att.id);
-                            if (error) {
-                              alert(error.message || 'Errore');
-                              return;
-                            }
-                            setAttachments((prev) => prev.filter((a) => a.id !== att.id));
-                          }}
-                          data-testid={`task-photo-remove-${att.id}`}
-                          title={t('td_remove_photo') || 'Rimuovi foto'}
-                          style={{
-                            position: 'absolute', top: 4, right: 4,
-                            width: 22, height: 22, borderRadius: '50%',
-                            background: 'rgba(0,0,0,0.65)',
-                            border: 'none', color: 'white',
-                            cursor: 'pointer', padding: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 12, lineHeight: 1, fontWeight: 700,
-                          }}>
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+            {/* Foto: gestione completa via PhotoGalleryEditor (add/remove/lightbox) */}
+            <div style={{ marginBottom: 18 }}>
+              <PhotoGalleryEditor
+                kind="task"
+                parentId={realTaskId}
+                meId={me?.id}
+                attachments={attachments}
+                photoUrls={photoUrls}
+                onAdded={(att) => setAttachments((prev) => [...prev, att])}
+                onRemoved={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
+                onOpenLightbox={setLightbox}
+              />
             </div>
 
             {/* Spese collegate */}

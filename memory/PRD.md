@@ -22,6 +22,55 @@
 
 ### Iterazione 16.3.11 — Rimuovi foto + tab Chat di default su task
 
+### Iterazione 16.3.12 — PhotoGalleryEditor (add + remove inline)
+
+#### Bug fix — ✕ delete non appariva mai
+Prima il bottone ✕ era condizionato a `att.uploaded_by === me.id` ma:
+1. `AddTaskModal` non popolava mai `uploaded_by` all'INSERT → tutte le
+   foto avevano `uploaded_by: null` → condizione sempre falsa → ✕ invisibile.
+2. La logica "solo l'autore può cancellare" non aveva senso per gli eventi
+   (event_attachments non ha uploaded_by).
+
+**Fix**: rimosso il check client-side. La ✕ è SEMPRE visibile, le RLS
+Supabase gestiscono i permessi finali (chi non è membro della famiglia
+non riesce comunque a fare il DELETE).
+
+#### Feature — PhotoGalleryEditor
+Nuovo componente compatto e riutilizzabile `PhotoGalleryEditor.jsx`:
+- **Empty state amichevole**: card grande tratteggiata "📷 Aggiungi la
+  prima foto" (CTA centrale) invece del freddo "Nessuna foto allegata".
+- **Bottone "+ Aggiungi"** nel header, sempre visibile se ci sono già foto
+  → apre file picker multi-select (puoi caricare più foto in una volta).
+- **Griglia 3-col responsive** (auto-fill 96px) invece di 80px → più
+  vedibili.
+- **✕ overlay** ben visibile (rgba 0.7, 24×24, bordo arrotondato).
+- **Upload inline** con storage path corretto:
+  - task: bucket `task-attachments`, tabella `task_attachments`,
+    folder `tasks/<id>/`, popola `uploaded_by`
+  - event: bucket `event-attachments`, tabella `event_attachments`,
+    folder `events/<id>/`
+- **Error inline** se Storage/DB falliscono.
+
+Sostituito il vecchio rendering ad hoc in `TaskDetailModal` e
+`EventDetailModal`.
+
+#### File modificati / nuovi
+- ➕ `/app/frontend/src/components/PhotoGalleryEditor.jsx` (190 righe)
+- ✏️ `/app/frontend/src/components/TaskDetailModal.jsx` — usa nuovo componente
+- ✏️ `/app/frontend/src/components/EventDetailModal.jsx` — usa nuovo componente
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 4 nuove key (`td_add_photo`,
+  `td_add_first_photo`, `td_add_photo_hint`, `td_uploading`) × IT/EN
+
+#### Testing
+- Lint: ✅
+- Smoke screenshot: ✅
+- ⚠️ **Provalo tu**: apri il task con la foto del laptop → tab "Allegati" →
+  vedrai la foto con ✕ in alto a destra (tap per rimuovere) + bottone
+  "+ Aggiungi" in alto a destra per caricarne altre.
+
+---
+
+
 #### Feature 1 — Rimuovi foto da task / event detail
 Prima, una volta allegata una foto, non c'era modo di rimuoverla → restava
 per sempre in Family Memories. Fix:

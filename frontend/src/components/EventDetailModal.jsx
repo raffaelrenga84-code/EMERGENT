@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import PhotoGalleryEditor from './PhotoGalleryEditor.jsx';
 import AddEventModal from './AddEventModal.jsx';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
 import DetailTabs from './DetailTabs.jsx';
@@ -232,75 +233,17 @@ export default function EventDetailModal({ event, families = [], members = [], m
           {activeTab === 'photos' && (
             <div data-testid="event-detail-pane-photos" style={{ marginBottom: 8 }}>
               {loading ? (
-                <div style={{ fontSize: 13, color: 'var(--km)' }}>Caricamento…</div>
-              ) : attachments.length === 0 ? (
-                <div style={{
-                  padding: '32px 16px', textAlign: 'center',
-                  color: 'var(--km)', fontSize: 13,
-                }}>
-                  <div style={{ fontSize: 36, marginBottom: 8 }}>📸</div>
-                  {t('ed_no_photos') || 'Nessuna foto allegata a questo evento'}
-                </div>
+                <div style={{ fontSize: 13, color: 'var(--km)' }}>{t('td_uploading') || 'Caricamento…'}</div>
               ) : (
-                <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8,
-                }}>
-                  {attachments.map((att) => (
-                    <div key={att.id} style={{ position: 'relative' }}>
-                      <button type="button" onClick={() => setLightbox(photoUrls[att.id])}
-                        data-testid={`event-photo-${att.id}`}
-                        style={{
-                          width: '100%',
-                          aspectRatio: '1', borderRadius: 10, overflow: 'hidden',
-                          border: '1px solid var(--sm)', padding: 0, background: 'var(--ab)',
-                          cursor: 'zoom-in',
-                        }}>
-                        {photoUrls[att.id] ? (
-                          <img src={photoUrls[att.id]} alt={att.file_name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                        ) : (
-                          <div style={{
-                            width: '100%', height: '100%', display: 'flex',
-                            alignItems: 'center', justifyContent: 'center', fontSize: 22,
-                          }}>🖼️</div>
-                        )}
-                      </button>
-                      {/* Rimuovi foto: event_attachments non ha uploaded_by,
-                          quindi consentiamo a chiunque della famiglia (le
-                          RLS di Supabase gestiscono i permessi finali). */}
-                      <button type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (!confirm(t('td_remove_photo_confirm') || 'Rimuovere questa foto?')) return;
-                          try {
-                            if (att.file_path) {
-                              await supabase.storage.from('event-attachments').remove([att.file_path]);
-                            }
-                          } catch (_) {}
-                          const { error } = await supabase
-                            .from('event_attachments').delete().eq('id', att.id);
-                          if (error) {
-                            alert(error.message || 'Errore');
-                            return;
-                          }
-                          setAttachments((prev) => prev.filter((a) => a.id !== att.id));
-                        }}
-                        data-testid={`event-photo-remove-${att.id}`}
-                        title={t('td_remove_photo') || 'Rimuovi foto'}
-                        style={{
-                          position: 'absolute', top: 4, right: 4,
-                          width: 22, height: 22, borderRadius: '50%',
-                          background: 'rgba(0,0,0,0.65)',
-                          border: 'none', color: 'white',
-                          cursor: 'pointer', padding: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 12, lineHeight: 1, fontWeight: 700,
-                        }}>
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <PhotoGalleryEditor
+                  kind="event"
+                  parentId={event.id}
+                  attachments={attachments}
+                  photoUrls={photoUrls}
+                  onAdded={(att) => setAttachments((prev) => [...prev, att])}
+                  onRemoved={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
+                  onOpenLightbox={setLightbox}
+                />
               )}
             </div>
           )}
