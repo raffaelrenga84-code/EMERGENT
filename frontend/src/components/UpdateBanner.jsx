@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useT } from '../lib/i18n.jsx';
 
 /**
  * Banner aggiornamento app — toast compatto in basso (non invasivo).
  * Monitora il Service Worker per nuove versioni disponibili.
  */
 export default function UpdateBanner({ onDismiss }) {
+  const { t } = useT();
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
@@ -103,8 +105,8 @@ export default function UpdateBanner({ onDismiss }) {
       `}</style>
       <span style={{ fontSize: 18 }}>✨</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <strong style={{ fontSize: 13, fontWeight: 700 }}>App aggiornata</strong>
-        <span style={{ opacity: 0.85, marginLeft: 6, fontSize: 12 }}>· tocca per ricaricare</span>
+        <strong style={{ fontSize: 13, fontWeight: 700 }}>{t('update_banner_title') || 'App aggiornata'}</strong>
+        <span style={{ opacity: 0.85, marginLeft: 6, fontSize: 12 }}>{t('update_banner_tap') || '· tocca per ricaricare'}</span>
       </div>
       <button
         onClick={handleReload}
@@ -115,7 +117,7 @@ export default function UpdateBanner({ onDismiss }) {
           padding: '7px 12px', borderRadius: 100,
           fontSize: 12, fontWeight: 700, cursor: 'pointer',
         }}>
-        🔄 Ricarica
+        🔄 {t('update_banner_reload') || 'Ricarica'}
       </button>
       <button
         onClick={handleDismiss}

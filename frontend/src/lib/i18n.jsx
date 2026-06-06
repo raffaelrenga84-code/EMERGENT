@@ -1180,6 +1180,11 @@ export const T = {
     donate_banner_title: 'Do you like FAMMY?',
     donate_banner_body: 'Buy us a coffee to keep it free and ad-free.',
 
+    // Update banner (PWA refresh)
+    update_banner_title: 'App updated',
+    update_banner_tap: '· tap to reload',
+    update_banner_reload: 'Reload',
+
     // Feedback modal
     feedback_title: 'Give us feedback',
     feedback_subtitle: 'What do you think of FAMMY? Help us improve.',
@@ -3531,4 +3536,3 @@ export function I18nProvider({ initialLang = 'en', children }) {
 export function useT() {
   return useContext(I18nContext);
 }
-
