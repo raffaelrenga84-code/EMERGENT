@@ -440,8 +440,11 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     <>
       <CaregiverGreeting session={session} members={members} me={me} />
 
-      {/* Banner "Offrici un caffè" — soft, appare ogni ~14gg dopo 7gg di uso */}
-      <DonateBanner onOpen={() => setShowDonate(true)} />
+      {/* Banner "Offrici un caffè" — appare in momenti di valore percepito alto */}
+      <DonateBanner
+        onOpen={() => setShowDonate(true)}
+        completedTaskCount={dones.length}
+      />
 
       <BirthdayReminder members={members} session={session} familyId={familyId} families={families} />
 

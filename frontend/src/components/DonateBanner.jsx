@@ -2,26 +2,26 @@ import { useState } from 'react';
 import { useT } from '../lib/i18n.jsx';
 
 /**
- * DonateBanner — banner soft mostrato in cima alla Bacheca ogni ~14 giorni.
- * Discreto, dismissibile, non blocca l'UX. Tappandolo apre DonateModal.
+ * DonateBanner — banner soft mostrato in cima alla Bacheca.
+ * Strategia UX: appare in momenti di valore percepito alto (più probabilità
+ * di donazione, meno fastidio):
+ *  - dopo MIN_DAYS_AFTER_INSTALL dal primo accesso
+ *  - ogni INTERVAL_DAYS dall'ultima dismissione
+ *  - extra trigger: dopo COMPLETED_TASKS_TRIGGER task completati dall'utente
+ *    bypassa l'intervallo (l'utente ha appena "vinto" qualcosa → donazione naturale)
  *
- * Stato in localStorage:
- *   fammy_donate_banner_last_dismiss   timestamp ms ultima X
- *   fammy_donate_banner_first_seen     timestamp ms primo accesso utente
- *
- * Regola: mostra se sono passati >= MIN_DAYS dal primo accesso E
- *         >= INTERVAL_DAYS dall'ultima dismissione.
+ * Tappandolo apre DonateModal.
  */
 const STORAGE_DISMISS = 'fammy_donate_banner_last_dismiss';
 const STORAGE_FIRST_SEEN = 'fammy_donate_banner_first_seen';
-const MIN_DAYS_AFTER_INSTALL = 7;      // non rompo le scatole nei primi 7gg
-const INTERVAL_DAYS = 14;              // poi ogni 14gg max
+const STORAGE_LAST_MILESTONE = 'fammy_donate_banner_last_milestone';
+const MIN_DAYS_AFTER_INSTALL = 3;           // primi 3gg lascio in pace
+const INTERVAL_DAYS = 7;                    // poi ogni 7gg
+const MILESTONE_COOLDOWN_DAYS = 4;          // milestone trigger ogni 4gg al massimo
 
-export default function DonateBanner({ onOpen }) {
+export default function DonateBanner({ onOpen, completedTaskCount = 0 }) {
   const { t } = useT();
 
-  // Lazy initial state: calcoliamo la visibilità ONCE al mount, evitando
-  // il pattern "useEffect → setState" che fa lampeggiare il banner.
   const [visible, setVisible] = useState(() => {
     try {
       const now = Date.now();
@@ -34,10 +34,23 @@ export default function DonateBanner({ onOpen }) {
       if (daysSinceInstall < MIN_DAYS_AFTER_INSTALL) return false;
 
       const lastDismiss = parseInt(localStorage.getItem(STORAGE_DISMISS) || '0', 10);
-      if (!lastDismiss) return true;
+      const daysSinceDismiss = lastDismiss ? (now - lastDismiss) / (1000 * 60 * 60 * 24) : Infinity;
 
-      const daysSinceDismiss = (now - lastDismiss) / (1000 * 60 * 60 * 24);
-      return daysSinceDismiss >= INTERVAL_DAYS;
+      // Trigger 1: intervallo standard (7 giorni)
+      if (daysSinceDismiss >= INTERVAL_DAYS) return true;
+
+      // Trigger 2 (milestone): >= 10 task completati e cooldown rispettato.
+      // Bypassa l'intervallo solo se non l'abbiamo usato negli ultimi 4gg.
+      if (completedTaskCount >= 10) {
+        const lastMilestone = parseInt(localStorage.getItem(STORAGE_LAST_MILESTONE) || '0', 10);
+        const daysSinceMilestone = lastMilestone ? (now - lastMilestone) / (1000 * 60 * 60 * 24) : Infinity;
+        if (daysSinceMilestone >= MILESTONE_COOLDOWN_DAYS && daysSinceDismiss >= 2) {
+          localStorage.setItem(STORAGE_LAST_MILESTONE, String(now));
+          return true;
+        }
+      }
+
+      return false;
     } catch {
       return false;
     }

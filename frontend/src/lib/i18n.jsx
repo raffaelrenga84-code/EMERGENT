@@ -2196,7 +2196,29 @@ export const T = {
     profile_plans: '👑 Plans et tarifs',
     profile_theme: '🎨 Thème',
     profile_accessibility: '♿ Accessibilité',
+    profile_donate: '☕ Offre-nous un café',
+    profile_feedback: '💬 Donne-nous un retour',
+    profile_feedback_inbox: '📬 Retours reçus',
     profile_settings_h: 'Paramètres',
+
+    // Donate
+    donate_title: 'Offre-nous un café',
+    donate_subtitle: 'FAMMY est gratuite et sans pub. Si tu l\'aimes, tu peux nous soutenir librement.',
+    donate_pick_amount: 'Combien veux-tu offrir ?',
+    donate_amt_coffee: 'Un café',
+    donate_amt_snack: 'Un goûter',
+    donate_amt_pizza: 'Une pizza',
+    donate_amt_love: 'Beaucoup d\'amour',
+    donate_open_paypal: 'Ouvrir PayPal',
+    donate_legal_title: 'Infos importantes',
+    donate_legal_body: 'Les dons sont libres, facultatifs, de valeur modeste, sans contrepartie et ne donnent droit à aucun bien ou service. Ils relèvent des "libéralités d\'usage" (art. 783 c.c. it.). FAMMY reste gratuite pour tous.',
+    donate_banner_title: 'Tu aimes FAMMY ?',
+    donate_banner_body: 'Offre-nous un café pour garder l\'app gratuite et sans pub.',
+
+    // Update banner
+    update_banner_title: 'App mise à jour',
+    update_banner_tap: '· tapote pour recharger',
+    update_banner_reload: 'Recharger',
 
     theme_h: 'Thème',
     theme_sub: 'Choisis l\'apparence de FAMMY.',
@@ -2978,7 +3000,29 @@ export const T = {
     profile_plans: '👑 Pläne & Preise',
     profile_theme: '🎨 Design',
     profile_accessibility: '♿ Barrierefreiheit',
+    profile_donate: '☕ Spendiere uns einen Kaffee',
+    profile_feedback: '💬 Gib uns Feedback',
+    profile_feedback_inbox: '📬 Feedback-Eingang',
     profile_settings_h: 'Einstellungen',
+
+    // Donate
+    donate_title: 'Spendiere uns einen Kaffee',
+    donate_subtitle: 'FAMMY ist kostenlos und werbefrei. Wenn du es magst, kannst du uns frei unterstützen.',
+    donate_pick_amount: 'Wie viel möchtest du spenden?',
+    donate_amt_coffee: 'Ein Kaffee',
+    donate_amt_snack: 'Ein Snack',
+    donate_amt_pizza: 'Eine Pizza',
+    donate_amt_love: 'Viel Liebe',
+    donate_open_paypal: 'PayPal öffnen',
+    donate_legal_title: 'Wichtige Infos',
+    donate_legal_body: 'Spenden sind frei, freiwillig, von geringem Wert, ohne Gegenleistung und gewähren keinen zusätzlichen Vorteil oder Dienst. Sie gelten als übliche Schenkungen (italienisches Recht, Art. 783 BGB). FAMMY bleibt für alle kostenlos.',
+    donate_banner_title: 'Magst du FAMMY?',
+    donate_banner_body: 'Spendiere uns einen Kaffee, damit es kostenlos und werbefrei bleibt.',
+
+    // Update banner
+    update_banner_title: 'App aktualisiert',
+    update_banner_tap: '· tippe zum Neuladen',
+    update_banner_reload: 'Neu laden',
 
     theme_h: 'Design',
     theme_sub: 'Wähle das Aussehen von FAMMY.',
