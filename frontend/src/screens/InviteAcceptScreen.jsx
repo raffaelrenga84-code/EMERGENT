@@ -152,18 +152,50 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
     // se l'invito non è più valido (consumato, scaduto, revocato), non ha
     // senso continuare a riproporlo ogni volta che l'utente apre l'app.
     try { localStorage.removeItem('fammy_pending_invite'); } catch { /* ignore */ }
+
+    // Categorizza l'errore per dare un messaggio più utile all'utente.
+    const lowErr = (error || '').toLowerCase();
+    const isAlreadyUsed =
+      lowErr.includes('usato') || lowErr.includes('accettato') ||
+      lowErr.includes('used') || lowErr.includes('accepted');
+    const isExpired = lowErr.includes('scaduto') || lowErr.includes('expired');
+    const isRevoked = lowErr.includes('annullato') || lowErr.includes('revoked');
+
+    let headline, explanation, ctaLabel;
+    if (isAlreadyUsed) {
+      headline = t('invite_already_used_h') || 'Sei già parte della famiglia';
+      explanation = t('invite_already_used_p') ||
+        'Questo invito è stato già accettato. Apri FAMMY e fai login con il tuo account: troverai la famiglia nella tua lista in alto.';
+      ctaLabel = t('invite_open_app') || 'Apri FAMMY';
+    } else if (isExpired) {
+      headline = t('invite_expired_h') || 'Invito scaduto';
+      explanation = t('invite_expired_p') ||
+        'Questo invito non è più valido. Chiedi a chi ti ha invitato di mandartene uno nuovo.';
+      ctaLabel = t('invite_back_to_app') || 'Apri FAMMY';
+    } else if (isRevoked) {
+      headline = t('invite_revoked_h') || 'Invito annullato';
+      explanation = t('invite_revoked_p') ||
+        'Chi ti ha invitato ha annullato questo invito. Chiedigli di mandartene uno nuovo.';
+      ctaLabel = t('invite_back_to_app') || 'Apri FAMMY';
+    } else {
+      headline = t('invite_invalid_h') || 'Invito non valido';
+      explanation = error;
+      ctaLabel = t('invite_back_to_app') || 'Apri FAMMY';
+    }
+
     return (
       <div className="login-wrap">
-        <div className="login-logo">⚠️</div>
-        <h1 className="login-h">{t('invite_invalid_h')}</h1>
-        <p className="login-s">{error}</p>
+        <div className="login-logo">{isAlreadyUsed ? '✅' : '⚠️'}</div>
+        <h1 className="login-h">{headline}</h1>
+        <p className="login-s" style={{ lineHeight: 1.6 }}>{explanation}</p>
         <button
           className="btn full"
+          data-testid="invite-error-cta"
           onClick={() => {
             try { localStorage.removeItem('fammy_pending_invite'); } catch { /* ignore */ }
             window.location.href = '/';
           }}>
-          {t('invite_back_to_app')}
+          {ctaLabel}
         </button>
       </div>
     );
