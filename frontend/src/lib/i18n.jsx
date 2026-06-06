@@ -223,6 +223,7 @@ export const T = {
     profile_accessibility: '♿ Accessibilità',
     profile_donate: '☕ Offrici un caffè',
     profile_feedback: '💬 Dacci un feedback',
+    profile_feedback_inbox: '📬 Feedback ricevuti',
     profile_settings_h: 'Impostazioni',
 
     // Name prompt modal (mostrato se display_name è generico)
@@ -260,6 +261,15 @@ export const T = {
     feedback_sent_p: 'Abbiamo ricevuto il tuo feedback. Lo leggiamo personalmente.',
     feedback_err_empty: 'Aggiungi una valutazione o un messaggio.',
     feedback_privacy: 'Riceveremo email, nome e contatti del tuo profilo per poterti rispondere. Niente di più.',
+
+    // Feedback inbox (solo admin)
+    inbox_title: 'Feedback ricevuti',
+    inbox_total: 'totali',
+    inbox_unread: 'Da leggere',
+    inbox_all: 'Tutti',
+    inbox_empty: 'Nessun feedback ancora.',
+    inbox_empty_unread: 'Nessun feedback non letto.',
+    inbox_no_message: '(nessun messaggio, solo rating)',
 
     // Donate modal
     donate_title: 'Offrici un caffè',
@@ -1188,6 +1198,7 @@ export const T = {
     profile_accessibility: '♿ Accessibility',
     profile_donate: '☕ Buy us a coffee',
     profile_feedback: '💬 Give us feedback',
+    profile_feedback_inbox: '📬 Feedback inbox',
     profile_settings_h: 'Settings',
 
     // Name prompt modal (shown if display_name is generic)
@@ -1225,6 +1236,15 @@ export const T = {
     feedback_sent_p: 'We received your feedback. We read every one personally.',
     feedback_err_empty: 'Add a rating or a message.',
     feedback_privacy: 'We\'ll receive email, name and contact from your profile to reply to you. Nothing else.',
+
+    // Feedback inbox (admin only)
+    inbox_title: 'Feedback inbox',
+    inbox_total: 'total',
+    inbox_unread: 'Unread',
+    inbox_all: 'All',
+    inbox_empty: 'No feedback yet.',
+    inbox_empty_unread: 'No unread feedback.',
+    inbox_no_message: '(no message, rating only)',
 
     // Donate modal
     donate_title: 'Buy us a coffee',

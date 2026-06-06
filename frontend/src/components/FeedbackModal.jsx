@@ -34,11 +34,21 @@ export default function FeedbackModal({ onClose }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('not_authenticated');
 
-      const { data, error } = await supabase.functions.invoke('send-feedback-email', {
-        body: { rating, message: message.trim() },
+      // INSERT diretto in feedback_log (la RLS controlla user_id = auth.uid()).
+      // Gli admin (Raffael, Rex) leggono tutto dalla sezione "Feedback ricevuti".
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('language')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      const { error } = await supabase.from('feedback_log').insert({
+        user_id: session.user.id,
+        rating: rating || 0,
+        message: message.trim(),
+        app_lang: profile?.language || null,
       });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
       setSent(true);
     } catch (e) {
       setErr(e?.message || 'Errore di invio. Riprova più tardi.');
