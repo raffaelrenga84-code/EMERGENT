@@ -3422,7 +3422,7 @@ export const T = {
 
 export function detectBrowserLang() {
   // Leggi la lingua del browser (es. "it-IT", "en-US", "fr-FR", ecc.)
-  const browserLang = (navigator.language || navigator.userLanguage || 'it').toLowerCase();
+  const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
 
   // Estrai il codice di lingua (es. "it" da "it-IT")
   const lang = browserLang.split('-')[0];
@@ -3435,18 +3435,39 @@ export function detectBrowserLang() {
     'de': 'de', // Deutsch
   };
 
-  // Restituisci la lingua se supportata, altrimenti default a italiano
-  return supportedLangs[lang] || 'it';
+  // Restituisci la lingua se supportata, altrimenti default a English
+  // (en è la lingua più universalmente comprensibile per stranieri non supportati)
+  return supportedLangs[lang] || 'en';
 }
 
-export const I18nContext = createContext({ lang: 'it', setLang: () => {}, t: (k) => k });
+// Flag in localStorage: l'utente ha SCELTO esplicitamente una lingua?
+// Solo in quel caso onoriamo `profile.language`; altrimenti seguiamo il browser.
+// Necessario perché `profiles.language` ha DEFAULT 'it' nel DB → tutti i nuovi
+// utenti avrebbero 'it' anche se il loro browser è en-AU/de-DE/ecc.
+const LANG_EXPLICIT_KEY = 'fammy_lang_explicit';
 
-export function I18nProvider({ initialLang = 'it', children }) {
-  const [lang, setLang] = useState(initialLang);
+export function userHasChosenLang() {
+  try { return localStorage.getItem(LANG_EXPLICIT_KEY) === '1'; } catch { return false; }
+}
+
+export function markLangAsExplicit() {
+  try { localStorage.setItem(LANG_EXPLICIT_KEY, '1'); } catch { /* ignore */ }
+}
+
+export const I18nContext = createContext({ lang: 'en', setLang: () => {}, t: (k) => k });
+
+export function I18nProvider({ initialLang = 'en', children }) {
+  const [lang, setLangState] = useState(initialLang);
 
   useEffect(() => {
-    setLang(initialLang);
+    setLangState(initialLang);
   }, [initialLang]);
+
+  // setLang esposto: marca la scelta come "esplicita" (utente ha cliccato una flag).
+  const setLang = (newLang) => {
+    markLangAsExplicit();
+    setLangState(newLang);
+  };
 
   const t = (key, vars = {}) => {
     let str = (T[lang] && T[lang][key]) || T.it[key] || key;

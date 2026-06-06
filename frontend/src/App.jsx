@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { supabase } from './lib/supabase.js';
-import { I18nProvider, detectBrowserLang } from './lib/i18n.jsx';
+import { I18nProvider, detectBrowserLang, userHasChosenLang } from './lib/i18n.jsx';
 import { applyTheme, getCurrentTheme, initThemeAutoListener } from './screens/sub/ThemeScreen.jsx';
 import { applyA11ySettings } from './screens/sub/AccessibilityScreen.jsx';
 import { useGoogleAvatar } from './lib/useGoogleAvatar.js';
@@ -160,7 +160,27 @@ export default function App() {
     setFamilies((prev) => prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)));
   };
 
-  const lang = profile?.language || detectBrowserLang();
+  // Strategia di selezione lingua:
+  // - Se l'utente ha cliccato esplicitamente una bandiera (in qualsiasi schermo),
+  //   onoriamo la sua scelta salvata in profile.language
+  // - Altrimenti seguiamo SEMPRE la lingua del browser. Necessario perché
+  //   profiles.language ha DEFAULT 'it' nel DB → tutti i nuovi utenti
+  //   nascono con 'it' anche se in Australia/USA/Germania/ecc.
+  const browserLang = detectBrowserLang();
+  const lang = userHasChosenLang() && profile?.language ? profile.language : browserLang;
+
+  // Sync lazy DB: se l'utente non ha mai scelto una lingua e il DB ha un valore
+  // diverso da quello del browser, allineiamo silenziosamente. Così notifiche
+  // server-side (push digest, email settimanale, inviti) usano la lingua giusta.
+  useEffect(() => {
+    if (!profile?.id) return;
+    if (userHasChosenLang()) return;
+    if (!profile.language || profile.language === browserLang) return;
+    supabase.from('profiles')
+      .update({ language: browserLang })
+      .eq('id', profile.id)
+      .then(() => { /* fire-and-forget */ }, () => { /* fire-and-forget */ });
+  }, [profile?.id, profile?.language, browserLang]);
 
   let content;
   if (loading || (session && !dataLoaded)) {
