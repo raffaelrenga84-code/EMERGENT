@@ -48,9 +48,40 @@ applyTheme(getCurrentTheme());
 initThemeAutoListener();
 applyA11ySettings();
 
+// Storage key per "pending invite": dopo l'OAuth/phone signup Supabase
+// ridireziona alla Site URL (es. https://farxer.com/) e perde il path
+// /invite/:token. Lo salviamo qui per riprenderlo dopo il login.
+// TTL: 1 ora — passato questo, lo consideriamo abbandonato per evitare
+// che un vecchio invito si auto-attivi su account riusati.
+const INVITE_STORAGE_KEY = 'fammy_pending_invite';
+const INVITE_TTL_MS = 60 * 60 * 1000; // 1h
+
 function getInviteToken() {
+  // 1) Token nel path corrente (caso ingresso fresco da link)
   const m = window.location.pathname.match(/^\/invite\/([^/]+)$/);
-  return m ? decodeURIComponent(m[1]) : null;
+  if (m) {
+    const token = decodeURIComponent(m[1]);
+    try {
+      localStorage.setItem(INVITE_STORAGE_KEY, JSON.stringify({ token, ts: Date.now() }));
+    } catch { /* ignore */ }
+    return token;
+  }
+  // 2) Token salvato in precedenza (caso ritorno post-OAuth/phone signup)
+  try {
+    const raw = localStorage.getItem(INVITE_STORAGE_KEY);
+    if (!raw) return null;
+    const { token, ts } = JSON.parse(raw);
+    if (!token || !ts) return null;
+    if (Date.now() - ts > INVITE_TTL_MS) {
+      localStorage.removeItem(INVITE_STORAGE_KEY);
+      return null;
+    }
+    return token;
+  } catch { return null; }
+}
+
+function clearPendingInvite() {
+  try { localStorage.removeItem(INVITE_STORAGE_KEY); } catch { /* ignore */ }
 }
 
 export default function App() {
@@ -104,6 +135,14 @@ export default function App() {
       setSession(s);
       if (s) {
         localStorage.setItem('fammy_session', JSON.stringify(s));
+        // Riprende un eventuale invite token salvato: dopo OAuth/phone
+        // signup, Supabase ci ridireziona alla home perdendo /invite/:token.
+        // Se l'abbiamo salvato in localStorage al primo passaggio, lo
+        // ripristiniamo ora che la session è disponibile.
+        if (!inviteToken) {
+          const t = getInviteToken();
+          if (t) setInviteToken(t);
+        }
       } else {
         localStorage.removeItem('fammy_session');
       }
@@ -195,7 +234,7 @@ export default function App() {
         <InviteAcceptScreen
           token={inviteToken}
           session={session}
-          onAccepted={() => { setInviteToken(null); refresh(); }}
+          onAccepted={() => { clearPendingInvite(); setInviteToken(null); refresh(); }}
         />
       </div>
     );
