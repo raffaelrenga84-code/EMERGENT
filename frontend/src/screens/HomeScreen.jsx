@@ -18,6 +18,7 @@ import AIAssistantDrawer from '../components/AIAssistantDrawer.jsx';
 import AddTaskModal from '../components/AddTaskModal.jsx';
 import AddEventModal from '../components/AddEventModal.jsx';
 import MedicationReminderToast from '../components/MedicationReminderToast.jsx';
+import FeedbackToastSubscriber from '../components/FeedbackToastSubscriber.jsx';
 import { useUnreadTaskCount } from '../lib/useUnreadTaskCount.js';
 import { useMedicationReminders } from '../lib/useMedicationReminders.js';
 
@@ -25,6 +26,9 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   const { t } = useT();
   const [activeFamily, setActiveFamily] = useState('all');
   const [activeTab, setActiveTab] = useState('bacheca');
+  // Signal incrementale: cambia ogni volta che vogliamo aprire l'inbox
+  // feedback nel ProfileTab (es. tap sul toast realtime).
+  const [openFeedbackInboxSignal, setOpenFeedbackInboxSignal] = useState(0);
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
   const [events, setEvents] = useState([]);
@@ -323,6 +327,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             onChanged={refreshAll}
             onNewFamily={() => setShowNewFamily(true)}
             onOpenAI={onOpenAI}
+            openInboxSignal={openFeedbackInboxSignal}
             notificationControl={notificationControl} />
         )}
       </div>
@@ -342,6 +347,15 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
         onTaken={meds.markTaken}
         onSnooze={meds.snooze}
         onSkip={meds.skip}
+      />
+
+      {/* Toast realtime: nuovi feedback ricevuti (solo admin) */}
+      <FeedbackToastSubscriber
+        session={session}
+        onOpenInbox={() => {
+          setActiveTab('profile');
+          setOpenFeedbackInboxSignal((s) => s + 1);
+        }}
       />
 
       <nav className="bnav">

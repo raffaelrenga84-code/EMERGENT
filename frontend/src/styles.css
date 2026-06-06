@@ -580,6 +580,10 @@ html[data-theme="dark"] .ai-pill-btn { background: rgba(255,255,255,.05); color:
 @keyframes fammy-toast-in { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes fammy-flash { 0% { transform: scale(1); } 30% { transform: scale(1.015); } 100% { transform: scale(1); } }
 @keyframes fammy-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fammy-toast-up {
+  from { transform: translate(-50%, 16px); opacity: 0; }
+  to   { transform: translate(-50%, 0);    opacity: 1; }
+}
 @keyframes fammy-fab-pop { from { opacity: 0; transform: translateY(8px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes fammy-month-slide-l { from { opacity: 0.4; transform: translateX(24%); } to { opacity: 1; transform: translateX(0); } }
 @keyframes fammy-month-slide-r { from { opacity: 0.4; transform: translateX(-24%); } to { opacity: 1; transform: translateX(0); } }

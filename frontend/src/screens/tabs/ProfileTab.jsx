@@ -27,7 +27,7 @@ import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
-export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, onNewFamily, onOpenAI, notificationControl = {} }) {
+export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, onNewFamily, onOpenAI, openInboxSignal = 0, notificationControl = {} }) {
   const { t, lang, setLang } = useT();
   const [view, setView] = useState('main'); // main | plans | theme | a11y | privacy
   const [editingName, setEditingName] = useState(false);
@@ -58,6 +58,10 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [showDonate, setShowDonate] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showFeedbackInbox, setShowFeedbackInbox] = useState(false);
+  // Apertura inbox feedback su trigger esterno (es. tap sul toast realtime)
+  useEffect(() => {
+    if (openInboxSignal > 0) setShowFeedbackInbox(true);
+  }, [openInboxSignal]);
   // Admin (whitelist hard-coded lato client per nascondere/mostrare il menu;
   // la sicurezza vera è lato DB via RLS su feedback_log).
   const isFammyAdmin = (() => {
