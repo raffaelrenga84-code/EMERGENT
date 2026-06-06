@@ -72,35 +72,41 @@ export default function FabSpeedDial({ actions = [], testid = 'fab-speeddial', c
             pointerEvents: 'auto',
           }}>
           {actions.map((a, idx) => (
-            <button
-              key={a.id}
-              data-testid={a.testid}
-              onClick={() => { a.onClick?.(); setOpen(false); }}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 12,
-                padding: '10px 16px 10px 10px',
-                background: 'white',
-                border: '1px solid rgba(229,225,216,0.8)',
-                borderRadius: 100,
-                boxShadow: '0 8px 24px rgba(28,22,17,0.14)',
-                fontSize: 15, fontWeight: 700, color: 'var(--k)',
-                cursor: 'pointer', whiteSpace: 'nowrap',
-                animation: `fammy-fab-pop 220ms cubic-bezier(.2,.8,.3,1) ${idx * 50}ms both`,
-                minWidth: 180,
-              }}>
-              {/* Cerchio icona più grande e leggibile */}
-              <span style={{
-                width: 42, height: 42, borderRadius: '50%',
-                background: a.color || 'var(--ac)',
-                color: 'white',
-                display: 'inline-flex',
-                alignItems: 'center', justifyContent: 'center',
-                fontSize: 20,
-                flexShrink: 0,
-                boxShadow: `0 4px 10px ${(a.color || 'var(--ac)')}44`,
-              }}>{a.icon}</span>
-              <span style={{ letterSpacing: '-0.01em' }}>{a.label}</span>
-            </button>
+            <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
+              {a.divider && idx > 0 && (
+                <div style={{
+                  width: 80, height: 1, background: 'rgba(229,225,216,0.8)',
+                  margin: '4px 0', alignSelf: 'flex-end',
+                }} />
+              )}
+              <button
+                data-testid={a.testid}
+                onClick={() => { a.onClick?.(); setOpen(false); }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 12,
+                  padding: '10px 16px 10px 10px',
+                  background: 'white',
+                  border: '1px solid rgba(229,225,216,0.8)',
+                  borderRadius: 100,
+                  boxShadow: '0 8px 24px rgba(28,22,17,0.14)',
+                  fontSize: 15, fontWeight: 700, color: 'var(--k)',
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                  animation: `fammy-fab-pop 220ms cubic-bezier(.2,.8,.3,1) ${idx * 50}ms both`,
+                  minWidth: 180,
+                }}>
+                <span style={{
+                  width: 42, height: 42, borderRadius: '50%',
+                  background: a.color || 'var(--ac)',
+                  color: 'white',
+                  display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20,
+                  flexShrink: 0,
+                  boxShadow: `0 4px 10px ${(a.color || 'var(--ac)')}44`,
+                }}>{a.icon}</span>
+                <span style={{ letterSpacing: '-0.01em' }}>{a.label}</span>
+              </button>
+            </div>
           ))}
         </div>
       )}

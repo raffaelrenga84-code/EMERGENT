@@ -13,6 +13,7 @@ import MedicationsModal from '../../components/MedicationsModal.jsx';
 import CaregiverGreeting from '../../components/CaregiverGreeting.jsx';
 import DonateBanner from '../../components/DonateBanner.jsx';
 import DonateModal from '../../components/DonateModal.jsx';
+import FeedbackModal from '../../components/FeedbackModal.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
@@ -25,6 +26,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const [medsForMember, setMedsForMember] = useState(null);
   const [showMedsPicker, setShowMedsPicker] = useState(false);
   const [showDonate, setShowDonate] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [selTask, setSelTask] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [openSections, setOpenSections] = useState({ mine: true, all: true, done: false });
@@ -274,6 +276,18 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         color: 'var(--gn)',
       });
     }
+    // Voce extra "feedback" — separata visivamente dalle 3 azioni produttive
+    // tramite una proprietà `divider: true` (resa nel FabSpeedDial se la
+    // supporta) e un colore neutro. Lascia all'utente un canale rapido per
+    // farci sapere come va l'app, senza ingombrare il flusso principale.
+    list.push({
+      id: 'feedback', icon: '💬',
+      label: t('fab_send_feedback') || 'Manda un feedback',
+      onClick: () => setShowFeedback(true),
+      testid: `${testidPrefix}-feedback`,
+      color: '#7A6F62',
+      divider: true,
+    });
     return list;
   };
 
@@ -734,6 +748,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
       })()}
 
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} />}
+      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
     </>
   );
 }
