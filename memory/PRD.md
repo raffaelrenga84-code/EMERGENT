@@ -1,5 +1,91 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.25 (6 febbraio 2026) — Fix cron-digest serale + testing AI backend
+
+### Bug fix P1 — Silvia non riceveva il digest serale 21:00
+**Root cause** (3 bug nel file `cron-digest.ts`):
+
+1. **Multi-assegnatari ignorati**
+   Il filtro usava solo il campo legacy `tasks.assigned_to` (single-assignee).
+   Tutti i task assegnati tramite la tabella join `task_assignees`
+   (multi-assignee, l'attuale source of truth) venivano scartati.
+   Se Silvia era assegnata SOLO tramite `task_assignees` (caso normale
+   ora), nessun task era conteggiato per lei → digest skippato.
+
+2. **Task ricorrenti esclusi**
+   La query filtrava `due_date is not null`. Ma i task ricorrenti
+   (`recurring_days` + `recurring_until`) hanno `due_date = null`
+   per definizione → mai conteggiati come "domani".
+
+3. **Eventi ricorrenti esclusi**
+   La query usava `starts_at >= startTomorrow AND < endTomorrow`
+   che cattura SOLO la prima occorrenza esatta. Tutte le occorrenze
+   ricorrenti (es. "riunione ogni lunedì") venivano perse.
+
+### Soluzione (riscrittura `cron-digest.ts`)
+
+- Carica `tasks` SENZA filtrare su `due_date`
+- Carica `task_assignees` separatamente → `assigneesByTask[task_id] = [member_id...]`
+- Carica `task_completions` per `tomorrow_key` → set di task già fatti
+- Nuova funzione `isRecurringOccurrence()` che valuta:
+  - weekday di domani in `recurring_days` (convention FAMMY: 0=Lunedì)
+  - `recurring_until` >= domani (o null)
+  - `recurring_exceptions` non include domani
+- Filtro task: `single (due_date=domani) OR ricorrente valido`
+- Filtro eventi: `single (starts_at∈domani) OR ricorrente valido`
+- Assignment check unificato: **assegnato a me via task_assignees** OR
+  **io sono author** OR **nessun assegnatario** (task di famiglia)
+- Payload diagnostica nel response: `tomorrow_key`, `tomorrow_weekday`,
+  `total_tasks_window`, `total_events_window` (utili per debug futuri)
+
+### File modificati
+- ✏️ `/app/frontend/supabase/_dashboard_standalone/cron-digest.ts` — riscrittura completa
+
+### ⚠️ AZIONE UTENTE
+**Re-deploya** la edge function `cron-digest` su Supabase Dashboard:
+1. Dashboard → Edge Functions → `cron-digest`
+2. Copia il contenuto aggiornato di
+   `/app/frontend/supabase/_dashboard_standalone/cron-digest.ts`
+3. Deploy
+4. **Test manuale immediato** (Dashboard → SQL Editor):
+   ```sql
+   select fammy_private.trigger_daily_digest();
+   ```
+   La function ritorna ora un JSON con `debug.total_tasks_window` e
+   `total_events_window` → conferma che vede i dati di Silvia.
+
+### Testing AI backend (P0 — testing_agent_v3_fork)
+**Risultato: 14/14 PASS** in 73s. Tutti gli endpoint AI in italiano:
+- `/api/health` → 200 (Mongo OK)
+- `/api/ai/suggest-task` → categoria/urgenza/sottotask corretti
+  ("Pagare bolletta luce" → spese/admin)
+- `/api/ai/weekly-summary` → riepilogo IT + highlights array
+- `/api/ai/chat` → single + multi-turn (contesto preservato:
+  l'assistant ricorda "Tommaso, 6 anni" al turno 2)
+- `/api/ai/gift-ideas` → ≥3 idee per Nonna Maria
+
+**No regressioni dal backend** dopo le 50+ modifiche frontend
+(il codice backend non è cambiato).
+
+⚠️ Le feature frontend dietro Google OAuth (PWA prompts, modals,
+FAB pulse, donation, feedback inbox, `?reset=1`) **non sono
+automatizzabili** — Google blocca OAuth da browser headless.
+Vanno testate manualmente dall'utente.
+
+### Issue noti / minori (carry-over da iter 1)
+- CORS: `allow_origins=['*']` + `allow_credentials=True` non spec-compliant
+- `/api/ai/suggest-task`: titolo vuoto accettato, ritorna `category='other'`
+- Chat replay non include i turni assistant (solo user) → fact recall OK,
+  tono può drift su sessioni molto lunghe
+- Eccezioni con messaggi raw possono leakare info interne nei 500
+
+### Note schedulazione
+Cron è schedulato `0 19 * * *` UTC (= 21:00 IT estate, 20:00 IT inverno).
+Per allineare 21:00 IT anche d'inverno, si può aggiungere un secondo job
+`0 20 * * *` ma è un trade-off (push duplicate in estate).
+
+---
+
 ## Iterazione 16.5.24 (6 febbraio 2026) — Fix "Qualcuno" nei commenti task
 
 ### Bug fix — Autore commento perso dopo rimozione del membro

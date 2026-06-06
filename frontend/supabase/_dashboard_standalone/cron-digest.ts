@@ -11,6 +11,12 @@
 // il frontend quando l'utente apre l'app dopo la notifica.
 //
 // Body: { kind: "daily" | "weekly" }
+//
+// IMPORTANT: questa funzione gestisce
+//   - multi-assegnatari (tabella `task_assignees`), non solo legacy `assigned_to`
+//   - task ricorrenti (`recurring_days` + `recurring_until` + `recurring_exceptions`
+//     + `task_completions`)
+//   - eventi ricorrenti (`recurring_days` + `recurring_until` + `recurring_exceptions`)
 // =============================================================================
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
@@ -37,6 +43,32 @@ function dayKey(d: Date) {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+// Weekday convention FAMMY: 0=Lunedì, 1=Martedì, ..., 6=Domenica
+// JS getDay() restituisce 0=Sunday, 1=Monday, ..., 6=Saturday → conversione:
+function fammyWeekday(d: Date) {
+  const js = d.getDay();        // 0=Sun, 1=Mon, ..., 6=Sat
+  return (js + 6) % 7;          // 0=Mon, ..., 6=Sun
+}
+
+// True se la data target è una occorrenza valida del task/evento ricorrente.
+function isRecurringOccurrence(
+  recurringDays: number[] | null | undefined,
+  recurringUntil: string | null | undefined,
+  recurringExceptions: string[] | null | undefined,
+  targetDate: Date,
+  targetDateKey: string,
+): boolean {
+  if (!recurringDays || recurringDays.length === 0) return false;
+  const wd = fammyWeekday(targetDate);
+  if (!recurringDays.includes(wd)) return false;
+  if (recurringUntil) {
+    // recurring_until è una date YYYY-MM-DD: skip se target > until
+    if (targetDateKey > String(recurringUntil).slice(0, 10)) return false;
+  }
+  if (recurringExceptions && recurringExceptions.includes(targetDateKey)) return false;
+  return true;
 }
 
 async function sendPushTo(userIds: string[], title: string, body: string, tag: string) {
@@ -69,8 +101,7 @@ serve(async (req) => {
   const userIds = [...new Set((subs || []).map((s) => s.user_id))];
   if (userIds.length === 0) return json({ kind, sent: 0, reason: 'no_users_subscribed' });
 
-  // 2) Per ogni user, calcola il payload del digest
-  // Per efficienza: una sola query batch per tasks/events, poi filter per family
+  // 2) Membri (per mappare user_id -> family_ids + member_ids)
   const { data: members } = await supabaseAdmin
     .from('members')
     .select('user_id, id, family_id')
@@ -79,11 +110,11 @@ serve(async (req) => {
   if (!members || members.length === 0) return json({ kind, sent: 0, reason: 'no_members' });
 
   const familyIds = [...new Set(members.map((m) => m.family_id))];
-  const memberIdToUser: Record<string, string> = {};
   const userToFamilies: Record<string, string[]> = {};
+  const userToMemberIds: Record<string, string[]> = {};
   for (const m of members) {
-    memberIdToUser[m.id] = m.user_id;
     (userToFamilies[m.user_id] = userToFamilies[m.user_id] || []).push(m.family_id);
+    (userToMemberIds[m.user_id] = userToMemberIds[m.user_id] || []).push(m.id);
   }
 
   if (kind === 'weekly') {
@@ -124,7 +155,9 @@ serve(async (req) => {
     return json({ kind, candidate_users: userIds.length, sent_users: sendList.length, ...result });
   }
 
-  // === Daily digest ===
+  // ============================
+  // ===== Daily digest =========
+  // ============================
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowKey = dayKey(tomorrow);
@@ -132,42 +165,102 @@ serve(async (req) => {
   const endTomorrow = new Date(startTomorrow);
   endTomorrow.setDate(endTomorrow.getDate() + 1);
 
-  const { data: tomorrowTasks } = await supabaseAdmin
+  // 3a) TASK: tutti i non-done delle famiglie target
+  //     Includiamo SIA single (due_date=domani) SIA ricorrenti (recurring_days).
+  const { data: allTasks } = await supabaseAdmin
     .from('tasks')
-    .select('id, family_id, due_date, status, assigned_to, author_id')
+    .select('id, family_id, due_date, status, author_id, recurring_days, recurring_until, recurring_exceptions')
     .neq('status', 'done')
-    .in('family_id', familyIds)
-    .not('due_date', 'is', null);
-
-  const { data: tomorrowEvents } = await supabaseAdmin
-    .from('events')
-    .select('id, family_id, starts_at, created_by')
-    .gte('starts_at', startTomorrow.toISOString())
-    .lt('starts_at', endTomorrow.toISOString())
     .in('family_id', familyIds);
 
-  // Filter per due_date == tomorrow (string compare)
-  const filteredTasks = (tomorrowTasks || []).filter(
-    (t) => String(t.due_date).slice(0, 10) === tomorrowKey
-  );
+  // 3b) TASK_ASSIGNEES: chi è assegnato a quali task (multi-assignee).
+  //     Filtra solo sui task selezionati sopra.
+  const taskIds = (allTasks || []).map((t) => t.id);
+  let assigneesByTask: Record<string, string[]> = {};
+  let assignedTaskIds = new Set<string>();
+  if (taskIds.length > 0) {
+    const { data: ass } = await supabaseAdmin
+      .from('task_assignees')
+      .select('task_id, member_id')
+      .in('task_id', taskIds);
+    for (const a of ass || []) {
+      (assigneesByTask[a.task_id] = assigneesByTask[a.task_id] || []).push(a.member_id);
+      assignedTaskIds.add(a.task_id);
+    }
+  }
 
+  // 3c) TASK_COMPLETIONS: istanze ricorrenti già completate per domani
+  let completedForTomorrow = new Set<string>();
+  if (taskIds.length > 0) {
+    const { data: comps } = await supabaseAdmin
+      .from('task_completions')
+      .select('task_id, occurrence_date')
+      .in('task_id', taskIds)
+      .eq('occurrence_date', tomorrowKey);
+    for (const c of comps || []) completedForTomorrow.add(c.task_id);
+  }
+
+  // 3d) Calcola quali task "scadono" domani (single OR ricorrente valido)
+  const tomorrowTasks = (allTasks || []).filter((t) => {
+    if (completedForTomorrow.has(t.id)) return false;
+    // Single task con due_date specifica
+    if (t.due_date && String(t.due_date).slice(0, 10) === tomorrowKey) return true;
+    // Task ricorrente che cade domani
+    return isRecurringOccurrence(
+      t.recurring_days,
+      t.recurring_until,
+      t.recurring_exceptions,
+      tomorrow,
+      tomorrowKey,
+    );
+  });
+
+  // 4) EVENTI: include single + ricorrenti
+  const { data: allEvents } = await supabaseAdmin
+    .from('events')
+    .select('id, family_id, starts_at, recurring_days, recurring_until, recurring_exceptions')
+    .in('family_id', familyIds);
+
+  const tomorrowEvents = (allEvents || []).filter((e) => {
+    if (!e.starts_at) return false;
+    const startMs = new Date(e.starts_at).getTime();
+    // Single event con starts_at che cade in [startTomorrow, endTomorrow)
+    if (startMs >= startTomorrow.getTime() && startMs < endTomorrow.getTime()) return true;
+    // Evento ricorrente: la prima occorrenza è precedente o uguale a domani,
+    // e il pattern include domani come giorno valido
+    if (startMs > endTomorrow.getTime()) return false; // partirà solo dopo domani
+    return isRecurringOccurrence(
+      e.recurring_days,
+      e.recurring_until,
+      e.recurring_exceptions,
+      tomorrow,
+      tomorrowKey,
+    );
+  });
+
+  // 5) Per ogni utente, conta task ed eventi rilevanti
   const sendList: { uid: string; body: string }[] = [];
   for (const uid of userIds) {
     const fams = new Set(userToFamilies[uid] || []);
-    const userMemberIds = members.filter((m) => m.user_id === uid).map((m) => m.id);
-    const myMemberSet = new Set(userMemberIds);
+    const myMemberSet = new Set(userToMemberIds[uid] || []);
 
-    // Tasks: ASSEGNATI a me (assigned_to in myMember) o autore
-    const myTasks = filteredTasks.filter(
-      (t) => fams.has(t.family_id) && (myMemberSet.has(t.assigned_to) || myMemberSet.has(t.author_id))
-    );
-    // Tasks "famiglia" (no specifica assegnazione): chiunque della famiglia
-    const familyTasks = filteredTasks.filter(
-      (t) => fams.has(t.family_id) && !t.assigned_to
-    );
-    const totalTasks = myTasks.length + familyTasks.length;
-    const totalEvents = (tomorrowEvents || []).filter((e) => fams.has(e.family_id)).length;
+    // Task del giorno per questo utente:
+    //   - assegnato a me (in task_assignees) — MULTI-ASSIGNEE
+    //   - oppure io sono l'autore
+    //   - oppure non c'è alcun assegnatario → "task di famiglia" rilevante per tutti
+    const myTasks = tomorrowTasks.filter((t) => {
+      if (!fams.has(t.family_id)) return false;
+      const ass = assigneesByTask[t.id] || [];
+      const isAssignedToMe = ass.some((mid) => myMemberSet.has(mid));
+      const isMyAuthor = t.author_id && myMemberSet.has(t.author_id);
+      const hasNoAssignee = ass.length === 0;
+      return isAssignedToMe || isMyAuthor || hasNoAssignee;
+    });
 
+    const myEvents = tomorrowEvents.filter((e) => fams.has(e.family_id));
+
+    const totalTasks = myTasks.length;
+    const totalEvents = myEvents.length;
     if (totalTasks === 0 && totalEvents === 0) continue;
 
     const parts: string[] = [];
@@ -177,7 +270,7 @@ serve(async (req) => {
     sendList.push({ uid, body });
   }
 
-  // Invio aggregato (ottimizzazione: raggruppa stessi body, ma per semplicita' inviamo uno per uno)
+  // Invio aggregato
   let sentTotal = 0;
   await Promise.all(sendList.map(async ({ uid, body }) => {
     const r = await sendPushTo([uid], '🌙 Pronto per domani?', body, 'daily-digest');
@@ -185,6 +278,16 @@ serve(async (req) => {
   }));
 
   return json({
-    kind, candidate_users: userIds.length, eligible_users: sendList.length, total_pushes_sent: sentTotal,
+    kind,
+    candidate_users: userIds.length,
+    eligible_users: sendList.length,
+    total_pushes_sent: sentTotal,
+    // Diagnostica (utile in fase di debug, niente PII):
+    debug: {
+      tomorrow_key: tomorrowKey,
+      tomorrow_weekday: fammyWeekday(tomorrow),
+      total_tasks_window: tomorrowTasks.length,
+      total_events_window: tomorrowEvents.length,
+    },
   });
 });
