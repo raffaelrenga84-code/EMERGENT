@@ -102,7 +102,7 @@ export default function FeedbackInbox({ onClose }) {
         style={{
           width: '100%', maxWidth: 560, height: '100%',
           maxHeight: 'min(90vh, 720px)',
-          background: 'var(--bg)',
+          background: 'white',
           borderRadius: 22,
           padding: 'calc(16px + env(safe-area-inset-top, 0px)) 0 calc(16px + env(safe-area-inset-bottom, 0px))',
           display: 'flex', flexDirection: 'column',
