@@ -25,6 +25,10 @@ export default function NotificationsHealthCheck({ session }) {
   const [running, setRunning] = useState(false);
   const [testRunning, setTestRunning] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  // Collassabile: chiuso di default. Si auto-apre la prima volta se
+  // rileva errori, così l'utente è "spinto" a vedere il problema.
+  const [open, setOpen] = useState(false);
+  const [didAutoOpen, setDidAutoOpen] = useState(false);
 
   const userId = session?.user?.id;
 
@@ -186,112 +190,158 @@ export default function NotificationsHealthCheck({ session }) {
     setTestRunning(false);
   };
 
-  if (!userId) return null;
-
-  // Calcolo riassunto
+  // Calcolo riassunto (usato sia dall'effetto auto-open sia dal render)
   const failingErr = checks.filter((c) => c.status === 'err').length;
   const failingWarn = checks.filter((c) => c.status === 'warn').length;
   const allOk = failingErr === 0 && failingWarn === 0 && !running;
 
+  // Auto-open la prima volta se ci sono errori (così l'utente è "spinto"
+  // a vedere subito il problema). Successivi rerun non riaprono il box
+  // automaticamente: rispettiamo la scelta di chiuderlo.
+  useEffect(() => {
+    if (!didAutoOpen && !running && failingErr > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOpen(true);
+      setDidAutoOpen(true);
+    }
+  }, [didAutoOpen, running, failingErr]);
+
+  if (!userId) return null;
+
+  // Stato del badge header
+  const badgeBg = running ? 'var(--ab)'
+    : allOk ? 'var(--gnB)'
+    : failingErr > 0 ? '#FDECEC'
+    : '#FFF6E5';
+  const badgeFg = running ? 'var(--km)'
+    : allOk ? 'var(--gn)'
+    : failingErr > 0 ? '#A93B2B'
+    : '#7A4E00';
+  const badgeText = running ? `⏳ ${t('nhc_refresh')}…`
+    : allOk ? `✅ ${t('nhc_badge_ok')}`
+    : failingErr > 0 ? `❌ ${t('nhc_badge_err', { n: failingErr })}`
+    : `⚠️ ${t('nhc_badge_warn', { n: failingWarn })}`;
+
   return (
     <div style={{
-      padding: 12, background: 'var(--ab)', borderRadius: 12,
+      background: 'var(--ab)', borderRadius: 12,
       border: '1px solid var(--sd)', marginTop: 8,
+      overflow: 'hidden',
     }} data-testid="notif-health-check">
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 8,
-      }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase' }}>
+      {/* Header sempre visibile: titolo + badge stato + chevron */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        data-testid="nhc-header-toggle"
+        aria-expanded={open}
+        style={{
+          width: '100%', padding: '12px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 8,
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          textAlign: 'left',
+        }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--k)', flexShrink: 0 }}>
           {t('nhc_h')}
         </div>
-        <button type="button" onClick={runAll} disabled={running}
-          data-testid="nhc-refresh"
-          style={{
-            padding: '4px 10px', border: '1px solid var(--sm)', borderRadius: 100,
-            background: 'white', cursor: running ? 'wait' : 'pointer',
-            fontSize: 11, color: 'var(--km)', fontWeight: 600,
-          }}>
-          {running ? '…' : '↻ ' + t('nhc_refresh')}
-        </button>
-      </div>
-
-      {/* Banner riassuntivo */}
-      <div style={{
-        padding: '8px 10px', borderRadius: 8, marginBottom: 10,
-        background: allOk ? 'var(--gnB)' : (failingErr > 0 ? '#FDECEC' : '#FFF6E5'),
-        color: allOk ? 'var(--gn)' : (failingErr > 0 ? '#A93B2B' : '#7A4E00'),
-        fontSize: 12, fontWeight: 700, lineHeight: 1.4,
-      }} data-testid="nhc-summary">
-        {running ? `⏳ ${t('nhc_refresh')}…`
-          : allOk ? `✅ ${t('nhc_summary_ok')}`
-          : failingErr > 0 ? `❌ ${t('nhc_summary_err', { n: failingErr })}`
-          : `⚠️ ${t('nhc_summary_warn', { n: failingWarn })}`}
-      </div>
-
-      {/* Lista controlli */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {checks.filter((c) => c.status !== 'skip').map((c) => (
-          <CheckRow key={c.key} check={c} t={t} />
-        ))}
-      </div>
-
-      {/* Bottone test push */}
-      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--sm)' }}>
-        <button type="button" onClick={sendTestPush} disabled={testRunning}
-          data-testid="nhc-test-push-btn"
-          className="btn full secondary"
-          style={{ fontSize: 13, padding: '10px 14px', fontWeight: 700 }}>
-          {testRunning ? <span className="spin dark" /> : `🧪 ${t('nhc_test_btn')}`}
-        </button>
-        {testResult && (
-          <div style={{
-            marginTop: 8, padding: '8px 10px', borderRadius: 8,
-            background: testResult.tone === 'ok' ? 'var(--gnB)'
-              : testResult.tone === 'warn' ? '#FFF6E5' : '#FDECEC',
-            color: testResult.tone === 'ok' ? 'var(--gn)'
-              : testResult.tone === 'warn' ? '#7A4E00' : '#A93B2B',
-            fontSize: 12, fontWeight: 600, lineHeight: 1.45,
-          }} data-testid="nhc-test-push-result">
-            {testResult.tone === 'ok' ? '✅ ' : testResult.tone === 'warn' ? '⚠️ ' : '❌ '}
-            {testResult.msg}
-          </div>
-        )}
-        <div style={{ marginTop: 8, fontSize: 11, color: 'var(--km)', lineHeight: 1.5 }}>
-          {t('nhc_test_hint')}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
+          <span style={{
+            padding: '4px 10px', borderRadius: 100,
+            background: badgeBg, color: badgeFg,
+            fontSize: 11, fontWeight: 800, lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+          }} data-testid="nhc-badge">{badgeText}</span>
+          <span style={{
+            color: 'var(--km)', fontSize: 14,
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 200ms ease',
+            display: 'inline-block',
+          }} aria-hidden="true">⌄</span>
         </div>
-      </div>
+      </button>
 
-      {/* Hint OS-specifici quando ci sono errori */}
-      {!allOk && (isIOS || isAndroid) && (
-        <details style={{ marginTop: 10 }}>
-          <summary style={{
-            cursor: 'pointer', fontSize: 12, fontWeight: 700,
-            color: 'var(--ac)', userSelect: 'none',
-          }} data-testid="nhc-os-hints-toggle">
-            {isIOS ? `📱 ${t('nhc_os_hints_ios')}` : `📱 ${t('nhc_os_hints_android')}`}
-          </summary>
+      {/* Corpo collassabile */}
+      {open && (
+        <div style={{ padding: '0 12px 12px 12px' }} data-testid="nhc-body">
           <div style={{
-            marginTop: 8, padding: 10, borderRadius: 8,
-            background: 'var(--s)', border: '1px solid var(--sm)',
-            fontSize: 12, lineHeight: 1.5, color: 'var(--k)',
+            display: 'flex', justifyContent: 'flex-end', marginBottom: 10,
           }}>
-            {isIOS && (
-              <ul style={{ margin: 0, paddingLeft: 16 }}>
-                <li>{t('nhc_hint_ios_install')}</li>
-                <li>{t('nhc_hint_ios_focus')}</li>
-                <li>{t('nhc_hint_ios_safari_only')}</li>
-              </ul>
-            )}
-            {isAndroid && (
-              <ul style={{ margin: 0, paddingLeft: 16 }}>
-                <li>{t('nhc_hint_android_battery')}</li>
-                <li>{t('nhc_hint_android_bg')}</li>
-                <li>{t('nhc_hint_android_perm')}</li>
-              </ul>
-            )}
+            <button type="button" onClick={runAll} disabled={running}
+              data-testid="nhc-refresh"
+              style={{
+                padding: '4px 10px', border: '1px solid var(--sm)', borderRadius: 100,
+                background: 'white', cursor: running ? 'wait' : 'pointer',
+                fontSize: 11, color: 'var(--km)', fontWeight: 600,
+              }}>
+              {running ? '…' : '↻ ' + t('nhc_refresh')}
+            </button>
           </div>
-        </details>
+
+          {/* Lista controlli */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {checks.filter((c) => c.status !== 'skip').map((c) => (
+              <CheckRow key={c.key} check={c} t={t} />
+            ))}
+          </div>
+
+          {/* Bottone test push */}
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--sm)' }}>
+            <button type="button" onClick={sendTestPush} disabled={testRunning}
+              data-testid="nhc-test-push-btn"
+              className="btn full secondary"
+              style={{ fontSize: 13, padding: '10px 14px', fontWeight: 700 }}>
+              {testRunning ? <span className="spin dark" /> : `🧪 ${t('nhc_test_btn')}`}
+            </button>
+            {testResult && (
+              <div style={{
+                marginTop: 8, padding: '8px 10px', borderRadius: 8,
+                background: testResult.tone === 'ok' ? 'var(--gnB)'
+                  : testResult.tone === 'warn' ? '#FFF6E5' : '#FDECEC',
+                color: testResult.tone === 'ok' ? 'var(--gn)'
+                  : testResult.tone === 'warn' ? '#7A4E00' : '#A93B2B',
+                fontSize: 12, fontWeight: 600, lineHeight: 1.45,
+              }} data-testid="nhc-test-push-result">
+                {testResult.tone === 'ok' ? '✅ ' : testResult.tone === 'warn' ? '⚠️ ' : '❌ '}
+                {testResult.msg}
+              </div>
+            )}
+            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--km)', lineHeight: 1.5 }}>
+              {t('nhc_test_hint')}
+            </div>
+          </div>
+
+          {/* Hint OS-specifici quando ci sono errori */}
+          {!allOk && (isIOS || isAndroid) && (
+            <details style={{ marginTop: 10 }}>
+              <summary style={{
+                cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                color: 'var(--ac)', userSelect: 'none',
+              }} data-testid="nhc-os-hints-toggle">
+                {isIOS ? `📱 ${t('nhc_os_hints_ios')}` : `📱 ${t('nhc_os_hints_android')}`}
+              </summary>
+              <div style={{
+                marginTop: 8, padding: 10, borderRadius: 8,
+                background: 'var(--s)', border: '1px solid var(--sm)',
+                fontSize: 12, lineHeight: 1.5, color: 'var(--k)',
+              }}>
+                {isIOS && (
+                  <ul style={{ margin: 0, paddingLeft: 16 }}>
+                    <li>{t('nhc_hint_ios_install')}</li>
+                    <li>{t('nhc_hint_ios_focus')}</li>
+                    <li>{t('nhc_hint_ios_safari_only')}</li>
+                  </ul>
+                )}
+                {isAndroid && (
+                  <ul style={{ margin: 0, paddingLeft: 16 }}>
+                    <li>{t('nhc_hint_android_battery')}</li>
+                    <li>{t('nhc_hint_android_bg')}</li>
+                    <li>{t('nhc_hint_android_perm')}</li>
+                  </ul>
+                )}
+              </div>
+            </details>
+          )}
+        </div>
       )}
     </div>
   );

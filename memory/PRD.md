@@ -1,5 +1,38 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.28 (6 febbraio 2026) — Diagnostica collassabile con badge stato
+
+### Enhancement — Box compatto con badge + auto-open su errori
+La diagnostica notifiche prima era sempre espansa (occupava ~400px).
+Ora è **collassabile**, con header sempre visibile mostrando un
+**badge di stato** colorato che riassume tutto a colpo d'occhio:
+- ✅ "Tutto a posto" (verde) — quando tutti i 7 controlli passano
+- ❌ "{n} problema/i" (rosso) — quando ci sono errori bloccanti
+- ⚠️ "{n} avviso/i" (giallo) — quando ci sono solo warning
+- ⏳ "Ricontrolla…" (grigio) — durante l'esecuzione
+
+**Auto-open intelligente**: la prima volta che la diagnostica rileva
+errori (`failingErr > 0`), si apre da sola — così l'utente è "spinto"
+a vedere il problema senza dover cliccare. Successivi rerun (es. premi
+"Ricontrolla") rispettano la scelta dell'utente di tenerla chiusa
+(`didAutoOpen` flag interno).
+
+**Header con chevron animato** (rotate 180° con transition 200ms) che
+guida l'utente: tap sull'header = toggle.
+
+### File modificati
+- ✏️ `/app/frontend/src/components/NotificationsHealthCheck.jsx` — state `open` + `didAutoOpen`, layout collassabile
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — 3 nuove key IT/EN (`nhc_badge_ok/err/warn`)
+
+### Testing
+- Lint: ✅
+- Build: ✅ (`fammy-20260606170114`)
+- ⚠️ **Provalo tu** (dopo push Vercel): Profilo → Notifiche →
+  - Se hai tutto ok: vedi solo "🩺 Diagnostica notifiche · ✅ Tutto a posto" (chiuso)
+  - Se ci sono errori (caso iOS denied): si apre da sola al primo render con badge "❌ 3 problemi"
+
+---
+
 ## Iterazione 16.5.27 (6 febbraio 2026) — Fix: Diagnostica notifiche sempre visibile
 
 ### Bug fix — `NotificationsHealthCheck` invisibile quando serviva di più

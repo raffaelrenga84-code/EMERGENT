@@ -715,6 +715,9 @@ export const T = {
     // Notifications Health Check
     nhc_h: '🩺 Diagnostica notifiche',
     nhc_refresh: 'Ricontrolla',
+    nhc_badge_ok: 'Tutto a posto',
+    nhc_badge_err: '{n} problema/i',
+    nhc_badge_warn: '{n} avviso/i',
     nhc_summary_ok: 'Tutto a posto! Le notifiche push dovrebbero arrivare anche ad app chiusa.',
     nhc_summary_err: '{n} problema/i critico/i — le push potrebbero non arrivare.',
     nhc_summary_warn: '{n} avviso/i — le push funzionano ma con limitazioni.',
@@ -1764,6 +1767,9 @@ export const T = {
     // Notifications Health Check
     nhc_h: '🩺 Notifications diagnostics',
     nhc_refresh: 'Re-check',
+    nhc_badge_ok: 'All good',
+    nhc_badge_err: '{n} issue(s)',
+    nhc_badge_warn: '{n} warning(s)',
     nhc_summary_ok: 'All good! Push notifications should arrive even with the app closed.',
     nhc_summary_err: '{n} critical issue(s) — push may not arrive.',
     nhc_summary_warn: '{n} warning(s) — push works but with limitations.',
