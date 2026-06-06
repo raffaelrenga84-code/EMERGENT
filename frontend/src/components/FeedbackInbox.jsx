@@ -41,16 +41,16 @@ export default function FeedbackInbox({ onClose }) {
       // Step 1: feedback con join profilo per nome
       let q = supabase
         .from('feedback_log')
-        .select('id, user_id, rating, message, app_lang, created_at, read_at')
+        .select('id, user_id, rating, message, app_lang, created_at, read_at, is_anonymous')
         .order('created_at', { ascending: false })
         .limit(200);
       const { data: feedbacks, error } = await q;
       if (error) throw error;
 
-      // Step 2: arricchimento con display_name (separato perché RLS profiles
-      // potrebbe non permettere SELECT crossuser; assumiamo che la policy
-      // profiles sia permissiva, altrimenti mostriamo solo l'UID).
-      const userIds = [...new Set(feedbacks.map((f) => f.user_id).filter(Boolean))];
+      // Step 2: arricchimento con display_name SOLO per feedback non anonimi.
+      const userIds = [...new Set(
+        feedbacks.filter((f) => !f.is_anonymous).map((f) => f.user_id).filter(Boolean)
+      )];
       const profilesById = {};
       if (userIds.length > 0) {
         const { data: profs } = await supabase
@@ -62,8 +62,10 @@ export default function FeedbackInbox({ onClose }) {
 
       setRows(feedbacks.map((f) => ({
         ...f,
-        author_name: profilesById[f.user_id]?.display_name || '?',
-        author_phone: profilesById[f.user_id]?.phone || null,
+        author_name: f.is_anonymous
+          ? (t('inbox_anonymous') || 'Anonimo')
+          : (profilesById[f.user_id]?.display_name || '?'),
+        author_phone: f.is_anonymous ? null : (profilesById[f.user_id]?.phone || null),
       })));
     } catch (e) {
       setErr(e?.message || 'Errore caricamento');
@@ -214,14 +216,17 @@ function FeedbackCard({ row, lang, onMarkRead, t }) {
       }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <span style={{ fontSize: 20, flexShrink: 0 }}>
-          {RATING_LABEL[row.rating] || RATING_LABEL[0]}
+          {row.is_anonymous ? '🕵️' : (RATING_LABEL[row.rating] || RATING_LABEL[0])}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontSize: 14, fontWeight: 700, color: 'var(--k)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            fontStyle: row.is_anonymous ? 'italic' : 'normal',
           }}>{row.author_name}</div>
           <div style={{ fontSize: 11, color: 'var(--km)' }}>
+            {!row.is_anonymous && (RATING_LABEL[row.rating] || RATING_LABEL[0])}
+            {!row.is_anonymous && ' · '}
             {fmtDate(row.created_at, lang)}
             {row.app_lang && <> · <span style={{ textTransform: 'uppercase' }}>{row.app_lang}</span></>}
           </div>

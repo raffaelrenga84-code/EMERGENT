@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import DonateModal from './DonateModal.jsx';
 
 /**
- * FeedbackModal — l'utente esprime un rating (1-5) + messaggio libero.
- * Invia a Edge Function `send-feedback-email` che inoltra via Resend
- * all'indirizzo di Raffael (default: raffael.renga84@gmail.com).
+ * FeedbackModal — rating + messaggio libero, salvati in feedback_log.
+ * Visibile a Raffael + Rex tramite la sezione "Feedback ricevuti" del Profilo.
+ *
+ * - "Anonimo": se attivato, l'inbox non mostra il nome dell'autore (user_id
+ *   rimane su DB per RLS e abuse prevention, ma è invisibile agli admin).
+ * - CTA donazione: bottone discreto sotto "Invia" per offrirci un caffè.
  */
 const RATINGS = [
   { value: 1, emoji: '😞', labelKey: 'feedback_r1' },
@@ -19,9 +23,11 @@ export default function FeedbackModal({ onClose }) {
   const { t } = useT();
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
+  const [anonymous, setAnonymous] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [sent, setSent] = useState(false);
+  const [showDonate, setShowDonate] = useState(false);
 
   const submit = async () => {
     setErr('');
@@ -47,6 +53,7 @@ export default function FeedbackModal({ onClose }) {
         rating: rating || 0,
         message: message.trim(),
         app_lang: profile?.language || null,
+        is_anonymous: anonymous,
       });
       if (error) throw error;
       setSent(true);
@@ -189,9 +196,38 @@ export default function FeedbackModal({ onClose }) {
                 resize: 'vertical', minHeight: 110, marginBottom: 4,
                 background: 'var(--ab)', outline: 'none',
               }} />
-            <div style={{ fontSize: 11, color: 'var(--kl)', textAlign: 'right', marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: 'var(--kl)', textAlign: 'right', marginBottom: 10 }}>
               {message.length}/2000
             </div>
+
+            {/* Toggle anonimo: l'inbox mostra "Anonimo" invece del nome */}
+            <label
+              data-testid="feedback-anonymous-toggle"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '12px 14px', borderRadius: 12,
+                background: anonymous ? 'var(--ab)' : 'white',
+                border: `1.5px solid ${anonymous ? 'var(--ac)' : 'var(--sm)'}`,
+                cursor: 'pointer', marginBottom: 14,
+                transition: 'all 160ms ease',
+              }}>
+              <input
+                type="checkbox"
+                checked={anonymous}
+                onChange={(e) => setAnonymous(e.target.checked)}
+                style={{
+                  width: 18, height: 18, cursor: 'pointer',
+                  accentColor: 'var(--ac)', flexShrink: 0,
+                }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--k)' }}>
+                  {t('feedback_anonymous') || 'Invia anonimo'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2, lineHeight: 1.4 }}>
+                  {t('feedback_anonymous_hint') || 'Non vedremo il tuo nome o contatti, solo il messaggio.'}
+                </div>
+              </div>
+            </label>
 
             {err && (
               <div style={{
@@ -217,16 +253,41 @@ export default function FeedbackModal({ onClose }) {
               {busy ? (t('feedback_sending') || 'Invio...') : (t('feedback_send') || 'Invia feedback')}
             </button>
 
+            {/* CTA discreta donazione: bottone secondario sotto il submit */}
+            <button
+              type="button"
+              onClick={() => setShowDonate(true)}
+              data-testid="feedback-open-donate"
+              style={{
+                width: '100%', padding: '12px 16px', borderRadius: 14,
+                background: 'transparent',
+                color: 'var(--km)',
+                border: '1.5px solid var(--sm)',
+                cursor: 'pointer', marginTop: 8,
+                fontSize: 13, fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--ac)'; e.currentTarget.style.color = 'var(--ac)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--sm)'; e.currentTarget.style.color = 'var(--km)'; }}>
+              ☕ {t('feedback_open_donate') || 'O offrici un caffè ↗'}
+            </button>
+
             <p style={{
-              margin: '12px 0 0', fontSize: 11, color: 'var(--kl)',
+              margin: '14px 0 0', fontSize: 11, color: 'var(--kl)',
               lineHeight: 1.5, textAlign: 'center',
             }}>
-              {t('feedback_privacy') ||
-                'Riceveremo email, nome e contatti del tuo profilo per poterti rispondere. Niente di più.'}
+              {anonymous
+                ? (t('feedback_privacy_anon') || 'Nessun nome o contatto sarà mostrato agli admin. Resta solo il tuo messaggio.')
+                : (t('feedback_privacy') || 'Riceveremo email, nome e contatti del tuo profilo per poterti rispondere. Niente di più.')
+              }
             </p>
           </>
         )}
       </div>
+
+      {showDonate && (
+        <DonateModal onClose={() => setShowDonate(false)} />
+      )}
     </div>
   );
 }

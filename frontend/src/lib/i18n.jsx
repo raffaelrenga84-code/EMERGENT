@@ -261,8 +261,13 @@ export const T = {
     feedback_sent_p: 'Abbiamo ricevuto il tuo feedback. Lo leggiamo personalmente.',
     feedback_err_empty: 'Aggiungi una valutazione o un messaggio.',
     feedback_privacy: 'Riceveremo email, nome e contatti del tuo profilo per poterti rispondere. Niente di più.',
+    feedback_privacy_anon: 'Nessun nome o contatto sarà mostrato agli admin. Resta solo il tuo messaggio.',
+    feedback_anonymous: 'Invia anonimo',
+    feedback_anonymous_hint: 'Non vedremo il tuo nome o contatti, solo il messaggio.',
+    feedback_open_donate: '☕ O offrici un caffè ↗',
 
     // Feedback inbox (solo admin)
+    inbox_anonymous: 'Anonimo',
     inbox_title: 'Feedback ricevuti',
     inbox_total: 'totali',
     inbox_unread: 'Da leggere',
@@ -1237,8 +1242,13 @@ export const T = {
     feedback_sent_p: 'We received your feedback. We read every one personally.',
     feedback_err_empty: 'Add a rating or a message.',
     feedback_privacy: 'We\'ll receive email, name and contact from your profile to reply to you. Nothing else.',
+    feedback_privacy_anon: 'No name or contact will be shown to admins. Only your message.',
+    feedback_anonymous: 'Send anonymously',
+    feedback_anonymous_hint: 'We won\'t see your name or contacts, only the message.',
+    feedback_open_donate: '☕ Or buy us a coffee ↗',
 
     // Feedback inbox (admin only)
+    inbox_anonymous: 'Anonymous',
     inbox_title: 'Feedback inbox',
     inbox_total: 'total',
     inbox_unread: 'Unread',
