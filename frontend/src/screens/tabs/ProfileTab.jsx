@@ -23,6 +23,7 @@ import AbsenceModal from '../../components/AbsenceModal.jsx';
 import DonateModal from '../../components/DonateModal.jsx';
 import FeedbackModal from '../../components/FeedbackModal.jsx';
 import FeedbackInbox from '../../components/FeedbackInbox.jsx';
+import NotificationsHealthCheck from '../../components/NotificationsHealthCheck.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
@@ -497,12 +498,9 @@ export default function ProfileTab({ session, profile, families = [], members = 
             />
           )}
 
-          {/* Test push + diagnostica */}
+          {/* Test push + diagnostica completa */}
           {notificationControl.notificationPermission === 'granted' && (
-            <>
-              <TestPushButton session={session} />
-              <PushDiagnosticCard session={session} />
-            </>
+            <NotificationsHealthCheck session={session} />
           )}
 
           {/* Quiet Hours */}

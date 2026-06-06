@@ -1,5 +1,58 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.26 (6 febbraio 2026) — Diagnostica notifiche nel Profilo
+
+### Feature — `🩺 Diagnostica notifiche` (health-check completo)
+Risposta diretta all'esigenza dell'utente: "come controllo che le push
+arrivino anche ad app chiusa?". Nuovo componente che esegue
+**automaticamente** all'apertura del Profilo una batteria di 7 controlli
+e mostra ✅/⚠️/❌ per ognuno + un bottone "Invia push di prova".
+
+### Controlli eseguiti
+1. **Browser supporta push** (Push API + Service Worker + Notification API)
+2. **VAPID public key configurata** (`VITE_VAPID_PUBLIC_KEY`)
+3. **Permesso notifiche concesso** (`Notification.permission === 'granted'`)
+4. **Service Worker attivo** (`registration.active`)
+5. **Subscription locale registrata** (`pushManager.getSubscription()`
+   + check `expirationTime`)
+6. **Subscription salvata su DB** (`push_subscriptions` per il mio
+   `user_id`, con match endpoint contro la sub locale → warn se non corrispondono)
+7. **PWA installata sulla Home (solo iOS)** — su iPhone è prerequisito
+   tassativo, su Android/desktop riga skippata
+
+### Test push end-to-end
+Bottone "🧪 Invia push di prova" che chiama `send-push` direttamente e
+mostra:
+- ✅ `Inviata a N dispositivo/i`
+- ⚠️ `Nessuna subscription`
+- ❌ `Edge Function non deployata (404)` / errori HTTP
+
+Sotto, hint OS-specifici collassabili (iPhone/Android) con i fix più
+comuni per quando le push non arrivano in background (Modalità
+Concentrazione, ottimizzazione batteria Android, "Aggiungi a Home" iOS).
+
+### File nuovi
+- ➕ `/app/frontend/src/components/NotificationsHealthCheck.jsx` (350 LOC)
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx` — sostituiti
+  `TestPushButton` + `PushDiagnosticCard` con il nuovo componente unificato
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — ~45 nuove keys IT/EN (FR/DE
+  fallback a IT)
+
+### Testing
+- Lint: ✅ (0 errori sul nuovo file; ProfileTab ha 1 errore pre-esistente
+  non toccato dalle mie modifiche)
+- Build: ✅ (`fammy-20260606164801`)
+- Smoke screenshot landing: ✅ (Vercel preview renderizza)
+- ⚠️ **Provalo tu**: Profilo → 🔔 Notifiche → vedi "🩺 Diagnostica
+  notifiche" con i 7 controlli automatici. Premi "🧪 Invia push di prova",
+  chiudi l'app (swipe-up), aspetta 2-3 secondi → deve arrivare la
+  notifica "🧪 FAMMY — Test push". Se NON arriva, guarda quale dei 7
+  step è in ❌ o ⚠️.
+
+---
+
 ## Iterazione 16.5.25 (6 febbraio 2026) — Fix cron-digest serale + testing AI backend
 
 ### Bug fix P1 — Silvia non riceveva il digest serale 21:00
