@@ -1,5 +1,32 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.27 (6 febbraio 2026) — Fix: Diagnostica notifiche sempre visibile
+
+### Bug fix — `NotificationsHealthCheck` invisibile quando serviva di più
+Avevo gattato il render del nuovo `NotificationsHealthCheck` con
+`notificationControl.notificationPermission === 'granted'`. Risultato:
+proprio l'utente con permessi NEGATI (caso più comune e dove la
+diagnostica è più utile) non lo vedeva.
+
+**Fix**: rimosso il gate. Ora il componente è sempre visibile (sotto al
+banner di stato permessi esistente). Quando il permesso è negato:
+- Lo step "Permesso notifiche" appare in ❌ con messaggio chiaro
+- "Subscription locale" in ❌
+- "Subscription DB" in ❌
+- Hint OS-specifici (iPhone/Android) collassabili in fondo guidano
+  l'utente al fix
+
+### File modificati
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx` — rimosso gate `permission === 'granted'`
+
+### Testing
+- Build: ✅ (`fammy-20260606165614`)
+- Lint: ✅
+- ⚠️ **Per vederlo sul tuo iPhone**: pusha su Vercel (Save to GitHub).
+  La versione live di fammy-flame.vercel.app mostra ancora la vecchia UI.
+
+---
+
 ## Iterazione 16.5.26 (6 febbraio 2026) — Diagnostica notifiche nel Profilo
 
 ### Feature — `🩺 Diagnostica notifiche` (health-check completo)

@@ -498,10 +498,11 @@ export default function ProfileTab({ session, profile, families = [], members = 
             />
           )}
 
-          {/* Test push + diagnostica completa */}
-          {notificationControl.notificationPermission === 'granted' && (
-            <NotificationsHealthCheck session={session} />
-          )}
+          {/* Test push + diagnostica completa — visibile SEMPRE, anche
+              quando il permesso è negato/mancante: è esattamente il
+              momento in cui l'utente vuole capire perché. Il componente
+              gestisce internamente lo stato 'denied'. */}
+          <NotificationsHealthCheck session={session} />
 
           {/* Quiet Hours */}
           {notificationControl.notificationPermission === 'granted' && (
