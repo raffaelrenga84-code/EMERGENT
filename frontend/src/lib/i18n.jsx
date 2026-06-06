@@ -238,6 +238,11 @@ export const T = {
     donate_banner_title: 'Ti piace FAMMY?',
     donate_banner_body: 'Offrici un caffè per tenerla gratuita e senza pubblicità.',
 
+    // Update banner (PWA refresh)
+    update_banner_title: 'App aggiornata',
+    update_banner_tap: '· tocca per ricaricare',
+    update_banner_reload: 'Ricarica',
+
     // Feedback modal
     feedback_title: 'Dacci un feedback',
     feedback_subtitle: 'Cosa pensi di FAMMY? Ci aiuti a migliorare.',
