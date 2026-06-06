@@ -16,7 +16,7 @@ const DISMISSED_KEY = 'fammy_notifications_prompt_dismissed';
  *
  * Stile Zenzap: motivazione calda, no avviso freddo "consenti notifiche".
  */
-export default function NotificationsPrompt({ onGranted }) {
+export default function NotificationsPrompt({ onGranted, onDismiss }) {
   const [requesting, setRequesting] = useState(false);
   const [dismissed, setDismissed] = useState(() => {
     try { return sessionStorage.getItem(DISMISSED_KEY) === '1'; } catch { return false; }
@@ -26,6 +26,7 @@ export default function NotificationsPrompt({ onGranted }) {
     if (typeof Notification === 'undefined') {
       setDismissed(true);
       sessionStorage.setItem(DISMISSED_KEY, '1');
+      onDismiss?.();
       return;
     }
     setRequesting(true);
@@ -37,6 +38,7 @@ export default function NotificationsPrompt({ onGranted }) {
         // L'utente ha negato → dismiss per evitare di riproporlo (lo trova in Profilo)
         sessionStorage.setItem(DISMISSED_KEY, '1');
         setDismissed(true);
+        onDismiss?.();
       }
     } catch (e) {
       console.warn('Notification request failed', e);
@@ -48,6 +50,7 @@ export default function NotificationsPrompt({ onGranted }) {
   const handleLater = () => {
     sessionStorage.setItem(DISMISSED_KEY, '1');
     setDismissed(true);
+    onDismiss?.();
   };
 
   if (dismissed) return null;

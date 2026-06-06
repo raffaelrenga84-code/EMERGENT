@@ -5,6 +5,10 @@ import { useEventNotifications } from '../lib/useEventNotifications.jsx';
 import { usePullToRefresh } from '../lib/usePullToRefresh.jsx';
 import { useAbsences } from '../lib/useAbsences.js';
 import NotificationsPrompt from '../components/NotificationsPrompt.jsx';
+import {
+  shouldShowNotifPrompt, markNotifPromptDismissed, markNotifPromptStopped,
+  markPromptShownThisSession, wasPromptShownThisSession,
+} from '../lib/installPrompt.js';
 import FamilySwitcher from '../components/FamilySwitcher.jsx';
 import BachecaTab from './tabs/BachecaTab.jsx';
 import AgendaTab from './tabs/AgendaTab.jsx';
@@ -223,12 +227,21 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   return (
     <div className="scr">
       {pullIndicator}
-      {/* Notifications prompt — bloccante una sola volta finché 'default' */}
-      {notificationControl.notificationPermission === 'default' && (
-        <NotificationsPrompt
-          onGranted={() => notificationControl.setNotificationsEnabled?.(true)}
-        />
-      )}
+      {/* Notifications prompt — appare dopo che l'utente ha creato il primo
+          task (markFirstTaskCreated in BachecaTab/AddTask). Cooldown 3gg,
+          max 3 tentativi, mai insieme ad altri prompt. */}
+      {shouldShowNotifPrompt() && !wasPromptShownThisSession() && (() => {
+        markPromptShownThisSession();
+        return (
+          <NotificationsPrompt
+            onGranted={() => {
+              notificationControl.setNotificationsEnabled?.(true);
+              markNotifPromptStopped(); // success → mai più
+            }}
+            onDismiss={() => markNotifPromptDismissed()}
+          />
+        );
+      })()}
       {showUpdateBanner && <UpdateBanner onDismiss={() => setShowUpdateBanner(false)} />}
 
       {showOnboarding && (

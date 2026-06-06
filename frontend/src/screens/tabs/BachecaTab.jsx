@@ -14,6 +14,7 @@ import CaregiverGreeting from '../../components/CaregiverGreeting.jsx';
 import DonateBanner from '../../components/DonateBanner.jsx';
 import DonateModal from '../../components/DonateModal.jsx';
 import FeedbackModal from '../../components/FeedbackModal.jsx';
+import { markFirstTaskCreated } from '../../lib/installPrompt.js';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };

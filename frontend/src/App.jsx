@@ -18,7 +18,7 @@ import DesktopLanding from './screens/DesktopLanding.jsx';
 import BackupGoogleModal, { shouldShowBackupGoogle } from './components/BackupGoogleModal.jsx';
 import NamePromptModal from './components/NamePromptModal.jsx';
 import AddToHomePrompt from './components/AddToHomePrompt.jsx';
-import { shouldShowA2H } from './lib/installPrompt.js';
+import { shouldShowA2H, incrementVisitCount, markPromptShownThisSession } from './lib/installPrompt.js';
 
 // Riconosce un device "desktop puro" (no touch, mouse, schermo grande).
 // Tablet / iPad rimangono mobile-mode perché supportano touch.
@@ -230,16 +230,27 @@ export default function App() {
       .then(() => { /* fire-and-forget */ }, () => { /* fire-and-forget */ });
   }, [profile?.id, profile?.language, browserLang]);
 
-  // Add-to-Home prompt: mostriamo dopo che l'utente è loggato e ha dati caricati,
-  // SOLO se non è già installata e non l'ha dismessa di recente. La logica è
-  // capsulata in shouldShowA2H() (vedi lib/installPrompt.js).
+  // Add-to-Home prompt: mostriamo quando:
+  //  - utente autenticato e dati caricati
+  //  - non è la prima visita assoluta (visit count >= 3) — l'utente ha dimostrato
+  //    di tornare → installazione ha senso, non lo assillo al primo accesso
+  //  - non è già installata, non l'ha dismesso negli ultimi 3 giorni
+  //  - nessun altro prompt mostrato in questa sessione
   const [showA2H, setShowA2H] = useState(false);
   useEffect(() => {
+    // Incrementa visit count una volta sola al boot (se la session arriva)
+    if (session?.user?.id) incrementVisitCount();
+  }, [session?.user?.id]);
+
+  useEffect(() => {
     if (!session?.user?.id || !dataLoaded) return;
-    // Piccolo delay (3s) per non sommergere l'utente al primo accesso
+    // Delay più lungo (~8s) per non sommergere: l'utente ha tempo di guardarsi attorno
     const id = setTimeout(() => {
-      if (shouldShowA2H()) setShowA2H(true);
-    }, 3000);
+      if (shouldShowA2H()) {
+        markPromptShownThisSession();
+        setShowA2H(true);
+      }
+    }, 8000);
     return () => clearTimeout(id);
   }, [session?.user?.id, dataLoaded]);
 

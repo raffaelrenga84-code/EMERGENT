@@ -75,12 +75,48 @@ export async function triggerNativeInstall() {
 // ---- Storage helpers (mostra solo in momenti opportuni) ----------------------
 const KEY_DISMISS = 'fammy_a2h_dismissed_at';
 const KEY_INSTALLED = 'fammy_a2h_installed';
-const DISMISS_TTL_DAYS = 7;
+const KEY_VISIT_COUNT = 'fammy_visit_count';
+const KEY_SESSION_PROMPT_SHOWN = 'fammy_session_prompt_shown';
+const DISMISS_TTL_DAYS = 3;
+const MIN_VISITS = 3;
+
+/**
+ * Incrementa il contatore visite. Chiamare una sola volta al boot dell'app.
+ * Restituisce il count corrente.
+ */
+export function incrementVisitCount() {
+  try {
+    const cur = parseInt(localStorage.getItem(KEY_VISIT_COUNT) || '0', 10);
+    const next = cur + 1;
+    localStorage.setItem(KEY_VISIT_COUNT, String(next));
+    return next;
+  } catch { return 1; }
+}
+
+export function getVisitCount() {
+  try { return parseInt(localStorage.getItem(KEY_VISIT_COUNT) || '0', 10); }
+  catch { return 0; }
+}
+
+/**
+ * Flag "qualche prompt mostrato in questa sessione" (sessionStorage).
+ * Evita che notifiche + add-to-home appaiano insieme.
+ */
+export function markPromptShownThisSession() {
+  try { sessionStorage.setItem(KEY_SESSION_PROMPT_SHOWN, '1'); } catch { /* ignore */ }
+}
+
+export function wasPromptShownThisSession() {
+  try { return sessionStorage.getItem(KEY_SESSION_PROMPT_SHOWN) === '1'; }
+  catch { return false; }
+}
 
 export function shouldShowA2H() {
   try {
     if (isStandalone()) return false;
     if (localStorage.getItem(KEY_INSTALLED) === '1') return false;
+    if (wasPromptShownThisSession()) return false;       // un solo prompt per sessione
+    if (getVisitCount() < MIN_VISITS) return false;       // serve essere "affezionati"
     const last = parseInt(localStorage.getItem(KEY_DISMISS) || '0', 10);
     if (!last) return true;
     const days = (Date.now() - last) / (1000 * 60 * 60 * 24);
@@ -94,4 +130,48 @@ export function markA2HDismissed() {
 
 export function markA2HInstalled() {
   try { localStorage.setItem(KEY_INSTALLED, '1'); } catch { /* ignore */ }
+}
+
+// ============================================================================
+// Notifications prompt — logica simile ma legata a "1° task creato"
+// ============================================================================
+const KEY_NOTIF_DISMISS = 'fammy_notif_prompt_dismissed_at';
+const KEY_NOTIF_TRIES = 'fammy_notif_prompt_tries';
+const KEY_FIRST_TASK_CREATED = 'fammy_first_task_created_at';
+const NOTIF_DISMISS_TTL_DAYS = 3;
+const NOTIF_MAX_TRIES = 3;
+
+export function markFirstTaskCreated() {
+  try {
+    if (!localStorage.getItem(KEY_FIRST_TASK_CREATED)) {
+      localStorage.setItem(KEY_FIRST_TASK_CREATED, String(Date.now()));
+    }
+  } catch { /* ignore */ }
+}
+
+export function shouldShowNotifPrompt() {
+  try {
+    if (typeof Notification === 'undefined') return false;
+    if (Notification.permission !== 'default') return false;
+    if (wasPromptShownThisSession()) return false;
+    if (!localStorage.getItem(KEY_FIRST_TASK_CREATED)) return false;
+    const tries = parseInt(localStorage.getItem(KEY_NOTIF_TRIES) || '0', 10);
+    if (tries >= NOTIF_MAX_TRIES) return false;
+    const last = parseInt(localStorage.getItem(KEY_NOTIF_DISMISS) || '0', 10);
+    if (!last) return true;
+    const days = (Date.now() - last) / (1000 * 60 * 60 * 24);
+    return days >= NOTIF_DISMISS_TTL_DAYS;
+  } catch { return false; }
+}
+
+export function markNotifPromptDismissed() {
+  try {
+    localStorage.setItem(KEY_NOTIF_DISMISS, String(Date.now()));
+    const tries = parseInt(localStorage.getItem(KEY_NOTIF_TRIES) || '0', 10);
+    localStorage.setItem(KEY_NOTIF_TRIES, String(tries + 1));
+  } catch { /* ignore */ }
+}
+
+export function markNotifPromptStopped() {
+  try { localStorage.setItem(KEY_NOTIF_TRIES, String(NOTIF_MAX_TRIES)); } catch { /* ignore */ }
 }
