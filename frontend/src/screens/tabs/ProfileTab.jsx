@@ -21,6 +21,7 @@ import QuickActionsSheet from '../../components/QuickActionsSheet.jsx';
 import AddTaskModal from '../../components/AddTaskModal.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
 import DonateModal from '../../components/DonateModal.jsx';
+import FeedbackModal from '../../components/FeedbackModal.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
@@ -54,6 +55,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [medsForMember, setMedsForMember] = useState(null);
   const [showMedsPicker, setShowMedsPicker] = useState(false);
   const [showDonate, setShowDonate] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   // Membri assistiti visibili — stessa logica di AgendaTab, scope = tutte le famiglie a cui appartengo.
   const assistedMembersForQuick = dedupeByUser(
@@ -557,6 +559,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
           <SettingRow label={t('profile_theme')} onClick={() => setView('theme')} />
           <SettingRow label={t('profile_accessibility')} onClick={() => setView('a11y')} />
           <SettingRow label={t('profile_privacy')} onClick={() => setView('privacy')} />
+          <SettingRow label={t('profile_feedback')} onClick={() => setShowFeedback(true)} />
           <SettingRow label={t('profile_donate')} onClick={() => setShowDonate(true)} />
         </div>
       </ProfileGroup>

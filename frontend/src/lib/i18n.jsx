@@ -222,7 +222,30 @@ export const T = {
     profile_theme: '🎨 Tema',
     profile_accessibility: '♿ Accessibilità',
     profile_donate: '☕ Offrici un caffè',
+    profile_feedback: '💬 Dacci un feedback',
     profile_settings_h: 'Impostazioni',
+
+    // Donate banner (Bacheca)
+    donate_banner_title: 'Ti piace FAMMY?',
+    donate_banner_body: 'Offrici un caffè per tenerla gratuita e senza pubblicità.',
+
+    // Feedback modal
+    feedback_title: 'Dacci un feedback',
+    feedback_subtitle: 'Cosa pensi di FAMMY? Ci aiuti a migliorare.',
+    feedback_rate_h: 'Quanto ti piace FAMMY?',
+    feedback_r1: 'Non mi piace',
+    feedback_r2: 'Migliorabile',
+    feedback_r3: 'Neutro',
+    feedback_r4: 'Bello',
+    feedback_r5: 'Adoro',
+    feedback_msg_h: 'Vuoi dirci qualcosa?',
+    feedback_msg_placeholder: 'Cosa ti piace? Cosa potremmo migliorare? Hai un\'idea?',
+    feedback_send: 'Invia feedback',
+    feedback_sending: 'Invio…',
+    feedback_sent_h: 'Grazie!',
+    feedback_sent_p: 'Abbiamo ricevuto il tuo feedback. Lo leggiamo personalmente.',
+    feedback_err_empty: 'Aggiungi una valutazione o un messaggio.',
+    feedback_privacy: 'Riceveremo email, nome e contatti del tuo profilo per poterti rispondere. Niente di più.',
 
     // Donate modal
     donate_title: 'Offrici un caffè',
@@ -1150,7 +1173,30 @@ export const T = {
     profile_theme: '🎨 Theme',
     profile_accessibility: '♿ Accessibility',
     profile_donate: '☕ Buy us a coffee',
+    profile_feedback: '💬 Give us feedback',
     profile_settings_h: 'Settings',
+
+    // Donate banner (Bacheca)
+    donate_banner_title: 'Do you like FAMMY?',
+    donate_banner_body: 'Buy us a coffee to keep it free and ad-free.',
+
+    // Feedback modal
+    feedback_title: 'Give us feedback',
+    feedback_subtitle: 'What do you think of FAMMY? Help us improve.',
+    feedback_rate_h: 'How much do you like FAMMY?',
+    feedback_r1: 'Don\'t like',
+    feedback_r2: 'Could improve',
+    feedback_r3: 'Neutral',
+    feedback_r4: 'Nice',
+    feedback_r5: 'Love it',
+    feedback_msg_h: 'Anything to tell us?',
+    feedback_msg_placeholder: 'What do you like? What could we improve? Got an idea?',
+    feedback_send: 'Send feedback',
+    feedback_sending: 'Sending…',
+    feedback_sent_h: 'Thanks!',
+    feedback_sent_p: 'We received your feedback. We read every one personally.',
+    feedback_err_empty: 'Add a rating or a message.',
+    feedback_privacy: 'We\'ll receive email, name and contact from your profile to reply to you. Nothing else.',
 
     // Donate modal
     donate_title: 'Buy us a coffee',

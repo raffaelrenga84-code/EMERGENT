@@ -11,6 +11,8 @@ import AbsenceModal from '../../components/AbsenceModal.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
 import CaregiverGreeting from '../../components/CaregiverGreeting.jsx';
+import DonateBanner from '../../components/DonateBanner.jsx';
+import DonateModal from '../../components/DonateModal.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
@@ -22,6 +24,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const [showAbsence, setShowAbsence] = useState(false);
   const [medsForMember, setMedsForMember] = useState(null);
   const [showMedsPicker, setShowMedsPicker] = useState(false);
+  const [showDonate, setShowDonate] = useState(false);
   const [selTask, setSelTask] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [openSections, setOpenSections] = useState({ mine: true, all: true, done: false });
@@ -423,6 +426,9 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     <>
       <CaregiverGreeting session={session} members={members} me={me} />
 
+      {/* Banner "Offrici un caffè" — soft, appare ogni ~14gg dopo 7gg di uso */}
+      <DonateBanner onOpen={() => setShowDonate(true)} />
+
       <BirthdayReminder members={members} session={session} familyId={familyId} families={families} />
 
       {/* Onboarding checklist progressiva (sparisce a setup completo o dismissato) */}
@@ -726,6 +732,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           </div>
         );
       })()}
+
+      {showDonate && <DonateModal onClose={() => setShowDonate(false)} />}
     </>
   );
 }
