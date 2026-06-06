@@ -1,13 +1,31 @@
 import { useState, useEffect } from 'react';
-import { useT } from '../lib/i18n.jsx';
 
 /**
  * Banner aggiornamento app — toast compatto in basso (non invasivo).
  * Monitora il Service Worker per nuove versioni disponibili.
+ *
+ * I testi sono HARD-CODED in 4 lingue qui dentro (NO i18n.jsx) per essere
+ * robusti anche quando il bundle i18n in cache PWA è vecchio. Il banner
+ * deve funzionare in ogni stato, anche prima del primo refresh post-deploy.
  */
+const STRINGS = {
+  it: { title: 'App aggiornata',  tap: '· tocca per ricaricare', reload: 'Ricarica' },
+  en: { title: 'App updated',     tap: '· tap to reload',        reload: 'Reload' },
+  fr: { title: 'App mise à jour', tap: '· tapote pour recharger',reload: 'Recharger' },
+  de: { title: 'App aktualisiert',tap: '· tippe zum Neuladen',   reload: 'Neu laden' },
+};
+
+function pickLang() {
+  try {
+    const raw = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+    const code = raw.split('-')[0];
+    return STRINGS[code] ? code : 'en';
+  } catch { return 'en'; }
+}
+
 export default function UpdateBanner({ onDismiss }) {
-  const { t } = useT();
   const [showBanner, setShowBanner] = useState(false);
+  const s = STRINGS[pickLang()];
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -105,8 +123,8 @@ export default function UpdateBanner({ onDismiss }) {
       `}</style>
       <span style={{ fontSize: 18 }}>✨</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <strong style={{ fontSize: 13, fontWeight: 700 }}>{t('update_banner_title') || 'App aggiornata'}</strong>
-        <span style={{ opacity: 0.85, marginLeft: 6, fontSize: 12 }}>{t('update_banner_tap') || '· tocca per ricaricare'}</span>
+        <strong style={{ fontSize: 13, fontWeight: 700 }}>{s.title}</strong>
+        <span style={{ opacity: 0.85, marginLeft: 6, fontSize: 12 }}>{s.tap}</span>
       </div>
       <button
         onClick={handleReload}
@@ -117,7 +135,7 @@ export default function UpdateBanner({ onDismiss }) {
           padding: '7px 12px', borderRadius: 100,
           fontSize: 12, fontWeight: 700, cursor: 'pointer',
         }}>
-        🔄 {t('update_banner_reload') || 'Ricarica'}
+        🔄 {s.reload}
       </button>
       <button
         onClick={handleDismiss}
