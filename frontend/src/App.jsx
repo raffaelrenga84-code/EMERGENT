@@ -16,6 +16,7 @@ import PrivacyPolicyModal from './components/PrivacyPolicyModal.jsx';
 import ToastListener from './components/ToastListener.jsx';
 import DesktopLanding from './screens/DesktopLanding.jsx';
 import BackupGoogleModal, { shouldShowBackupGoogle } from './components/BackupGoogleModal.jsx';
+import NamePromptModal from './components/NamePromptModal.jsx';
 
 // Riconosce un device "desktop puro" (no touch, mouse, schermo grande).
 // Tablet / iPad rimangono mobile-mode perché supportano touch.
@@ -199,12 +200,18 @@ export default function App() {
     setFamilies((prev) => prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)));
   };
 
+  // Rileva se il profilo ha ancora un nome "generico" (fallback del trigger):
+  //   - vuoto / null
+  //   - "Membro" (fallback finale di handle_new_user)
+  //   - inizia con "*" seguito da 2-6 cifre (es. "*5531" per phone signup)
+  // In tal caso mostriamo un modal obbligatorio "Come ti chiami?" prima di
+  // far usare l'app, così la famiglia non vede "*5531" o "Membro" come nome.
+  const isGenericName = (n) =>
+    !n || n.trim() === '' || n === 'Membro' || /^\*[0-9]{2,6}$/.test(n);
+  const showNamePrompt =
+    !!session?.user?.id && !!profile && isGenericName(profile.display_name);
+
   // Strategia di selezione lingua:
-  // - Se l'utente ha cliccato esplicitamente una bandiera (in qualsiasi schermo),
-  //   onoriamo la sua scelta salvata in profile.language
-  // - Altrimenti seguiamo SEMPRE la lingua del browser. Necessario perché
-  //   profiles.language ha DEFAULT 'it' nel DB → tutti i nuovi utenti
-  //   nascono con 'it' anche se in Australia/USA/Germania/ecc.
   const browserLang = detectBrowserLang();
   const lang = userHasChosenLang() && profile?.language ? profile.language : browserLang;
 
@@ -274,6 +281,13 @@ export default function App() {
         <BackupGoogleModal
           userId={session.user.id}
           onClose={() => setShowBackupGoogle(false)}
+        />
+      )}
+      {showNamePrompt && (
+        <NamePromptModal
+          session={session}
+          profile={profile}
+          onSaved={() => refresh()}
         />
       )}
       {consent === 'all' && <Analytics />}

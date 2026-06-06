@@ -83,6 +83,37 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
       if (error) { setError(error.message); setStatus('error'); }
       else if (!data?.success) { setError(data?.error || ''); setStatus('error'); }
       else {
+        // Se il claim/accept ha agganciato un placeholder con nome (es. "Matthew"),
+        // propaga quel nome al profile.display_name se il profilo è ancora anonimo
+        // (signup phone fresh, display_name = "Membro" o "*1234").
+        try {
+          let claimedName = null;
+          if (isDedicated && invite.member_name) {
+            claimedName = invite.member_name;
+          } else if (pickedClaimId && Array.isArray(placeholders)) {
+            const ph = placeholders.find((p) => p.id === pickedClaimId);
+            if (ph?.name) claimedName = ph.name;
+          }
+          if (claimedName) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('id', session.user.id)
+              .maybeSingle();
+            const isGeneric = !prof?.display_name
+              || prof.display_name === 'Membro'
+              || /^\*[0-9]{2,6}$/.test(prof.display_name);
+            if (isGeneric) {
+              await supabase.from('profiles')
+                .update({
+                  display_name: claimedName,
+                  avatar_letter: claimedName.charAt(0).toUpperCase(),
+                })
+                .eq('id', session.user.id);
+            }
+          }
+        } catch { /* best-effort, non blocca */ }
+
         setStatus('done');
         setTimeout(() => {
           window.history.replaceState({}, '', '/');

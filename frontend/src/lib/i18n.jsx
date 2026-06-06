@@ -225,6 +225,15 @@ export const T = {
     profile_feedback: '💬 Dacci un feedback',
     profile_settings_h: 'Impostazioni',
 
+    // Name prompt modal (mostrato se display_name è generico)
+    name_prompt_title: 'Come ti chiami?',
+    name_prompt_subtitle: 'La famiglia ti vedrà con questo nome. Puoi cambiarlo in qualsiasi momento dal profilo.',
+    name_prompt_placeholder: 'Il tuo nome',
+    name_prompt_save: 'Salva e continua',
+    name_prompt_saving: 'Salvataggio…',
+    name_prompt_too_short: 'Inserisci almeno 2 caratteri.',
+    name_prompt_too_long: 'Massimo 40 caratteri.',
+
     // Donate banner (Bacheca)
     donate_banner_title: 'Ti piace FAMMY?',
     donate_banner_body: 'Offrici un caffè per tenerla gratuita e senza pubblicità.',
@@ -1175,6 +1184,15 @@ export const T = {
     profile_donate: '☕ Buy us a coffee',
     profile_feedback: '💬 Give us feedback',
     profile_settings_h: 'Settings',
+
+    // Name prompt modal (shown if display_name is generic)
+    name_prompt_title: 'What\'s your name?',
+    name_prompt_subtitle: 'Your family will see you with this name. You can change it anytime from your profile.',
+    name_prompt_placeholder: 'Your name',
+    name_prompt_save: 'Save and continue',
+    name_prompt_saving: 'Saving…',
+    name_prompt_too_short: 'Enter at least 2 characters.',
+    name_prompt_too_long: 'Maximum 40 characters.',
 
     // Donate banner (Bacheca)
     donate_banner_title: 'Do you like FAMMY?',
