@@ -937,7 +937,21 @@ export default function TaskDetailModal({
                 </div>
               )}
               {comments.map((c) => {
-                const author = members.find((m) => m.id === c.author_id);
+                // Cerca il membro attualmente in famiglia (fonte primaria).
+                // Se non trovato (membro rimosso dalla famiglia → FK
+                // `on delete set null` ha azzerato author_id), usa lo
+                // snapshot salvato al momento dell'invio.
+                // Fallback finale: "Membro rimosso".
+                const liveAuthor = members.find((m) => m.id === c.author_id);
+                const authorName = liveAuthor?.name
+                  || c.author_name
+                  || t('td_author_removed') || 'Membro rimosso';
+                const authorColor = liveAuthor?.avatar_color
+                  || c.author_avatar_color
+                  || '#9C9690';
+                const authorLetter = liveAuthor?.avatar_letter
+                  || c.author_avatar_letter
+                  || (c.author_name || '?').charAt(0).toUpperCase();
                 const isSystem = c.type === 'system';
                 const isMine = !isSystem && me?.id && c.author_id === me.id;
 
@@ -977,12 +991,12 @@ export default function TaskDetailModal({
                   }} data-testid={`task-chat-msg-${c.id}`}>
                     <div style={{
                       width: 26, height: 26, borderRadius: '50%',
-                      background: author?.avatar_color || '#1C1611',
+                      background: authorColor,
                       color: 'white', fontSize: 11, fontWeight: 700,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       flexShrink: 0,
                     }}>
-                      {author?.avatar_letter || (author?.name || '?').charAt(0).toUpperCase()}
+                      {authorLetter}
                     </div>
                     <div style={{
                       display: 'flex', flexDirection: 'column',
@@ -1026,9 +1040,9 @@ export default function TaskDetailModal({
                         {!isMine && !isPhoto && (
                           <div style={{
                             fontSize: 10, fontWeight: 700, marginBottom: 2,
-                            color: author?.avatar_color || 'var(--ac)',
+                            color: authorColor,
                           }}>
-                            {author?.name?.split(' ')[0] || t('td_someone')}
+                            {authorName?.split(' ')[0] || t('td_someone')}
                           </div>
                         )}
                         {/* Anteprima foto se messaggio è di tipo photo

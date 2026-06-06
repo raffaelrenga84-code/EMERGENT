@@ -1036,6 +1036,7 @@ export const T = {
     td_sys_refused: 'No, non posso occuparmene ora',
     td_sys_recurrence_end: 'Ho terminato le ricorrenze future di questo incarico',
     td_someone: 'Qualcuno',
+    td_author_removed: 'Membro rimosso',
   },
 
   en: {
@@ -2026,6 +2027,7 @@ export const T = {
     td_sys_refused: "Can't handle it right now",
     td_sys_recurrence_end: 'Ended future recurrences of this task',
     td_someone: 'Someone',
+    td_author_removed: 'Former member',
   },
 
   fr: {
@@ -2830,6 +2832,7 @@ export const T = {
     td_sys_refused: 'Non, pas maintenant',
     td_sys_recurrence_end: 'Récurrences futures terminées',
     td_someone: "Quelqu'un",
+    td_author_removed: 'Ancien membre',
   },
 
   de: {
@@ -3625,6 +3628,7 @@ export const T = {
     td_sys_refused: 'Kann gerade nicht',
     td_sys_recurrence_end: 'Zukünftige Wiederholungen beendet',
     td_someone: 'Jemand',
+    td_author_removed: 'Ehemaliges Mitglied',
   },
 };
 

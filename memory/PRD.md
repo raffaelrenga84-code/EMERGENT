@@ -1,5 +1,44 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.24 (6 febbraio 2026) — Fix "Qualcuno" nei commenti task
+
+### Bug fix — Autore commento perso dopo rimozione del membro
+**Root cause**: lo schema `task_responses.author_id REFERENCES members(id)
+ON DELETE SET NULL` azzera l'autore quando il membro viene rimosso dalla
+famiglia (o quando esce). Risultato: `members.find(m => m.id === null)`
+ritorna `undefined` → in chat il messaggio appare con avatar "?" e label
+"Qualcuno" anche se l'autore esisteva al momento dell'invio.
+
+**Soluzione**: snapshot del nome+colore+iniziale al momento dell'INSERT.
+- Nuove colonne `author_name`, `author_avatar_color`, `author_avatar_letter`
+  su `task_responses`
+- Trigger BEFORE INSERT che li popola automaticamente da `members`
+  (così tutto il codice frontend esistente continua a funzionare senza
+  modifiche)
+- Backfill dei messaggi esistenti con autore ancora in famiglia
+- Fallback UI: prima cerca il membro vivo, poi lo snapshot, poi mostra
+  "Membro rimosso" (label i18n in IT/EN/FR/DE)
+
+### File nuovi
+- ➕ `/app/frontend/fammy-author-snapshot.sql` — migration idempotente
+
+### File modificati
+- ✏️ `/app/frontend/src/components/TaskDetailModal.jsx` — fallback rendering
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — nuova key `td_author_removed` × 4 lingue
+
+### ⚠️ AZIONE UTENTE
+Esegui `/app/frontend/fammy-author-snapshot.sql` su Supabase SQL Editor.
+
+### Testing
+- Lint: ✅ (no nuovi errori; 4 errori pre-esistenti non toccati)
+- Build: ✅ (`fammy-20260606162116`)
+- ⚠️ **Provalo tu**: dopo aver eseguito l'SQL, ricarica la PWA → i vecchi
+  messaggi con autore rimosso mostreranno il nome originale invece di
+  "Qualcuno". I nuovi messaggi verranno snapshottati automaticamente
+  dal trigger.
+
+---
+
 ## Iterazione 16.5.23 (5 giugno 2026) — Assenze altrui: view-only completo
 
 ### Refactor — Modal assenza con 2 modalità distinte
