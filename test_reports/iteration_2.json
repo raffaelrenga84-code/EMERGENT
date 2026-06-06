@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 2 regression test for FAMMY AI backend after 50+ frontend changes. Per request, ONLY backend was tested (frontend skipped — Supabase Google OAuth cannot be automated). Re-ran the 14 pytest cases in /app/backend/tests/test_ai_endpoints.py against the production preview URL. ALL 14 TESTS PASSED in 73s. Health (200, mongo ok), /api/ai/suggest-task (3 Italian titles correctly classified: 'Pagare bolletta luce'->spese/admin, 'Comprare il latte'->home, 'Visita dentista'->health), /api/ai/weekly-summary (Italian summary + highlights array, also handles minimal payload), /api/ai/chat (single-turn + multi-turn context preserved across same session_id — assistant correctly recalls 'Tommaso, 6 anni' on turn 2 — plus /history endpoint returns 4 messages in correct user/assistant/user/assistant order with no mongo _id leak), /api/ai/gift-ideas (>=3 ideas for Nonna Maria with non-empty title/description/price_range). No backend regressions detected from the 50+ frontend changes — backend code (/app/backend/server.py) is unchanged from iteration 1.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/ai/chat (server.py L241-244)", "issue": "Carried over from iteration 1 — sort('created_at', -1).to_list(10) now correctly returns the latest 10 user messages (this was already fixed). However, only user turns are replayed into the fresh LlmChat; assistant turns are not. Works fine for fact recall (verified) but tone may drift in very long sessions."},
+      {"endpoint": "/api/ai/suggest-task", "issue": "Empty title still accepted by Pydantic (no min_length). Returns 200 with category='other'. Not a regression — pre-existing behaviour."},
+      {"endpoint": "CORS (server.py L42-48)", "issue": "allow_origins=['*'] + allow_credentials=True is not spec-compliant. Browsers will reject credentialed requests. Not blocking since Supabase frontend uses anon key in body, but should be tightened pre-prod."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ai_endpoints.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "No action required for backend — all endpoints healthy, Italian language correctly returned on all 4 AI routes.",
+    "Optional: tighten CORS, add Field(min_length=1) on titles/messages (carry-over from iter 1).",
+    "Frontend changes (PWA prompts, modals, FAB pulse, donation, feedback inbox) were NOT verified — they sit behind Google OAuth which cannot be automated. The Italian user (Raffael) must manually verify these features after Google sign-in."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 417 lines — still well under the 700-line threshold but each AI endpoint duplicates try/except + extract_json + session-id boilerplate. Extracting a run_llm_json(system, user_text, session_prefix) helper would DRY routes 2-4.",
+    "All four endpoints catch broad Exception and return 500 with the raw exception string in `detail`. This can leak internal info (API key fragments, mongo connection strings on certain failures). Recommend: log the exception internally, return a generic public message.",
+    "No request-level timeout on LlmChat.send_message: a hanging upstream call will pin a uvicorn worker. Wrap with asyncio.wait_for(..., timeout=N).",
+    "extract_json regex uses non-greedy {.*?} in the fenced-code branch but greedy {.*} in the fallback. With nested JSON (highlights as array of objects) the fenced branch may stop at first inner }. Consider a brace-balancing parser.",
+    "Chat replay does NOT include assistant turns (only user turns are re-sent). Fine for current usage but worth documenting in the endpoint docstring so future contributors don't assume full conversation replay."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_2.json (new)",
+    "/app/test_reports/pytest/pytest_results.xml (overwritten by pytest run)"
+  ],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "N/A (skipped per request — Google OAuth blocks automation)"},
+  "test_credentials": "Not applicable to backend. EMERGENT_LLM_KEY in /app/backend/.env works correctly with anthropic/claude-sonnet-4-5-20250929. Frontend requires Supabase Google OAuth (real Google account on jwzoymvtxjzpymaywjtw.supabase.co) — cannot be automated.",
+  "seed_data_creation": "Tests created chat_messages docs with user_id prefix 'TEST_user_' and session_ids 'TEST_session_*' / 'TEST_hist_*'. Cleaned up after run: db.chat_messages.deleteMany({user_id: /^TEST_/}) removed 20 documents.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend AI endpoints remain fully green across iterations 1 and 2. The 50+ frontend changes did NOT regress any backend behaviour (backend code is unchanged). If new backend AI features are added, extend /app/backend/tests/test_ai_endpoints.py following the same TestX class pattern. Multi-turn chat assertion uses 'tommaso' substring (lowercase) in turn-2 reply. REACT_APP_BACKEND_URL is loaded from /app/frontend/.env via dotenv_values since Vite doesn't export it to the shell. Frontend regression for the 50+ UI changes (PWA prompts, modals, FAB pulse, donation flow, feedback inbox, ?reset=1 escape hatch) CANNOT be automated and must be verified by the user in a real browser logged into Google.",
+  "rca of the issue": "No bugs in this iteration. All 14 backend tests pass on first run in 73s."
+}
