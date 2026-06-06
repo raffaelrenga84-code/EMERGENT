@@ -17,6 +17,8 @@ import ToastListener from './components/ToastListener.jsx';
 import DesktopLanding from './screens/DesktopLanding.jsx';
 import BackupGoogleModal, { shouldShowBackupGoogle } from './components/BackupGoogleModal.jsx';
 import NamePromptModal from './components/NamePromptModal.jsx';
+import AddToHomePrompt from './components/AddToHomePrompt.jsx';
+import { shouldShowA2H } from './lib/installPrompt.js';
 
 // Riconosce un device "desktop puro" (no touch, mouse, schermo grande).
 // Tablet / iPad rimangono mobile-mode perché supportano touch.
@@ -121,7 +123,7 @@ export default function App() {
       try {
         const session = JSON.parse(savedSession);
         setSession(session);
-      } catch (e) {}
+      } catch (e) { /* ignore */ }
     }
 
     supabase.auth.getSession().then(({ data }) => {
@@ -228,6 +230,19 @@ export default function App() {
       .then(() => { /* fire-and-forget */ }, () => { /* fire-and-forget */ });
   }, [profile?.id, profile?.language, browserLang]);
 
+  // Add-to-Home prompt: mostriamo dopo che l'utente è loggato e ha dati caricati,
+  // SOLO se non è già installata e non l'ha dismessa di recente. La logica è
+  // capsulata in shouldShowA2H() (vedi lib/installPrompt.js).
+  const [showA2H, setShowA2H] = useState(false);
+  useEffect(() => {
+    if (!session?.user?.id || !dataLoaded) return;
+    // Piccolo delay (3s) per non sommergere l'utente al primo accesso
+    const id = setTimeout(() => {
+      if (shouldShowA2H()) setShowA2H(true);
+    }, 3000);
+    return () => clearTimeout(id);
+  }, [session?.user?.id, dataLoaded]);
+
   let content;
   if (loading || (session && !dataLoaded)) {
     content = (
@@ -289,6 +304,9 @@ export default function App() {
           profile={profile}
           onSaved={() => refresh()}
         />
+      )}
+      {showA2H && (
+        <AddToHomePrompt onClose={() => setShowA2H(false)} />
       )}
       {consent === 'all' && <Analytics />}
     </I18nProvider>
