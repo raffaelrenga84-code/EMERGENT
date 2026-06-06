@@ -24,6 +24,41 @@
   <meta name="apple-itunes-app" content="app-id=fammy-pwa">
 
   <title>FAMMY</title>
+
+  <!--
+    Hard-reset escape hatch INLINE: gira PRIMA del SW e dei bundle JS
+    per funzionare anche con cache stale. Trigger: ?reset=1 nell'URL.
+    Esempio: https://www.farxer.com/?reset=1
+  -->
+  <script>
+    (function() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('reset') !== '1') return;
+        var jobs = [];
+        try { localStorage.clear(); } catch (_) {}
+        try { sessionStorage.clear(); } catch (_) {}
+        if ('serviceWorker' in navigator) {
+          jobs.push(navigator.serviceWorker.getRegistrations()
+            .then(function(rs) { return Promise.all(rs.map(function(r) { return r.unregister(); })); })
+            .catch(function() {}));
+        }
+        if ('caches' in window) {
+          jobs.push(caches.keys()
+            .then(function(keys) { return Promise.all(keys.map(function(k) { return caches.delete(k); })); })
+            .catch(function() {}));
+        }
+        try {
+          if (indexedDB.databases) {
+            jobs.push(indexedDB.databases()
+              .then(function(dbs) { (dbs || []).forEach(function(d) { if (d && d.name) indexedDB.deleteDatabase(d.name); }); })
+              .catch(function() {}));
+          }
+        } catch (_) {}
+        Promise.all(jobs).finally(function() { window.location.replace('/'); });
+      } catch (e) { window.location.replace('/'); }
+    })();
+  </script>
 </head>
 
   <body class="notranslate" translate="no">
