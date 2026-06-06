@@ -221,7 +221,20 @@ export const T = {
     profile_plans: '👑 Piani e prezzi',
     profile_theme: '🎨 Tema',
     profile_accessibility: '♿ Accessibilità',
+    profile_donate: '☕ Offrici un caffè',
     profile_settings_h: 'Impostazioni',
+
+    // Donate modal
+    donate_title: 'Offrici un caffè',
+    donate_subtitle: 'FAMMY è gratis e senza pubblicità. Se ti piace, puoi sostenerci liberamente.',
+    donate_pick_amount: 'Quanto vuoi offrire?',
+    donate_amt_coffee: 'Un caffè',
+    donate_amt_snack: 'Una merenda',
+    donate_amt_pizza: 'Una pizza',
+    donate_amt_love: 'Tanto amore',
+    donate_open_paypal: 'Apri PayPal',
+    donate_legal_title: 'Info importanti',
+    donate_legal_body: 'Le offerte sono libere e facoltative, di modico valore, senza contropartita e non danno diritto ad alcun bene o servizio aggiuntivo. Rientrano nelle "liberalità d\'uso" (art. 783 c.c.) e nei doni di modico valore. FAMMY rimane gratuita per tutti.',
 
     // Theme
     theme_h: 'Tema',
@@ -1136,7 +1149,20 @@ export const T = {
     profile_plans: '👑 Plans & pricing',
     profile_theme: '🎨 Theme',
     profile_accessibility: '♿ Accessibility',
+    profile_donate: '☕ Buy us a coffee',
     profile_settings_h: 'Settings',
+
+    // Donate modal
+    donate_title: 'Buy us a coffee',
+    donate_subtitle: 'FAMMY is free and ad-free. If you like it, you can support us with a free donation.',
+    donate_pick_amount: 'How much would you like to offer?',
+    donate_amt_coffee: 'A coffee',
+    donate_amt_snack: 'A snack',
+    donate_amt_pizza: 'A pizza',
+    donate_amt_love: 'A lot of love',
+    donate_open_paypal: 'Open PayPal',
+    donate_legal_title: 'Important info',
+    donate_legal_body: 'Donations are free, voluntary, of modest value, with no consideration and grant no extra benefit or service. They qualify as customary gifts under Italian law (art. 783 Civil Code). FAMMY stays free for everyone.',
 
     theme_h: 'Theme',
     theme_sub: 'Choose how FAMMY looks.',

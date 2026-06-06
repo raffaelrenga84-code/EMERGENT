@@ -20,6 +20,7 @@ import TabHeaderActions from '../../components/TabHeaderActions.jsx';
 import QuickActionsSheet from '../../components/QuickActionsSheet.jsx';
 import AddTaskModal from '../../components/AddTaskModal.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
+import DonateModal from '../../components/DonateModal.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
@@ -52,6 +53,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [showAbsence, setShowAbsence] = useState(false);
   const [medsForMember, setMedsForMember] = useState(null);
   const [showMedsPicker, setShowMedsPicker] = useState(false);
+  const [showDonate, setShowDonate] = useState(false);
 
   // Membri assistiti visibili — stessa logica di AgendaTab, scope = tutte le famiglie a cui appartengo.
   const assistedMembersForQuick = dedupeByUser(
@@ -175,9 +177,9 @@ export default function ProfileTab({ session, profile, families = [], members = 
     const messageWithUrl = t('profile_referral_msg', { url });
     const messageBare = t('profile_referral_msg', { url: '' }).replace(/[\s:]*$/, '');
     if (navigator.share) {
-      try { await navigator.share({ title: 'FAMMY', text: messageBare, url }); } catch {}
+      try { await navigator.share({ title: 'FAMMY', text: messageBare, url }); } catch { /* ignore */ }
     } else {
-      try { await navigator.clipboard.writeText(messageWithUrl); alert(t('share_copied')); } catch {}
+      try { await navigator.clipboard.writeText(messageWithUrl); alert(t('share_copied')); } catch { /* ignore */ }
     }
   };
 
@@ -555,6 +557,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
           <SettingRow label={t('profile_theme')} onClick={() => setView('theme')} />
           <SettingRow label={t('profile_accessibility')} onClick={() => setView('a11y')} />
           <SettingRow label={t('profile_privacy')} onClick={() => setView('privacy')} />
+          <SettingRow label={t('profile_donate')} onClick={() => setShowDonate(true)} />
         </div>
       </ProfileGroup>
 
@@ -798,6 +801,10 @@ export default function ProfileTab({ session, profile, families = [], members = 
           onClose={() => { setMedsForMember(null); onChanged && onChanged(); }}
         />
       )}
+
+      {showDonate && (
+        <DonateModal onClose={() => setShowDonate(false)} />
+      )}
     </div>
   );
 }
@@ -834,14 +841,14 @@ function ProfileGroup({ icon, title, subtitle, defaultOpen = false, testid, chil
       const v = localStorage.getItem(storageKey);
       if (v === '1') return true;
       if (v === '0') return false;
-    } catch (_) {}
+    } catch (_) { /* ignore */ }
     return defaultOpen;
   });
 
   const toggle = () => {
     const next = !open;
     setOpen(next);
-    try { localStorage.setItem(storageKey, next ? '1' : '0'); } catch (_) {}
+    try { localStorage.setItem(storageKey, next ? '1' : '0'); } catch (_) { /* ignore */ }
   };
 
   return (
