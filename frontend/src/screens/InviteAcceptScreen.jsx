@@ -148,12 +148,21 @@ export default function InviteAcceptScreen({ token, session, onAccepted }) {
   }
 
   if (error && !invite) {
+    // Pulisci automaticamente il pending invite dal localStorage:
+    // se l'invito non è più valido (consumato, scaduto, revocato), non ha
+    // senso continuare a riproporlo ogni volta che l'utente apre l'app.
+    try { localStorage.removeItem('fammy_pending_invite'); } catch { /* ignore */ }
     return (
       <div className="login-wrap">
         <div className="login-logo">⚠️</div>
         <h1 className="login-h">{t('invite_invalid_h')}</h1>
         <p className="login-s">{error}</p>
-        <button className="btn full" onClick={() => { window.location.href = '/'; }}>
+        <button
+          className="btn full"
+          onClick={() => {
+            try { localStorage.removeItem('fammy_pending_invite'); } catch { /* ignore */ }
+            window.location.href = '/';
+          }}>
           {t('invite_back_to_app')}
         </button>
       </div>
