@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { toLocalYMD } from '../lib/dateUtils.js';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { EXPENSE_CATEGORIES } from '../lib/expenseCategories.js';
 
 export default function AddExpenseModal({ familyId, families = [], members, defaultPaidBy, authorMemberId, prefilledTask = null, prefilledExpense = null, onClose, onCreated }) {
   const { t } = useT();
@@ -12,6 +13,7 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
       ? `Pagamento: ${prefilledTask.title}`
       : (prefilledExpense?.description || '')
   );
+  const [category, setCategory] = useState(prefilledExpense?.category || null);
   const [paidBy, setPaidBy] = useState(defaultPaidBy || members[0]?.id || '');
   const [paidAt, setPaidAt] = useState(toLocalYMD());
   const [splitMode, setSplitMode] = useState('equal'); // 'equal' | 'custom'
@@ -100,6 +102,7 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
       amount: totalAmount,
       currency: 'EUR',
       description: description.trim() || null,
+      category: category || null,
       paid_by: paidBy || null,
       paid_at: paidAt || null,
       created_by: authorMemberId || null,
@@ -195,6 +198,44 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
             <input id="desc" className="input"
               placeholder={t('addexpense_desc_ph')}
               value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+
+          {/* Picker categoria — orizzontale, scroll su mobile.
+              Click su una pill → seleziona; click di nuovo → deseleziona. */}
+          <div style={{ marginTop: 16 }}>
+            <label style={{ display: 'block', marginBottom: 6 }}>
+              {t('addexpense_category') || 'Categoria'}
+            </label>
+            <div style={{
+              display: 'flex', gap: 6, overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              padding: '4px 2px', margin: '0 -2px',
+              scrollbarWidth: 'none',
+            }} data-testid="addexpense-category-picker">
+              {EXPENSE_CATEGORIES.map((cat) => {
+                const active = category === cat.key;
+                return (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    onClick={() => setCategory(active ? null : cat.key)}
+                    data-testid={`addexpense-cat-${cat.key}`}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '8px 12px', borderRadius: 100,
+                      border: active ? `2px solid ${cat.color}` : '1.5px solid var(--sm)',
+                      background: active ? `${cat.color}15` : 'white',
+                      color: active ? cat.color : 'var(--km)',
+                      fontSize: 12, fontWeight: 700, lineHeight: 1.2,
+                      cursor: 'pointer', flexShrink: 0,
+                      transition: 'all 150ms ease',
+                    }}>
+                    <span style={{ fontSize: 14 }}>{cat.emoji}</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>{t(cat.labelKey)}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div style={{ marginTop: 16 }}>

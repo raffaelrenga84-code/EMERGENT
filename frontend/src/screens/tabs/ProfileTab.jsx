@@ -24,6 +24,7 @@ import DonateModal from '../../components/DonateModal.jsx';
 import FeedbackModal from '../../components/FeedbackModal.jsx';
 import FeedbackInbox from '../../components/FeedbackInbox.jsx';
 import NotificationsHealthCheck from '../../components/NotificationsHealthCheck.jsx';
+import CalendarFeedCard from '../../components/CalendarFeedCard.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
@@ -615,6 +616,11 @@ export default function ProfileTab({ session, profile, families = [], members = 
           </div>
           <span style={{ color: 'var(--km)', fontSize: 18 }}>›</span>
         </button>
+
+        {/* Calendar feed ICS — link da sincronizzare con Apple/Google Calendar */}
+        <div style={{ marginTop: 8 }}>
+          <CalendarFeedCard session={session} />
+        </div>
       </ProfileGroup>
 
       {/* GRUPPO 7: INVITA UN AMICO */}

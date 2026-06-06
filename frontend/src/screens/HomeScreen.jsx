@@ -23,6 +23,7 @@ import AddTaskModal from '../components/AddTaskModal.jsx';
 import AddEventModal from '../components/AddEventModal.jsx';
 import MedicationReminderToast from '../components/MedicationReminderToast.jsx';
 import FeedbackToastSubscriber from '../components/FeedbackToastSubscriber.jsx';
+import GlobalSearch from '../components/GlobalSearch.jsx';
 import { useUnreadTaskCount } from '../lib/useUnreadTaskCount.js';
 import { useMedicationReminders } from '../lib/useMedicationReminders.js';
 
@@ -45,6 +46,9 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   });
   const [showUpdateBanner, setShowUpdateBanner] = useState(true);
   const [pendingExpenseTask, setPendingExpenseTask] = useState(null);
+  // Ricerca globale (cross-tab)
+  const [showSearch, setShowSearch] = useState(false);
+  const [openEventId, setOpenEventId] = useState(null);
   // AI-driven prefill modals (opened when the AI assistant emits an ACTION)
   const [aiTaskPrefill, setAiTaskPrefill] = useState(null); // { title, category, due_date }
   const [aiEventPrefill, setAiEventPrefill] = useState(null); // { title, starts_at, location }
@@ -259,8 +263,30 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
           isAll={isAll}
           onSwitchFamily={setActiveFamily}
           onNewFamily={() => setShowNewFamily(true)}
+          onOpenSearch={() => setShowSearch(true)}
         />
       )}
+
+      <GlobalSearch
+        open={showSearch}
+        onClose={() => setShowSearch(false)}
+        tasks={tasks}
+        events={events}
+        expenses={expenses}
+        members={members}
+        families={families}
+        onSelectTask={(taskId) => {
+          setActiveTab('bacheca');
+          setOpenTaskId(taskId);
+        }}
+        onSelectEvent={(eventId) => {
+          setActiveTab('agenda');
+          setOpenEventId(eventId);
+        }}
+        onSelectExpense={() => {
+          setActiveTab('spese');
+        }}
+      />
 
       <div className="tab-content">
         {activeTab === 'bacheca' && (
@@ -425,7 +451,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   );
 }
 
-function Header({ family, members, allMembers, tasks, families, activeFamily, isAll, onSwitchFamily, onNewFamily }) {
+function Header({ family, members, allMembers, tasks, families, activeFamily, isAll, onSwitchFamily, onNewFamily, onOpenSearch }) {
   const { t } = useT();
   const todoCount = tasks.filter((task) => task.status !== 'done').length;
 
@@ -434,14 +460,35 @@ function Header({ family, members, allMembers, tasks, families, activeFamily, is
       padding: '10px 16px 6px',
       display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
     }}>
-      <FamilySwitcher
-        families={families}
-        activeFamily={activeFamily}
-        isAll={isAll}
-        onSwitch={onSwitchFamily}
-        testidPrefix="header-family"
-        variant="pill"
-      />
+      <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <FamilySwitcher
+            families={families}
+            activeFamily={activeFamily}
+            isAll={isAll}
+            onSwitch={onSwitchFamily}
+            testidPrefix="header-family"
+            variant="pill"
+          />
+        </div>
+        {onOpenSearch && (
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            data-testid="header-search-btn"
+            aria-label={t('search_open') || 'Cerca'}
+            title={t('search_open') || 'Cerca'}
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'white', border: '1px solid var(--sm)',
+              color: 'var(--km)', fontSize: 16, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+            🔍
+          </button>
+        )}
+      </div>
       <p style={{
         margin: '2px 16px 0',
         fontSize: 12, color: 'var(--km)', fontWeight: 500,

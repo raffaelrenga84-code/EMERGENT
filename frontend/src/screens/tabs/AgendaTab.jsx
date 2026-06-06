@@ -13,6 +13,7 @@ import FamilySwitcher from '../../components/FamilySwitcher.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
+import WeekView from '../../components/WeekView.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 import { absenceLabel, fmtAbsenceRange } from '../../lib/useAbsences.js';
 
@@ -159,6 +160,16 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const [showExportSheet, setShowExportSheet] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  // Vista calendario: 'month' (default) o 'week'
+  const [viewMode, setViewMode] = useState('month');
+  // Inizio settimana corrente (Lunedì)
+  const [weekStart, setWeekStart] = useState(() => {
+    const d = new Date();
+    const dow = (d.getDay() + 6) % 7; // 0=Lun
+    d.setDate(d.getDate() - dow);
+    d.setHours(0, 0, 0, 0);
+    return d;
   });
   const [selectedDay, setSelectedDay] = useState(null);
   const [openSections, setOpenSections] = useState({ today: false, future: false, past: false });
@@ -465,23 +476,55 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         </div>
       </div>
 
-      <MonthGrid
-        month={viewMonth}
-        events={filteredEvents}
-        tasks={filteredTasks}
-        absences={absences}
-        members={members}
-        familyId={isAll ? null : targetFamilyId}
-        selectedDay={selectedDay}
-        onSelectDay={(d) => {
-          const same = selectedDay && sameDay(selectedDay, d);
-          setSelectedDay(same ? null : d);
-          // Apri auto la sezione "Oggi" così l'utente vede subito eventi/assenze del giorno
-          if (!same) setOpenSections((s) => ({ ...s, today: true }));
-        }}
-        onPrev={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
-        onNext={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
-      />
+      <MonthWeekToggle viewMode={viewMode} onChange={setViewMode} t={t} />
+
+      {viewMode === 'month' ? (
+        <MonthGrid
+          month={viewMonth}
+          events={filteredEvents}
+          tasks={filteredTasks}
+          absences={absences}
+          members={members}
+          familyId={isAll ? null : targetFamilyId}
+          selectedDay={selectedDay}
+          onSelectDay={(d) => {
+            const same = selectedDay && sameDay(selectedDay, d);
+            setSelectedDay(same ? null : d);
+            // Apri auto la sezione "Oggi" così l'utente vede subito eventi/assenze del giorno
+            if (!same) setOpenSections((s) => ({ ...s, today: true }));
+          }}
+          onPrev={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
+          onNext={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
+        />
+      ) : (
+        <WeekView
+          weekStart={weekStart}
+          events={filteredEvents}
+          tasks={filteredTasks}
+          absences={absences}
+          members={members}
+          familyId={isAll ? null : targetFamilyId}
+          selectedDay={selectedDay}
+          onSelectDay={(d) => {
+            setSelectedDay(d);
+            if (d) setOpenSections((s) => ({ ...s, today: true }));
+          }}
+          onPrev={() => {
+            const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d);
+          }}
+          onNext={() => {
+            const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d);
+          }}
+          onClickEvent={(eventId) => {
+            const ev = (events || []).find((e) => e.id === eventId);
+            if (ev) setSelEvent(ev);
+          }}
+          onClickTask={(taskId) => {
+            const tk = (tasks || []).find((t) => t.id === taskId);
+            if (tk) setSelTask(tk);
+          }}
+        />
+      )}
 
       {me?.id && (
         <div style={{ padding: '0 16px 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1476,3 +1519,47 @@ function TaskAsEventCard({ task, family, past, onClick }) {
     </div>
   );
 }
+
+// Toggle compatto Mese ↔ Settimana sopra il calendario
+function MonthWeekToggle({ viewMode, onChange, t }) {
+  return (
+    <div style={{
+      padding: '0 16px 8px',
+      display: 'flex', justifyContent: 'flex-end',
+    }}>
+      <div style={{
+        display: 'inline-flex', gap: 4, padding: 3,
+        background: 'var(--ab)', borderRadius: 100,
+        border: '1px solid var(--sm)',
+      }} role="tablist">
+        {[
+          { id: 'month', label: t('agenda_view_month') || 'Mese', emoji: '📅' },
+          { id: 'week',  label: t('agenda_view_week') || 'Settimana', emoji: '📆' },
+        ].map((opt) => {
+          const active = viewMode === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange(opt.id)}
+              data-testid={`agenda-view-${opt.id}`}
+              style={{
+                padding: '6px 14px', borderRadius: 100, border: 'none',
+                background: active ? 'white' : 'transparent',
+                color: active ? 'var(--k)' : 'var(--km)',
+                fontSize: 12, fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 150ms ease',
+              }}>
+              {opt.emoji} {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+

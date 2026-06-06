@@ -4,6 +4,8 @@ import { useT } from '../../lib/i18n.jsx';
 import AddExpenseModal from '../../components/AddExpenseModal.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import PartialPaymentModal from '../../components/PartialPaymentModal.jsx';
+import ExpensesBalance from '../../components/ExpensesBalance.jsx';
+import { getCategory } from '../../lib/expenseCategories.js';
 
 export default function SpeseTab({ familyId, families = [], expenses, tasks, members, me, onChanged, pendingTask, onClearPendingTask }) {
   const { t } = useT();
@@ -82,8 +84,6 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
   const totalThisMonth = expenses.filter(inThisMonth).reduce((s, e) => s + Number(e.amount || 0), 0);
   const totalOpenThisMonth = activeExpenses.filter(inThisMonth).reduce((s, e) => s + Number(e.amount || 0), 0);
 
-  const balances = computeBalances(expenses, shares, members);
-
   const removeExpense = async (id) => {
     if (!confirm(t('expenses_delete_confirm'))) return;
     await supabase.from('expenses').delete().eq('id', id);
@@ -107,6 +107,7 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
     const payer = members.find((m) => m.id === e.paid_by);
     const expShares = sharesForExpense(e.id);
     const settled = isExpenseSettled(e);
+    const cat = e.category ? getCategory(e.category) : null;
     return (
       <div key={e.id} className="card" style={{
         marginBottom: 8,
@@ -115,6 +116,19 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
         border: settled ? '1px solid #B8DAC7' : undefined,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {cat && (
+            <div
+              data-testid={`expense-cat-icon-${e.id}`}
+              title={t(cat.labelKey)}
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: `${cat.color}15`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, flexShrink: 0,
+              }}>
+              {cat.emoji}
+            </div>
+          )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               {settled && (
@@ -234,28 +248,15 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
         </div>
       </div>
 
-      {balances.length > 0 && (
-        <>
-          <div className="sh"><span className="sh-l">⚖️ {t('expenses_balances_h')}</span></div>
-          <div className="list">
-            {balances.map((b, i) => {
-              const debtor = members.find((m) => m.id === b.from);
-              const creditor = members.find((m) => m.id === b.to);
-              if (!debtor || !creditor) return null;
-              return (
-                <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Avatar m={debtor} />
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{debtor.name}</span>
-                  <span style={{ fontSize: 12, color: 'var(--km)' }}>{t('expenses_balance_owes')}</span>
-                  <span style={{ fontWeight: 700, fontFamily: 'var(--fs)', color: 'var(--rd)' }}>€ {b.amount.toFixed(2)}</span>
-                  <span style={{ fontSize: 12, color: 'var(--km)' }}>{t('expenses_balance_to')}</span>
-                  <Avatar m={creditor} />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{creditor.name}</span>
-                </div>
-              );
-            })}
-          </div>
-        </>
+      {/* Saldo Splitwise-style: chi deve cosa a chi, con compensazione
+          reciproca, evidenziando le righe che mi coinvolgono. */}
+      {expenses.length > 0 && (
+        <ExpensesBalance
+          expenses={expenses}
+          shares={shares}
+          members={members}
+          me={me}
+        />
       )}
 
       {expenses.length === 0 ? (
@@ -367,29 +368,6 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
       )}
     </>
   );
-}
-
-function computeBalances(expenses, shares, members) {
-  const map = {};
-  for (const exp of expenses) {
-    const expShares = shares.filter((s) => s.expense_id === exp.id && !s.settled);
-    for (const s of expShares) {
-      if (s.member_id === exp.paid_by) continue;
-      if (!map[s.member_id]) map[s.member_id] = {};
-      if (!map[s.member_id][exp.paid_by]) map[s.member_id][exp.paid_by] = 0;
-      map[s.member_id][exp.paid_by] += Number(s.amount);
-    }
-  }
-  const list = [];
-  Object.keys(map).forEach((from) => {
-    Object.keys(map[from]).forEach((to) => {
-      const amount = map[from][to];
-      const reverse = map[to]?.[from] || 0;
-      const net = amount - reverse;
-      if (net > 0.01) list.push({ from, to, amount: net });
-    });
-  });
-  return list.sort((a, b) => b.amount - a.amount);
 }
 
 function Avatar({ m, small }) {

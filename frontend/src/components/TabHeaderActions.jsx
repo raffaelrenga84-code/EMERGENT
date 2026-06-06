@@ -1,24 +1,44 @@
 /**
- * TabHeaderActions — coppia di pulsanti (✨ AI verde + ➕ aggiungi rosso)
+ * TabHeaderActions — coppia di pulsanti (🔍 search + ✨ AI verde + ➕ aggiungi rosso)
  * pensata per stare in alto a destra in ogni tab della home, sostituendo
  * il vecchio FAB flottante con un'azione più coerente in stile Apple.
  *
  * Props:
  *  - onAdd: () => void   se assente, il "+" non viene mostrato
  *  - onAI:  () => void   se assente, il "✨" non viene mostrato
- *  - addLabel / aiLabel: stringhe per a11y / title
+ *  - onSearch: () => void se assente, il "🔍" non viene mostrato
+ *  - addLabel / aiLabel / searchLabel: stringhe per a11y / title
  *  - pulse: boolean → quando true, il "+" pulsa per attirare l'attenzione
  *  - testidPrefix: prefisso per data-testid (es. "family", "profile")
  */
 export default function TabHeaderActions({
-  onAdd, onAI,
+  onAdd, onAI, onSearch,
   addLabel = 'Nuovo',
   aiLabel = 'Assistente AI',
+  searchLabel = 'Cerca',
   pulse = false,
   testidPrefix = 'tab',
 }) {
   return (
     <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+      {onSearch && (
+        <button
+          type="button"
+          data-testid={`${testidPrefix}-search-btn`}
+          onClick={() => onSearch()}
+          title={searchLabel}
+          aria-label={searchLabel}
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: 'white', border: '1px solid var(--sm)',
+            color: 'var(--km)', fontSize: 16,
+            cursor: 'pointer', display: 'inline-flex',
+            alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+          🔍
+        </button>
+      )}
       {onAI && (
         <button
           type="button"

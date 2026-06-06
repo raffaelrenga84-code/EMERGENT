@@ -6,6 +6,7 @@ import RecurringActionChoice from './RecurringActionChoice.jsx';
 import DetailTabs from './DetailTabs.jsx';
 import MessageReactions from './MessageReactions.jsx';
 import PhotoGalleryEditor from './PhotoGalleryEditor.jsx';
+import SubtaskList from './SubtaskList.jsx';
 import { markTaskRead } from '../lib/useUnreadTaskCount.js';
 
 const CAT_EMOJI = {
@@ -623,6 +624,14 @@ export default function TaskDetailModal({
         {/* ====== TAB: DETTAGLI ====== */}
         {activeTab === 'details' && (
           <div data-testid="task-detail-pane-details">
+        {/* Checklist/subtasks — sempre in cima al tab Dettagli */}
+        <div style={{
+          marginTop: 12, padding: 12, background: 'white',
+          border: '1px solid var(--sm)', borderRadius: 12,
+        }}>
+          <SubtaskList taskId={realTaskId} me={me} />
+        </div>
+
         {isDelegateTarget && (
           <div style={{
             marginTop: 12, padding: '12px 14px',

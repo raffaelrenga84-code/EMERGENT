@@ -14,13 +14,14 @@ import os
 import json
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
+import httpx
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -34,6 +35,10 @@ EMERGENT_LLM_KEY = os.environ["EMERGENT_LLM_KEY"]
 
 PROVIDER = "anthropic"
 MODEL = "claude-sonnet-4-5-20250929"
+
+# Supabase (per ICS feed): opzionale — se non configurato, /api/calendar/* ritorna 503
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
 # ---------- App ----------
 app = FastAPI(title="FAMMY AI Backend", version="0.1.0")
@@ -405,6 +410,184 @@ async def ai_gift_ideas(req: GiftIdeasRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gift ideas error: {e}")
+
+
+# =========================================================================
+# CALENDAR ICS FEED — endpoint pubblico per Apple Calendar / Google Calendar
+# =========================================================================
+# L'utente genera un token segreto dal Profilo (via RPC `rotate_calendar_token`),
+# poi incolla il link `/api/calendar/{token}.ics` nel suo calendar client.
+# Sincronizzazione automatica ogni ~1 ora (lato client).
+#
+# Sicurezza: il token è un random 48-hex-chars stored in `calendar_tokens`.
+# Se rubato → l'utente lo ruota dal Profilo.
+
+def _ics_escape(text: str) -> str:
+    """RFC 5545: escape commas, semicolons, backslashes, newlines."""
+    if not text:
+        return ""
+    return (str(text)
+            .replace("\\", "\\\\")
+            .replace(",", "\\,")
+            .replace(";", "\\;")
+            .replace("\n", "\\n")
+            .replace("\r", ""))
+
+
+def _ics_dtstamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _ics_dt(iso_str: str) -> str:
+    """Parse ISO timestamp → ICS UTC format."""
+    try:
+        if iso_str.endswith("Z"):
+            iso_str = iso_str[:-1] + "+00:00"
+        d = datetime.fromisoformat(iso_str)
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        d = d.astimezone(timezone.utc)
+        return d.strftime("%Y%m%dT%H%M%SZ")
+    except Exception:
+        return _ics_dtstamp()
+
+
+def _ics_date(date_str: str) -> str:
+    """YYYY-MM-DD → YYYYMMDD."""
+    if not date_str:
+        return ""
+    return str(date_str).replace("-", "")[:8]
+
+
+async def _supabase_get(client: httpx.AsyncClient, path: str, params: dict) -> list:
+    headers = {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+    }
+    r = await client.get(f"{SUPABASE_URL}/rest/v1{path}", headers=headers, params=params, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
+@api.get("/calendar/{token}.ics")
+async def calendar_ics(token: str):
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(status_code=503, detail="ICS feed not configured on server")
+    # Token validation: solo hex per evitare injection
+    if not re.fullmatch(r"[a-f0-9]{16,128}", token):
+        raise HTTPException(status_code=400, detail="invalid token format")
+
+    async with httpx.AsyncClient() as client:
+        # 1) Lookup user_id dal token
+        rows = await _supabase_get(client, "/calendar_tokens", {
+            "select": "user_id",
+            "token": f"eq.{token}",
+            "revoked_at": "is.null",
+            "limit": "1",
+        })
+        if not rows:
+            raise HTTPException(status_code=404, detail="token not found or revoked")
+        user_id = rows[0]["user_id"]
+
+        # 2) Trova le famiglie dell'utente (via members)
+        member_rows = await _supabase_get(client, "/members", {
+            "select": "id,family_id",
+            "user_id": f"eq.{user_id}",
+        })
+        family_ids = list({m["family_id"] for m in member_rows})
+        if not family_ids:
+            return Response(content=_build_empty_ics(), media_type="text/calendar")
+
+        family_filter = "(" + ",".join(family_ids) + ")"
+
+        # 3) Eventi prossimi 12 mesi
+        since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        events = await _supabase_get(client, "/events", {
+            "select": "id,family_id,title,starts_at,ends_at,location,notes,recurring_days,recurring_until",
+            "family_id": f"in.{family_filter}",
+            "starts_at": f"gte.{since}",
+        })
+
+        # 4) Task con due_date
+        tasks = await _supabase_get(client, "/tasks", {
+            "select": "id,family_id,title,due_date,due_time,status,note",
+            "family_id": f"in.{family_filter}",
+            "due_date": "not.is.null",
+            "status": "neq.done",
+        })
+
+    # Genera ICS
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//FAMMY//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:FAMMY",
+        "X-WR-TIMEZONE:UTC",
+    ]
+    now_stamp = _ics_dtstamp()
+
+    for ev in events:
+        if not ev.get("starts_at"):
+            continue
+        dtstart = _ics_dt(ev["starts_at"])
+        dtend = _ics_dt(ev["ends_at"]) if ev.get("ends_at") else dtstart
+        lines += [
+            "BEGIN:VEVENT",
+            f"UID:event-{ev['id']}@fammy",
+            f"DTSTAMP:{now_stamp}",
+            f"DTSTART:{dtstart}",
+            f"DTEND:{dtend}",
+            f"SUMMARY:{_ics_escape(ev.get('title') or 'Evento')}",
+        ]
+        if ev.get("location"):
+            lines.append(f"LOCATION:{_ics_escape(ev['location'])}")
+        if ev.get("notes"):
+            lines.append(f"DESCRIPTION:{_ics_escape(ev['notes'])}")
+        # Recurring (semplice: BYDAY settimanale)
+        rd = ev.get("recurring_days") or []
+        if rd:
+            byday = []
+            mapping = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+            for d in rd:
+                if 0 <= d < 7:
+                    byday.append(mapping[d])
+            if byday:
+                rrule = f"RRULE:FREQ=WEEKLY;BYDAY={','.join(byday)}"
+                if ev.get("recurring_until"):
+                    rrule += f";UNTIL={_ics_date(ev['recurring_until'])}T235959Z"
+                lines.append(rrule)
+        lines.append("END:VEVENT")
+
+    for tk in tasks:
+        if not tk.get("due_date"):
+            continue
+        # I task vanno come VEVENT all-day per visibilità nei calendari
+        dt_date = _ics_date(tk["due_date"])
+        lines += [
+            "BEGIN:VEVENT",
+            f"UID:task-{tk['id']}@fammy",
+            f"DTSTAMP:{now_stamp}",
+            f"DTSTART;VALUE=DATE:{dt_date}",
+            f"SUMMARY:{_ics_escape('📌 ' + (tk.get('title') or 'Incarico'))}",
+        ]
+        if tk.get("note"):
+            lines.append(f"DESCRIPTION:{_ics_escape(tk['note'])}")
+        lines.append("END:VEVENT")
+
+    lines.append("END:VCALENDAR")
+    body = "\r\n".join(lines) + "\r\n"
+    return Response(
+        content=body,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Cache-Control": "private, max-age=300"},
+    )
+
+
+def _build_empty_ics() -> str:
+    return ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//FAMMY//EN\r\n"
+            "X-WR-CALNAME:FAMMY\r\nEND:VCALENDAR\r\n")
 
 
 # Mount router
