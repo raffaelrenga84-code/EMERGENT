@@ -21,12 +21,19 @@ create unique index if not exists profiles_phone_idx
   where phone is not null;
 
 -- 2) Trigger aggiornato — robusto su utenti solo email, solo phone, o entrambi.
+--    Gestisce 3 casi:
+--    A) signup email-only (phone NULL)         → INSERT profilo con phone NULL
+--    B) signup phone-only / phone+email nuovo → INSERT profilo con phone valorizzato
+--    C) signup phone già esistente in un altro profile (caso "secondo account
+--       per stessa persona reale", es. Google+Phone) → INSERT con phone NULL
+--       per evitare l'UNIQUE violation. L'utente potrà fare merge dal Profilo.
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
-  v_display text;
-  v_letter  text;
-  v_phone   text;
+  v_display      text;
+  v_letter       text;
+  v_phone        text;
+  v_phone_taken  boolean := false;
 begin
   -- Display name di fallback con priorità:
   -- 1. metadata.display_name (passato esplicitamente, es. OAuth)
@@ -49,15 +56,32 @@ begin
   v_letter := upper(substring(v_display from 1 for 1));
   v_phone  := nullif(new.phone, '');
 
-  -- Anti-conflitto: se esiste già un profilo (es. utente che si è loggato
-  -- prima via Google e poi sta confermando il telefono), fai UPDATE invece
-  -- di INSERT. Senza questa logica il trigger fallirebbe con duplicate-key.
+  -- Caso C: phone già preso in un altro profilo → lasciamo NULL per evitare
+  -- duplicate-key violation su profiles_phone_idx. L'utente potrà mergeare
+  -- i due account tramite il flow "Merge Account" del Profilo.
+  if v_phone is not null then
+    select exists (
+      select 1 from public.profiles where phone = v_phone and id <> new.id
+    ) into v_phone_taken;
+    if v_phone_taken then
+      v_phone := null;
+    end if;
+  end if;
+
+  -- Anti-conflitto sull'id (es. utente che si è loggato prima via Google e poi
+  -- sta confermando il telefono dallo stesso account): fai UPDATE invece di INSERT.
   insert into public.profiles (id, display_name, avatar_letter, phone)
   values (new.id, v_display, v_letter, v_phone)
   on conflict (id) do update set
     phone = coalesce(public.profiles.phone, excluded.phone),
     display_name = coalesce(public.profiles.display_name, excluded.display_name);
 
+  return new;
+exception when others then
+  -- Difesa in profondità: se per qualsiasi motivo l'INSERT fallisce ancora,
+  -- NON bloccare la creazione di auth.users — logghiamo soltanto. Il profile
+  -- mancante verrà creato lazy al primo login dal client.
+  raise warning 'handle_new_user failed for %: %', new.id, sqlerrm;
   return new;
 end;
 $$;
