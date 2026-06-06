@@ -92,18 +92,22 @@ export default function FeedbackInbox({ onClose }) {
       data-testid="feedback-inbox-backdrop"
       onClick={onClose}
       style={{
-        position: 'fixed', inset: 0, zIndex: 2000,
-        background: 'rgba(28,22,17,0.5)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        position: 'fixed', inset: 0, zIndex: 5000,
+        background: 'rgba(28,22,17,0.85)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
       <div
         onClick={(e) => e.stopPropagation()}
         data-testid="feedback-inbox"
         style={{
-          width: '100%', maxWidth: 560, background: 'var(--bg)',
-          borderTopLeftRadius: 22, borderTopRightRadius: 22,
-          padding: 'calc(20px + env(safe-area-inset-top, 0px)) 0 calc(20px + env(safe-area-inset-bottom, 0px))',
-          maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+          width: '100%', maxWidth: 560, height: '100%',
+          maxHeight: 'min(90vh, 720px)',
+          background: 'var(--bg)',
+          borderRadius: 22,
+          padding: 'calc(16px + env(safe-area-inset-top, 0px)) 0 calc(16px + env(safe-area-inset-bottom, 0px))',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+          margin: '12px',
         }}>
         {/* Header sticky */}
         <div style={{
