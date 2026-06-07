@@ -471,50 +471,56 @@ async def _supabase_get(client: httpx.AsyncClient, path: str, params: dict) -> l
 
 @api.get("/calendar/{token}.ics")
 async def calendar_ics(token: str):
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        raise HTTPException(status_code=503, detail="ICS feed not configured on server")
-    # Token validation: solo hex per evitare injection
+    # Token format validation PRIMA del check config: così un token malformato
+    # ritorna 400 anche in ambienti non ancora configurati.
     if not re.fullmatch(r"[a-f0-9]{16,128}", token):
         raise HTTPException(status_code=400, detail="invalid token format")
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(status_code=503, detail="ICS feed not configured on server")
 
-    async with httpx.AsyncClient() as client:
-        # 1) Lookup user_id dal token
-        rows = await _supabase_get(client, "/calendar_tokens", {
-            "select": "user_id",
-            "token": f"eq.{token}",
-            "revoked_at": "is.null",
-            "limit": "1",
-        })
-        if not rows:
-            raise HTTPException(status_code=404, detail="token not found or revoked")
-        user_id = rows[0]["user_id"]
+    try:
+        async with httpx.AsyncClient() as client:
+            # 1) Lookup user_id dal token
+            rows = await _supabase_get(client, "/calendar_tokens", {
+                "select": "user_id",
+                "token": f"eq.{token}",
+                "revoked_at": "is.null",
+                "limit": "1",
+            })
+            if not rows:
+                raise HTTPException(status_code=404, detail="token not found or revoked")
+            user_id = rows[0]["user_id"]
 
-        # 2) Trova le famiglie dell'utente (via members)
-        member_rows = await _supabase_get(client, "/members", {
-            "select": "id,family_id",
-            "user_id": f"eq.{user_id}",
-        })
-        family_ids = list({m["family_id"] for m in member_rows})
-        if not family_ids:
-            return Response(content=_build_empty_ics(), media_type="text/calendar")
+            # 2) Trova le famiglie dell'utente (via members)
+            member_rows = await _supabase_get(client, "/members", {
+                "select": "id,family_id",
+                "user_id": f"eq.{user_id}",
+            })
+            family_ids = list({m["family_id"] for m in member_rows})
+            if not family_ids:
+                return Response(content=_build_empty_ics(), media_type="text/calendar")
 
-        family_filter = "(" + ",".join(family_ids) + ")"
+            family_filter = "(" + ",".join(family_ids) + ")"
 
-        # 3) Eventi prossimi 12 mesi
-        since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-        events = await _supabase_get(client, "/events", {
-            "select": "id,family_id,title,starts_at,ends_at,location,notes,recurring_days,recurring_until",
-            "family_id": f"in.{family_filter}",
-            "starts_at": f"gte.{since}",
-        })
+            # 3) Eventi prossimi 12 mesi
+            since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+            events = await _supabase_get(client, "/events", {
+                "select": "id,family_id,title,starts_at,ends_at,location,notes,recurring_days,recurring_until",
+                "family_id": f"in.{family_filter}",
+                "starts_at": f"gte.{since}",
+            })
 
-        # 4) Task con due_date
-        tasks = await _supabase_get(client, "/tasks", {
-            "select": "id,family_id,title,due_date,due_time,status,note",
-            "family_id": f"in.{family_filter}",
-            "due_date": "not.is.null",
-            "status": "neq.done",
-        })
+            # 4) Task con due_date
+            tasks = await _supabase_get(client, "/tasks", {
+                "select": "id,family_id,title,due_date,due_time,status,note",
+                "family_id": f"in.{family_filter}",
+                "due_date": "not.is.null",
+                "status": "neq.done",
+            })
+    except HTTPException:
+        raise
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"calendar source unavailable: {type(e).__name__}")
 
     # Genera ICS
     lines = [

@@ -1,5 +1,162 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.29 (7 febbraio 2026) — Sprint 1 + Sprint 2: 7 feature in batch
+
+Maxi sprint di 7 feature in una sessione, su richiesta dell'utente
+("procedi" con tutte). Ordine di implementazione = ordine impatto/dipendenze.
+
+### Step 1 — DB trigger push (server-side affidabile)
+File: `/app/frontend/fammy-push-on-tasks.sql`
+
+3 trigger PostgreSQL che sostituiscono / integrano i `sendPush` lato
+frontend (che fallivano se il mittente chiudeva subito l'app):
+
+- **`trg_notify_task_assigned`** su `task_assignees` AFTER INSERT →
+  notifica il singolo assegnatario quando viene aggiunto. Funziona
+  sia in creazione del task (multi-assignee) sia in delegazione successiva.
+- **`trg_notify_task_created`** su `tasks` AFTER INSERT → notifica tutta
+  la famiglia SOLO se il task NON ha assegnatari (caso "incarico generico").
+- **`trg_notify_task_priority`** su `tasks` AFTER UPDATE OF priority,urgent
+  → notifica TUTTI i coinvolti quando la priorità SALE
+  (normal→medium / →high, o urgent false→true). Niente push quando scende.
+
+Helper SQL `fammy_private.task_recipient_user_ids()` aggrega membri da
+`task_assignees` + `task_couple_members` + author + taken_by + delegated_to,
+risolvendoli a `user_id` distinti.
+
+### Step 2 — Checklist/Subtask sui task
+File: `/app/frontend/fammy-task-subtasks.sql` + `SubtaskList.jsx`
+
+Nuova tabella `task_subtasks` (con RLS + Realtime). Trigger snapshot
+`completed_by_name` per sopravvivere alla rimozione del membro.
+
+UI: integrata in `TaskDetailModal` (tab Dettagli), in cima.
+Funzionalità: checkbox custom, inline edit, riordino con frecce ↑↓,
+delete, barra di progresso, count "3/5 fatti". Realtime: gli altri
+membri vedono i tick in diretta.
+
+### Step 3 — Saldo Splitwise nelle Spese
+File: `ExpensesBalance.jsx`, sostituisce la vecchia sezione `balances` in `SpeseTab.jsx`
+
+Calcolo netto "chi deve cosa a chi" con **compensazione reciproca**
+(A→B 10 + B→A 4 = A→B 6). Ordinamento: prima i debiti che mi
+coinvolgono, poi per importo decrescente. Card verde "Tutto saldato!"
+quando 0 debiti. Su mobile: mostra max 3 + "Mostra altri N".
+Highlight giallo per le righe in cui sono coinvolto io.
+
+Rimossa la vecchia funzione `computeBalances` da SpeseTab (per-pair
+senza compensazione) — il nuovo componente la rende obsoleta.
+
+### Step 4 — Ricerca globale (cross-tab)
+File: `GlobalSearch.jsx`, integrato in `HomeScreen.jsx`
+
+Bottone 🔍 nell'Header (in cima, sempre visibile). Modal full-screen
+con input autofocus. Filtra **client-side** (no extra fetch) su:
+- Tasks: title + note
+- Events: title + location + notes
+- Expenses: description + amount
+
+Sezioni con count + risultati con icone/subtitle (famiglia +
+data/luogo). Tap → switch al tab corretto + apre il TaskDetailModal
+(per i task; eventi/spese fanno solo lo switch del tab).
+
+### Step 5 — Picker categorie spese con icone
+File: `fammy-expense-categories.sql` + `expenseCategories.js` +
+modifiche a `AddExpenseModal.jsx` e `SpeseTab.jsx`
+
+Aggiunta colonna `expenses.category` (text, opzionale). 8 categorie
+canoniche: groceries 🛒 / bills 💡 / school 🎒 / home 🏠 / health 🩺 /
+transport 🚗 / leisure 🎉 / other 💶. Picker orizzontale scroll su
+mobile, pill colorate. Display: icona colorata 36×36 a sinistra del
+titolo della card spesa.
+
+### Step 6 — Vista settimanale Agenda
+File: `WeekView.jsx` + `MonthWeekToggle` in `AgendaTab.jsx`
+
+Toggle compatto Mese / Settimana sopra il calendario (pill style
+iOS, switch a 2 stati). Settimana = 7 card verticali (lun-dom) con
+icona + numero giorno + lista compatta items (max 3 eventi + 3 task
++ 2 assenze, "+N altri" se ce ne sono di più). Tap su un giorno =
+seleziona (highlight rosso) → la sezione "Oggi" sotto si apre.
+Tap su un item = apre il dettaglio. Swipe orizzontale = settimana
+precedente/successiva.
+
+### Step 7 — Link ICS/CalDAV live
+File: `fammy-calendar-tokens.sql` + endpoint FastAPI in
+`/app/backend/server.py` + `CalendarFeedCard.jsx`
+
+**Backend FastAPI**: nuovo endpoint `GET /api/calendar/{token}.ics`
+che:
+1. Valida format token (regex `[a-f0-9]{16,128}`) → 400 se malformato
+2. Controlla config (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`) → 503 se mancante
+3. Lookup `calendar_tokens` → 404 se token sconosciuto/revocato
+4. Risolve `members` → `family_ids`
+5. Carica eventi + task non-done da Supabase REST API
+6. Genera ICS conforme RFC 5545 (BEGIN:VEVENT, RRULE per weekly recurring)
+7. Headers `text/calendar; charset=utf-8` + `Cache-Control: private, max-age=300`
+8. Try/except → 502 su httpx.HTTPError (fallback grazioso)
+
+**Supabase**: tabella `calendar_tokens(user_id, token UNIQUE, revoked_at)`
+con RLS owner-only + 2 RPC: `rotate_calendar_token()` (random 48-hex
++ idempotente) e `get_calendar_token()`.
+
+**Frontend**: `CalendarFeedCard` nel Profilo → Strumenti smart.
+Genera token, mostra URL completo + copy-to-clipboard, bottone
+rigenera per security. Istruzioni passo-passo collassabili per
+Apple Calendar (iOS/Mac) e Google Calendar.
+
+### File nuovi (sessione)
+- ➕ `/app/frontend/fammy-push-on-tasks.sql` — trigger push task
+- ➕ `/app/frontend/fammy-task-subtasks.sql` — checklist DB
+- ➕ `/app/frontend/fammy-expense-categories.sql` — categoria spese
+- ➕ `/app/frontend/fammy-calendar-tokens.sql` — ICS tokens DB
+- ➕ `/app/frontend/src/components/SubtaskList.jsx`
+- ➕ `/app/frontend/src/components/ExpensesBalance.jsx`
+- ➕ `/app/frontend/src/components/GlobalSearch.jsx`
+- ➕ `/app/frontend/src/components/WeekView.jsx`
+- ➕ `/app/frontend/src/components/CalendarFeedCard.jsx`
+- ➕ `/app/frontend/src/lib/expenseCategories.js`
+
+### File modificati (sessione)
+- ✏️ `/app/backend/server.py` — endpoint ICS + httpx + SUPABASE_URL env
+- ✏️ `/app/frontend/src/components/AddExpenseModal.jsx` — picker categoria
+- ✏️ `/app/frontend/src/components/TabHeaderActions.jsx` — bottone 🔍 (poi spostato in Header)
+- ✏️ `/app/frontend/src/components/TaskDetailModal.jsx` — mount SubtaskList in tab Dettagli
+- ✏️ `/app/frontend/src/screens/HomeScreen.jsx` — Header + GlobalSearch + bottone 🔍
+- ✏️ `/app/frontend/src/screens/tabs/AgendaTab.jsx` — vista settimanale + toggle
+- ✏️ `/app/frontend/src/screens/tabs/SpeseTab.jsx` — ExpensesBalance + categoria icone
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx` — CalendarFeedCard nei "Strumenti smart"
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — ~80 nuove key IT/EN
+
+### Testing
+- Lint: ✅ tutti i nuovi file
+- Build: ✅ (`fammy-20260606172701`)
+- Backend smoke: ✅ `/api/health` 200, ICS `/calendar/XXX.ics` → 400, ICS `/calendar/1234567890abcdef.ics` → 503 (correct ordering dopo fix), `/api/health` 200
+- AI endpoints: regression LOW (codice invariato, baseline 14/14 da iter_2)
+- Frontend landing page: ✅ rendering nominale
+
+### ⚠️ AZIONE UTENTE — Deploy in 4 step
+1. **Push Vercel** (GitHub → auto-deploy frontend) — già pronto
+2. **Run SQL su Supabase Dashboard → SQL Editor** (in quest'ordine):
+   ```
+   fammy-push-on-tasks.sql
+   fammy-task-subtasks.sql
+   fammy-expense-categories.sql
+   fammy-calendar-tokens.sql
+   ```
+3. **Re-deploy edge function `cron-digest`** (file da iter 16.5.25)
+4. **Solo per ICS feed**: aggiungi al `.env` del backend (Render/Railway/wherever):
+   ```
+   SUPABASE_URL=https://jwzoymvtxjzpymaywjtw.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=<dal Dashboard Supabase → Project Settings → API → service_role secret>
+   ```
+   E al `.env` del frontend:
+   ```
+   VITE_BACKEND_URL=https://<your-render-backend>.onrender.com
+   ```
+
+---
+
 ## Iterazione 16.5.28 (6 febbraio 2026) — Diagnostica collassabile con badge stato
 
 ### Enhancement — Box compatto con badge + auto-open su errori
