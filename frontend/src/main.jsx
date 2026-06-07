@@ -64,5 +64,34 @@ maybeHardReset().finally(() => {
         </ErrorBoundary>
       </React.StrictMode>
     );
+
+    // ------------------------------------------------------------------
+    // iOS Soft-Keyboard fix:
+    // quando l'utente focalizza un input/textarea dentro a un .modal,
+    // la tastiera virtuale appare ma iOS non scrolla automaticamente
+    // l'input dentro l'area visibile del modal. Risultato: titoli e
+    // bottoni in basso vengono nascosti dalla tastiera.
+    //
+    // Strategy:
+    //  - Su focusin, se il target è dentro a un .modal, dopo 200ms
+    //    (per dare il tempo alla tastiera di aprirsi) chiama
+    //    scrollIntoView({ block: 'center' }).
+    //  - Usa visualViewport (Safari iOS 13+) per leggere la nuova altezza
+    //    visibile e calcolare correttamente il centro.
+    // ------------------------------------------------------------------
+    const handleFocus = (e) => {
+      const el = e.target;
+      if (!el || typeof el.scrollIntoView !== 'function') return;
+      const isField = el.matches?.('input, textarea, [contenteditable="true"]');
+      if (!isField) return;
+      const inModal = el.closest?.('.modal');
+      if (!inModal) return;
+      setTimeout(() => {
+        try {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch { /* ignore */ }
+      }, 250);
+    };
+    document.addEventListener('focusin', handleFocus, { passive: true });
   }
 });

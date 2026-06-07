@@ -43,7 +43,12 @@
 
 
 html, body { background: var(--s); font-family: var(--fn); color: var(--k); -webkit-font-smoothing: antialiased; }
-body { min-height: 100vh; overflow-x: hidden; }
+html { overflow-x: hidden; max-width: 100vw; }
+body { min-height: 100vh; overflow-x: hidden; max-width: 100vw; }
+/* Catch-all: nessun elemento può "sforare" lateralmente la viewport.
+   Combat l'overflow orizzontale dato da grid/flex/scroll horizontal
+   senza min-width. */
+#root, .app-shell { max-width: 100vw; overflow-x: hidden; }
 
 /* Anti-overflow orizzontale: alcune pagine hanno chip lunghi, immagini wide
    o tabelle che sforavano la viewport e creavano scroll laterale indesiderato.
@@ -173,10 +178,24 @@ body:has(.modal-bg) .fab-action-label {
   /* Safe-area top: spinge il modal sotto al notch/dynamic island/status bar
      iOS in PWA mode (black-translucent overlay). */
   padding-top: env(safe-area-inset-top, 0px);
-  display: flex; align-items: flex-end; justify-content: center; }
+  /* Usa dvh per gestire automaticamente l'apertura della tastiera virtuale
+     iOS — vh non si adegua, dvh sì. Fallback a vh per browser legacy. */
+  height: 100vh;
+  height: 100dvh;
+  display: flex; align-items: flex-end; justify-content: center;
+  overflow: hidden; /* il contenuto scrolla solo dentro al .modal */
+}
 @media (min-width: 768px) { .modal-bg { align-items: center; padding-top: 0; } }
 .modal { background: var(--s); width: 100%; max-width: 480px; border-radius: 24px 24px 0 0;
-  padding: 24px 24px calc(24px + env(safe-area-inset-bottom, 0px)); max-height: calc(92vh - env(safe-area-inset-top, 0px)); overflow-y: auto; }
+  padding: 24px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+  /* Max-height usa dvh: si riduce automaticamente quando la tastiera
+     iOS sale, lasciando il contenuto del modal scrollabile internamente
+     invece di "spingere" tutto verso l'alto e nascondere bottoni. */
+  max-height: calc(92vh - env(safe-area-inset-top, 0px));
+  max-height: calc(92dvh - env(safe-area-inset-top, 0px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
 @media (min-width: 768px) { .modal { border-radius: 24px; } }
 .modal h2 { font-family: var(--fs); font-size: 22px; font-weight: 600; margin-bottom: 6px; }
 .modal .modal-sub { color: var(--km); font-size: 14px; margin-bottom: 20px; }
@@ -428,6 +447,19 @@ html[data-theme="dark"] [style*="background: #FDECEC"],
 html[data-theme="dark"] [style*="background:#FDECEC"] { background: #2E1818 !important; color: #E89898 !important; }
 html[data-theme="dark"] [style*="background: #FFF6E5"],
 html[data-theme="dark"] [style*="background:#FFF6E5"] { background: #2C2412 !important; color: #E8C272 !important; }
+
+/* Colori di testo hex hardcoded sui banner di stato (mio NotificationsHealthCheck
+   ed ExpensesBalance) — il browser li lascerebbe scuri su sfondi scuri. */
+html[data-theme="dark"] [style*="color: #A93B2B"],
+html[data-theme="dark"] [style*="color:#A93B2B"] { color: #E89898 !important; }
+html[data-theme="dark"] [style*="color: #7A4E00"],
+html[data-theme="dark"] [style*="color:#7A4E00"] { color: #E8C272 !important; }
+html[data-theme="dark"] [style*="color: #9A6300"],
+html[data-theme="dark"] [style*="color:#9A6300"] { color: #E8C272 !important; }
+
+/* Sfondi semi-trasparenti delle pill di categoria spese (es. `${color}15`)
+   sono già abbastanza bui per restare leggibili — la regola
+   `background: white` catch-all sopra li copre. Stesso per i `${color}15`. */
 
 /* Bottoni "ghost" / chip non attivi con sfondo bianco — testo va portato
    a colore chiaro perché il browser lo lascerebbe scuro su scuro. */

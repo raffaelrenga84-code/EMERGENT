@@ -1,5 +1,61 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.30 (7 febbraio 2026) — UX hotfix: tastiera, overflow, dark mode, FR/DE
+
+### Bug fix in batch (4 problemi segnalati dall'utente)
+
+**1. Modal "spinto in alto" quando si apre la tastiera iOS**
+- Sostituito `vh` con `dvh` (dynamic viewport height) su `.modal-bg`
+  (height: 100dvh) e `.modal` (max-height: calc(92dvh - ...)). `dvh` si
+  adatta automaticamente quando la tastiera virtuale iOS appare,
+  mentre `vh` resta fissa al pieno schermo iniziale.
+- Aggiunto `overflow: hidden` su `.modal-bg` e `-webkit-overflow-scrolling: touch`
+  su `.modal` (smooth scroll iOS).
+- Helper JS in `main.jsx`: su `focusin` di input/textarea dentro un
+  `.modal`, dopo 250ms (per dare il tempo alla tastiera di aprirsi)
+  fa `scrollIntoView({ block: 'center' })`. Risultato: il campo
+  focalizzato resta sempre visibile sopra la tastiera.
+
+**2. Scroll orizzontale indesiderato su alcune pagine**
+- Aggiunto `overflow-x: hidden` + `max-width: 100vw` a livello di
+  `html`, `body`, `#root`, `.app-shell`. Combat l'overflow dato da
+  grid/flex/scroll horizontal senza min-width.
+
+**3. Dark mode: testi illeggibili sui banner di stato**
+- Nuove regole CSS `[data-theme="dark"]` per i colori hex hardcoded
+  usati nei componenti aggiunti in iter 16.5.29 (NotificationsHealthCheck,
+  ExpensesBalance, GlobalSearch):
+  - `color: #A93B2B` → `#E89898` (rosso chiaro su dark)
+  - `color: #7A4E00` → `#E8C272` (giallo chiaro su dark)
+  - `color: #9A6300` → `#E8C272`
+
+**4. Traduzioni mancanti in FR e DE**
+- Aggiunte ~80 chiavi mancanti nelle 4 sezioni: Notifications Health Check,
+  Subtask, ExpensesBalance, GlobalSearch, Expense categories, Agenda
+  Week/Month, Calendar feed ICS.
+- Ora FR e DE non fanno più fallback silenzioso all'IT per queste UI.
+
+### File modificati
+- ✏️ `/app/frontend/src/styles.css` — `dvh`, overflow-x global, dark mode hex fixes
+- ✏️ `/app/frontend/src/main.jsx` — focusin scrollIntoView helper iOS
+- ✏️ `/app/frontend/src/lib/i18n.jsx` — ~160 nuove key (~80 FR + ~80 DE)
+
+### Testing
+- ✅ Build OK (`fammy-20260607111802`)
+- ✅ Lint pulito su `main.jsx`
+- ✅ **Mobile overflow check** (Playwright viewport 390px): `has_horizontal_overflow: false`
+  (`html.scrollWidth=390`, `clientWidth=390` — match perfetto, zero scroll laterale)
+- ⚠️ Test reale tastiera iOS PWA: l'utente deve verificarlo sul suo iPhone
+  dopo il prossimo push Vercel
+
+### ⚠️ Verifica utente dopo deploy
+1. Apri "Nuovo incarico" → la tastiera non deve più nascondere il pulsante
+2. Naviga tra le pagine → niente scroll orizzontale anomalo
+3. Switch Profilo → Tema → Scuro → tutti i banner di stato leggibili
+4. Cambia lingua FR/DE → niente più stringhe inglesi/italiane orfane
+
+---
+
 ## Iterazione 16.5.29 (7 febbraio 2026) — Sprint 1 + Sprint 2: 7 feature in batch
 
 Maxi sprint di 7 feature in una sessione, su richiesta dell'utente
