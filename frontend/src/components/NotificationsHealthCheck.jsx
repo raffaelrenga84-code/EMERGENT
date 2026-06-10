@@ -107,11 +107,13 @@ export default function NotificationsHealthCheck({ session }) {
 
     // 6) Riga in push_subscriptions su DB
     try {
+      // SELECT minimale per essere resiliente a vecchi schemi DB che
+      // potrebbero NON avere ancora colonne come `last_used_at` o
+      // `user_agent` (aggiunte in migrazioni successive).
       const { data: rows, error } = await supabase
         .from('push_subscriptions')
-        .select('id, endpoint, last_used_at, created_at, user_agent')
-        .eq('user_id', userId)
-        .order('last_used_at', { ascending: false });
+        .select('id, endpoint')
+        .eq('user_id', userId);
       if (error) throw error;
       const n = (rows || []).length;
       // Verifica match con la subscription locale (endpoint identico)

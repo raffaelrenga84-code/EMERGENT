@@ -1,5 +1,35 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.31 (10 febbraio 2026) — Hotfix Jenna: diagnostica push & VAPID
+
+### Bug fix — Errore "column push_subscriptions.last_used_at does not exist"
+Il mio `NotificationsHealthCheck` faceva un SELECT su colonne
+(`last_used_at`, `created_at`, `user_agent`) che potrebbero non esistere
+in DB più vecchi (Jenna ha un DB precedente a `fammy-push-notifications.sql`
+versione finale, oppure la colonna è stata aggiunta più tardi).
+
+**Fix**: SELECT minimale `id, endpoint` (sempre presenti dallo schema
+iniziale). Rimosso anche l'`.order('last_used_at')` che falliva.
+
+### File modificati
+- ✏️ `/app/frontend/src/components/NotificationsHealthCheck.jsx` — SELECT minimale
+
+### Diagnosi VAPID missing (per Jenna, azione utente)
+Su Vercel, Jenna ha la variabile `VITE_VAPID_PUBLIC_KEY` mancante in
+produzione. Soluzione:
+1. Vercel Dashboard → Project → Settings → Environment Variables
+2. Aggiungi `VITE_VAPID_PUBLIC_KEY` con il valore della **public** key
+   (stessa che usavi nei test, generata con web-push-libs)
+3. Re-deploy
+
+Dopo l'aggiunta, la diagnostica passerà a ✅ per VAPID e di conseguenza
+la subscription locale + server si registreranno correttamente.
+
+### Testing
+- Build: ✅ `fammy-20260610163006`
+
+---
+
 ## Iterazione 16.5.30 (7 febbraio 2026) — UX hotfix: tastiera, overflow, dark mode, FR/DE
 
 ### Bug fix in batch (4 problemi segnalati dall'utente)
