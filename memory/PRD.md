@@ -1,5 +1,43 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.33 (10 febbraio 2026) — Priorità in nuovo incarico + "Nome" più conciso
+
+### Fix #1 — Priorità mancante in AddTaskModal
+Prima la priorità si poteva impostare SOLO dopo aver creato il task (dal
+dettaglio). Ora il selettore visuale `🟢 Normale / 🟠 Media / 🔴 Urgente`
+appare subito sotto la riga "Categoria" in creazione.
+
+Logica: il valore è state `priority` (`'normal' | 'medium' | 'high'`),
+mappato a:
+- `tasks.priority` text column
+- `tasks.urgent = (priority === 'high')` per compatibilità con il
+  trigger push esistente che notifica i cambi urgenza.
+
+UI: pill colorate con outline bicolor quando attive (stesso pattern
+del category picker delle Spese).
+
+### Fix #2 — "Come ti chiami?" → "Nome"
+Cambiati i 3 placeholder di onboarding (form nuovo membro, prompt
+nome forzato per chi non l'ha, form invito famiglia) da
+"Come ti chiami?" a "Nome" in tutte e 4 le lingue:
+- IT: "Nome"
+- EN: "Name"
+- FR: "Nom"
+- DE: "Name"
+
+### File modificati
+- ✏️ `AddTaskModal.jsx` — state `priority` + payload + selector UI
+- ✏️ `i18n.jsx` — `name_label`, `name_prompt_title`, `join_name_label`,
+  `addtask_priority_*` × 4 lingue
+
+### Testing
+- Build: ✅ `fammy-20260610174411`
+- ⚠️ Provalo sul tuo iPhone dopo push: nuovo incarico → vedi 3 pill priorità
+  sotto la categoria. Settando "Urgente" la card apparirà subito con sfondo
+  rosso come fixato in iter 16.5.32
+
+---
+
 ## Iterazione 16.5.32 (10 febbraio 2026) — 4 fix UX richiesti dall'utente
 
 ### Fix #1 — Urgenza rossa colorata come l'arancio

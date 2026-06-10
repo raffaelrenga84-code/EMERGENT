@@ -47,6 +47,10 @@ export default function AddTaskModal({
   const [title, setTitle] = useState(editingTask?.title || initialTitle || '');
   const [note, setNote] = useState(editingTask?.note || '');
   const [category, setCategory] = useState(editingTask?.category || initialCategory || 'care');
+  // Priority: 'normal' (default verde), 'medium' (arancio), 'high' (rosso urgente)
+  const [priority, setPriority] = useState(
+    editingTask?.urgent ? 'high' : (editingTask?.priority || 'normal')
+  );
   const [dueDate, setDueDate] = useState(editingTask?.due_date || initialDueDate || '');
   const [dueTime, setDueTime] = useState(editingTask?.due_time || initialDueTime || '');
   const [location, setLocation] = useState(editingTask?.location || initialLocation || '');
@@ -235,6 +239,8 @@ export default function AddTaskModal({
       title: title.trim(),
       note: note.trim() || null,
       category,
+      priority,
+      urgent: priority === 'high',
       due_date: dueDate || null,
       due_time: dueTime || null,
       location: location.trim() || null,
@@ -391,6 +397,38 @@ export default function AddTaskModal({
                     {c.emoji} {c.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* === PRIORITÀ === */}
+            <div style={{ marginTop: 16 }}>
+              <label>{t('addtask_priority_label') || 'Priorità'}</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}
+                data-testid="add-task-priority-row">
+                {[
+                  { id: 'normal', emoji: '🟢', label: t('addtask_priority_normal') || 'Normale', color: 'var(--gn)' },
+                  { id: 'medium', emoji: '🟠', label: t('addtask_priority_medium') || 'Media',    color: '#F39C12' },
+                  { id: 'high',   emoji: '🔴', label: t('addtask_priority_high')   || 'Urgente',  color: 'var(--rd)' },
+                ].map((p) => {
+                  const active = priority === p.id;
+                  return (
+                    <button key={p.id} type="button"
+                      onClick={() => setPriority(p.id)}
+                      data-testid={`add-task-priority-${p.id}`}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '8px 14px', borderRadius: 100,
+                        border: active ? `2px solid ${p.color}` : '1.5px solid var(--sm)',
+                        background: active ? `${p.color}15` : 'white',
+                        color: active ? p.color : 'var(--km)',
+                        fontSize: 13, fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 150ms ease',
+                      }}>
+                      <span>{p.emoji}</span> {p.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
