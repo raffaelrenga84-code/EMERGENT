@@ -1,5 +1,66 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.32 (10 febbraio 2026) — 4 fix UX richiesti dall'utente
+
+### Fix #1 — Urgenza rossa colorata come l'arancio
+La card priority='high' aveva `background: 'var(--rd)22'` (rosso desaturato al 13% di alpha) → visivamente non si distingueva. Cambiato a `var(--rdB)` (background-tone già definito in palette) + opacità box-shadow ridotta. Ora ha lo stesso impact visivo dell'arancio.
+
+### Fix #2 — Android camera-only su upload foto
+Rimosso attributo `capture` dai 3 input file:
+- `AddTaskModal:754`
+- `AddEventModal:459`
+- `AddExpenseModal:371`
+
+Su Android `capture` (anche senza valore) **forza l'apertura della
+fotocamera**. iOS lo ignora e mostra il picker nativo. Ora su Android
+appare il selector "Camera / Galleria / File".
+
+### Fix #3 — Swipe left "Non posso"
+Aggiunto come terza azione in `SwipeableRow.rightActions` (insieme a
+"Fatto" e "Me ne occupo"). Nuovo handler `quickDecline`:
+- Inserisce un messaggio di sistema in `task_responses` (type='system'):
+  "🤚 [Nome] non può occuparsene"
+- Se l'utente era assegnatario, rimuove il suo `task_assignees` (così
+  il task torna libero)
+- Snapshot del nome auto-salvato dal trigger BEFORE INSERT (iter 16.5.24)
+- Notifica gli altri tramite il trigger esistente `notify_task_response`
+
+⚠️ Avevo iniziato a fare un custom swipe wrapper, **rollback fatto** e
+usata invece la struttura esistente `SwipeableRow`.
+
+### Fix #4 — Indirizzo nel Profilo + visibile in Famiglia
+**SQL** (`fammy-member-address.sql`):
+- Colonna `address` text opzionale su `members` E `profiles`
+- Trigger `trg_sync_address_profile_to_members`: quando l'utente
+  aggiorna `profiles.address`, propaga automaticamente a TUTTI i
+  `members.address` con quel `user_id` (così non deve editarlo in
+  ogni famiglia)
+
+**Frontend Profilo**: nuova riga "📍 Indirizzo" sotto "🎂 Compleanno",
+edit inline con hint "Visibile agli altri membri delle tue famiglie".
+
+**Frontend Famiglia**: in `MemberCard` mostra `member.address` con
+icona 📍 (truncato con ellipsis se lungo, full text in tooltip).
+
+### File nuovi
+- ➕ `/app/frontend/fammy-member-address.sql`
+
+### File modificati
+- ✏️ `BachecaTab.jsx` — sfondo rosso urgent + decline action
+- ✏️ `AddTaskModal.jsx`, `AddEventModal.jsx`, `AddExpenseModal.jsx` — rimosso `capture`
+- ✏️ `ProfileTab.jsx` — nuovo campo address + saveAddress
+- ✏️ `FamilyTab.jsx` — display address nelle MemberCard
+- ✏️ `i18n.jsx` — `swipe_decline`, `decline_msg`, `profile_address*` in IT/EN/FR/DE
+
+### Testing
+- Build: ✅ `fammy-20260610173123`
+
+### ⚠️ AZIONE UTENTE
+1. **Push Vercel** (GitHub auto-deploy)
+2. **Esegui SQL su Supabase** → `fammy-member-address.sql`
+
+---
+
 ## Iterazione 16.5.31 (10 febbraio 2026) — Hotfix Jenna: diagnostica push & VAPID
 
 ### Bug fix — Errore "column push_subscriptions.last_used_at does not exist"

@@ -230,6 +230,26 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     onChanged();
   };
 
+  // Quick "Non posso": senza modificare lo stato del task, inserisce un
+  // messaggio di sistema in chat per notificare gli altri. Lo snapshot
+  // del nome viene salvato dal trigger BEFORE INSERT (iter 16.5.24).
+  const quickDecline = async (task) => {
+    if (!me) return;
+    const id = task._origId || task.id;
+    await supabase.from('task_responses').insert({
+      task_id: id,
+      author_id: me.id,
+      type: 'system',
+      text: `🤚 ${me.name || ''} ${t('decline_msg') || 'non può occuparsene'}`.trim(),
+    });
+    // Se ero io assegnato, mi rimuovo (così il task torna "libero")
+    if (me.id) {
+      await supabase.from('task_assignees').delete()
+        .eq('task_id', id).eq('member_id', me.id);
+    }
+    onChanged();
+  };
+
   const getFamily = (task) => families?.find((f) => f.id === task.family_id);
   const targetFamilyId = familyId || families?.[0]?.id;
   const toggle = (k) => setOpenSections((s) => ({ ...s, [k]: !s[k] }));
@@ -313,14 +333,24 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
               onAction: () => quickToggleDone(task),
             }]
           : isAssignedToMe
-          ? [{
-              id: 'done',
-              icon: '✓',
-              label: t('swipe_done') || 'Fatto',
-              color: 'var(--gn)',
-              testid: `swipe-done-${task.id}`,
-              onAction: () => quickToggleDone(task),
-            }]
+          ? [
+              {
+                id: 'done',
+                icon: '✓',
+                label: t('swipe_done') || 'Fatto',
+                color: 'var(--gn)',
+                testid: `swipe-done-${task.id}`,
+                onAction: () => quickToggleDone(task),
+              },
+              {
+                id: 'decline',
+                icon: '🤚',
+                label: t('swipe_decline') || 'Non posso',
+                color: 'var(--rd)',
+                testid: `swipe-decline-${task.id}`,
+                onAction: () => quickDecline(task),
+              },
+            ]
           : [
               {
                 id: 'done',
@@ -337,6 +367,14 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
                 color: 'var(--ac)',
                 testid: `swipe-claim-${task.id}`,
                 onAction: () => quickAssignMe(task),
+              },
+              {
+                id: 'decline',
+                icon: '🤚',
+                label: t('swipe_decline') || 'Non posso',
+                color: 'var(--rd)',
+                testid: `swipe-decline-${task.id}`,
+                onAction: () => quickDecline(task),
               },
             ];
         // Swipe RIGHT: azione veloce contestuale (singola, identica a quella
@@ -786,8 +824,8 @@ function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLa
                       : 'var(--gn)';
   const cardStyle = priority === 'high' ? {
         borderLeft: '6px solid var(--rd)', borderRadius: 0,
-        background: 'var(--rd)22',
-        boxShadow: '0 0 8px rgba(231, 76, 60, 0.3)',
+        background: 'var(--rdB)',
+        boxShadow: '0 0 8px rgba(200, 74, 54, 0.18)',
       } : priority === 'medium' ? {
         borderLeft: '6px solid #F39C12', borderRadius: 0,
         background: '#F39C1222',

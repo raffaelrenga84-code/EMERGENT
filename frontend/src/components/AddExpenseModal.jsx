@@ -368,7 +368,7 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
               <span>{t('attach_photo_optional')} <span style={{ color: 'var(--km)', fontSize: 11 }}>(opzionale)</span></span>
             </label>
-            <input type="file" id="expense-file-input" multiple accept="image/*" capture
+            <input type="file" id="expense-file-input" multiple accept="image/*"
               onChange={handleFileSelect}
               style={{ display: 'none' }} />
             <button type="button" onClick={() => document.getElementById('expense-file-input').click()}

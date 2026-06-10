@@ -661,6 +661,21 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
           </div>
         )}
 
+        {/* Riga 3b: Indirizzo (se presente) */}
+        {member.address && (
+          <div
+            data-testid={`member-address-${member.id}`}
+            style={{
+              color: 'var(--km)', fontSize: 11,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              maxWidth: '100%',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}
+            title={member.address}>
+            📍 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.address}</span>
+          </div>
+        )}
+
         {/* Riga 4: Assenza badge (in stato visivo distinto) */}
         {activeAbsence && (
           <div

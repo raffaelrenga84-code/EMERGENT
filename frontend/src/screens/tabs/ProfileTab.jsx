@@ -36,6 +36,9 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [name, setName] = useState(profile?.display_name || '');
   const [editingBirthday, setEditingBirthday] = useState(false);
   const [birthday, setBirthday] = useState(profile?.birthday || '');
+  // Indirizzo (opzionale, condiviso ai membri delle proprie famiglie)
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [address, setAddress] = useState(profile?.address || '');
   const [editingColor, setEditingColor] = useState(false);
   const [color, setColor] = useState(profile?.avatar_color || '#1C1611');
   const [busy, setBusy] = useState(false);
@@ -165,6 +168,20 @@ export default function ProfileTab({ session, profile, families = [], members = 
     onChanged && onChanged();
     setBusy(false);
     setEditingBirthday(false);
+  };
+
+  const saveAddress = async () => {
+    const next = address.trim();
+    if ((next || null) === (profile?.address || null)) {
+      setEditingAddress(false);
+      return;
+    }
+    setBusy(true);
+    // Il trigger DB propaga a tutti i `members` con quel user_id
+    await supabase.from('profiles').update({ address: next || null }).eq('id', session.user.id);
+    onChanged && onChanged();
+    setBusy(false);
+    setEditingAddress(false);
   };
 
   const saveColor = async (c) => {
@@ -306,6 +323,42 @@ export default function ProfileTab({ session, profile, families = [], members = 
             </button>
           ) : (
             <button className="profile-btn" onClick={() => setEditingBirthday(true)}>
+              {t('profile_modify')}
+            </button>
+          )}
+        </div>
+
+        {/* Indirizzo */}
+        <div className="profile-row" style={profileRowInGroup} data-testid="profile-address-row">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="profile-label">📍 {t('profile_address') || 'Indirizzo'}</div>
+            {editingAddress ? (
+              <input className="input" autoFocus
+                placeholder={t('profile_address_ph') || 'Via, città'}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveAddress();
+                  if (e.key === 'Escape') { setAddress(profile?.address || ''); setEditingAddress(false); }
+                }}
+                data-testid="profile-address-input" />
+            ) : (
+              <div className="profile-value" style={profile?.address ? {} : { color: 'var(--km)', fontStyle: 'italic' }}>
+                {profile?.address || (t('profile_address_empty') || 'Non impostato')}
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 4, lineHeight: 1.4 }}>
+              {t('profile_address_hint') || 'Visibile agli altri membri delle tue famiglie.'}
+            </div>
+          </div>
+          {editingAddress ? (
+            <button className="profile-btn primary" onClick={saveAddress} disabled={busy}
+              data-testid="profile-address-save">
+              {busy ? <span className="spin" /> : t('save')}
+            </button>
+          ) : (
+            <button className="profile-btn" onClick={() => setEditingAddress(true)}
+              data-testid="profile-address-edit">
               {t('profile_modify')}
             </button>
           )}

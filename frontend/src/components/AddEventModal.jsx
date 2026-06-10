@@ -456,7 +456,7 @@ export default function AddEventModal({
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                 <span>📸 {t('attach_photo')} <span style={{ color: 'var(--km)', fontSize: 11 }}>({t('optional_label')})</span></span>
               </label>
-              <input type="file" id="ev-file-input" multiple accept="image/*" capture
+              <input type="file" id="ev-file-input" multiple accept="image/*"
                 data-testid="add-event-file-input"
                 onChange={handleFileSelect} style={{ display: 'none' }} />
               <button type="button" onClick={() => document.getElementById('ev-file-input').click()}
