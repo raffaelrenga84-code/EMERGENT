@@ -35,7 +35,7 @@ begin
       and rel.relname = 'push_subscriptions'
       and con.contype in ('u', 'p')
       and (
-        select array_agg(att.attname order by att.attname)
+        select array_agg(att.attname::text order by att.attname::text)
         from unnest(con.conkey) k
         join pg_attribute att on att.attrelid = rel.oid and att.attnum = k
       ) = array['endpoint', 'user_id']
