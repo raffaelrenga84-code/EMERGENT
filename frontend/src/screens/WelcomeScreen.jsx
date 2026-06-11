@@ -57,18 +57,16 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
         return;
       }
 
-      const { data: fam, error: famErr } = await supabase
-        .from('families')
-        .insert({ name: defaultFamilyName, emoji: '🏡', created_by: session.user.id })
-        .select().single();
-      if (famErr || !fam || !fam.id) {
-        throw new Error(famErr?.message || 'Impossibile creare la famiglia (permessi o rete).');
-      }
-      const { error: memErr } = await supabase.from('members').insert({
-        family_id: fam.id, user_id: session.user.id, name: displayName,
-        role: 'tu', avatar_letter: displayName.charAt(0).toUpperCase(), status: 'active',
+      // Crea famiglia + primo membro via RPC SECURITY DEFINER
+      // (bypassa RLS in modo controllato, atomico, garantisce profile FK)
+      const { data: rows, error: rpcErr } = await supabase.rpc('create_family_with_owner', {
+        p_name: defaultFamilyName,
+        p_emoji: '🏡',
+        p_display_name: displayName,
       });
-      if (memErr) throw new Error(memErr.message);
+      if (rpcErr) throw new Error(rpcErr.message);
+      const fam = Array.isArray(rows) ? rows[0] : rows;
+      if (!fam || !fam.id) throw new Error('Creazione famiglia fallita.');
       onCreated && onCreated();
     } catch (e) {
       alert(e.message || 'Errore imprevisto. Riprova tra poco.');

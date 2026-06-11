@@ -55,12 +55,21 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
     if (!name.trim()) return;
     setBusy(true); setErr('');
     try {
-      // 1) Crea la famiglia
-      const { data: fam, error: e1 } = await supabase
-        .from('families')
-        .insert({ name: name.trim(), emoji, created_by: session.user.id })
-        .select().single();
+      // 1) Crea famiglia + primo membro via RPC SECURITY DEFINER.
+      // Evita i problemi RLS "auth.uid()=null" e race condition FK
+      // su profiles. Atomic: o tutto o niente.
+      const displayName = profile?.display_name
+        || (session?.user?.email ? session.user.email.split('@')[0] : null)
+        || session?.user?.phone
+        || 'Membro';
+      const { data: rows, error: e1 } = await supabase.rpc('create_family_with_owner', {
+        p_name: name.trim(),
+        p_emoji: emoji,
+        p_display_name: displayName,
+      });
       if (e1) throw e1;
+      const fam = Array.isArray(rows) ? rows[0] : rows;
+      if (!fam || !fam.id) throw new Error('Creazione famiglia fallita (risposta vuota).');
 
       // 2) Carica la foto (best-effort: se fallisce la famiglia resta creata)
       if (photoFile) {
@@ -76,18 +85,6 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
           console.warn('Upload foto famiglia fallito:', upErr);
         }
       }
-
-      // 3) Crea il membro owner
-      const displayName = profile?.display_name || session.user.email.split('@')[0];
-      const { error: e2 } = await supabase.from('members').insert({
-        family_id: fam.id,
-        user_id: session.user.id,
-        name: displayName,
-        role: 'tu',
-        avatar_letter: displayName.charAt(0).toUpperCase(),
-        status: 'active',
-      });
-      if (e2) throw e2;
 
       onCreated && onCreated();
     } catch (e) {
