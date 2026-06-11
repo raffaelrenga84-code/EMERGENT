@@ -343,6 +343,14 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
                 onAction: () => quickToggleDone(task),
               },
               {
+                id: 'claim',
+                icon: '✋',
+                label: t('swipe_claim') || 'Me ne occupo',
+                color: 'var(--ac)',
+                testid: `swipe-claim-${task.id}`,
+                onAction: () => quickAssignMe(task),
+              },
+              {
                 id: 'decline',
                 icon: '🤚',
                 label: t('swipe_decline') || 'Non posso',
