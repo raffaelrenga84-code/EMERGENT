@@ -176,6 +176,30 @@ export default function App() {
     (async () => {
       let hadError = false;
       try {
+        // 🛡️ Safety net: garantisce che la riga in `profiles` per questo
+        // user esista PRIMA di toccare families/members. Senza questo, il
+        // FK constraint `families_created_by_fkey → profiles(id)` fallisce
+        // (errore reale visto in produzione su account con trigger
+        // `handle_new_user` mancato/disabilitato in qualche storico).
+        // `ignoreDuplicates: true` evita di sovrascrivere dati esistenti.
+        try {
+          const meta = session?.user?.user_metadata || {};
+          const fallbackName = meta.full_name || meta.name
+            || session?.user?.email?.split('@')[0]
+            || session?.user?.phone
+            || 'Membro';
+          await supabase.from('profiles').upsert(
+            {
+              id: userId,
+              display_name: fallbackName,
+              avatar_letter: String(fallbackName).charAt(0).toUpperCase(),
+            },
+            { onConflict: 'id', ignoreDuplicates: true }
+          );
+        } catch (upsertErr) {
+          console.warn('Profile upsert safety net failed (non-blocking):', upsertErr);
+        }
+
         const { data: p, error: pErr } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
         if (cancelled) return;
         if (pErr) {

@@ -1,5 +1,70 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.37 (12 febbraio 2026) — FIX DEFINITIVO crash "families_created_by_fkey"
+
+### 🔥 Root cause vera identificata
+L'errore `insert or update on table "families" violates foreign key constraint
+"families_created_by_fkey"` confermava che la riga in `profiles` per quel
+`session.user.id` non esisteva. 3 problemi sottostanti:
+
+1. **Manca RLS policy INSERT su `profiles`** nello schema base
+   (`profiles_read_all` SELECT + `profiles_update_own` UPDATE esistono, ma
+   non c'è una `INSERT`). → Qualsiasi upsert client-side veniva silenziato.
+
+2. **Trigger `handle_new_user` rigido sui phone signup**
+   Usava `split_part(email, '@', 1)` ma per i signup via phone OTP email è
+   NULL → split_part(null) = '' → display_name vuoto → potenziale violazione
+   `not null` su display_name → trigger crashava → profile MAI creato.
+
+3. **Profili orfani esistenti**: utenti creati prima del fix del trigger
+   non hanno mai avuto una riga in `profiles`. Da backfillare.
+
+### Fix in 2 livelli
+
+**(A) SQL hotfix** — `/app/frontend/fammy-profile-hotfix.sql` (nuovo file):
+- Aggiunge policy `profiles_insert_own` (manca dallo schema)
+- Riscrive trigger `handle_new_user` con fallback chain:
+  full_name → name → display_name (meta) → email_local → phone → 'Membro'
+- `on conflict (id) do nothing` per idempotenza
+- `exception when others` per non bloccare mai il signup auth
+- Backfill INSERT per tutti gli `auth.users` senza riga in `profiles`
+
+**(B) Safety net client-side in App.jsx**:
+Prima di toccare members/families, esegue un upsert idempotente del proprio
+profile (ignoreDuplicates: true). Belt-and-suspenders: anche se il trigger
+fallisse in futuro, il primo login crea comunque il profilo.
+
+### File modificati
+- ✏️ `/app/frontend/src/App.jsx` — safety net upsert profile
+- ➕ `/app/frontend/fammy-profile-hotfix.sql` — fix RLS + trigger + backfill
+
+### ⚠️ AZIONE UTENTE (3 step)
+1. **Push Vercel** (Save to GitHub)
+2. **ESEGUI SUBITO** `fammy-profile-hotfix.sql` su Supabase Dashboard → SQL Editor
+   (è quello che davvero fixa l'errore family_created_by_fkey)
+3. Chiudi completamente la PWA dall'iPhone e riapri. L'app dovrebbe recuperare
+   le tue famiglie esistenti correttamente.
+
+### Note su altri quesiti utente
+- **App badge "1" come Netflix**: già implementato in `sw.js:103-114` —
+  funziona quando la PWA è installata su iOS 16.4+ ed è il SW a settarlo
+  alla ricezione push. Per vederlo: serve push reale con app chiusa.
+  La diagnostica nel Profilo → 🔔 → 🩺 Diagnostica notifiche permette di
+  testarlo.
+- **Google SSO senza password**: comportamento standard. Una volta loggato
+  con Google su iPhone, il browser/PWA mantiene il cookie SSO di Google e
+  non richiede più le credenziali. Per forzare il re-login con un account
+  diverso: Profilo → Esci → poi Safari → google.com → sign out della
+  sessione Google nel browser.
+
+### Testing
+- Lint: ✅ files modificati (2 errori pre-esistenti del codebase, non introdotti)
+- Smoke screenshot: ✅ login screen carica
+- ⚠️ Test reale FK constraint: serve eseguire l'SQL su Supabase produzione
+
+---
+
+
 ## Iterazione 16.5.36 (12 febbraio 2026) — Fix bug critico: utenti esistenti trattati come nuovi + auth.users sync
 
 ### 🚨 Bug critico — Utente già esistente vede WelcomeScreen + crash su Salta
