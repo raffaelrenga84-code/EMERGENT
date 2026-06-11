@@ -15,9 +15,11 @@ import { supabase } from './supabase.js';
  */
 export function useGoogleAvatar(session, profile) {
   useEffect(() => {
-    if (!session || !profile) return;
-
-    const userId = session.user.id;
+    // Difesa: la session da localStorage può non avere ancora `user` durante
+    // l'hydration (formato vecchio o token rifresh in corso) → optional chaining
+    // per evitare il crash "null is not an object".
+    const userId = session?.user?.id;
+    if (!userId || !profile) return;
 
     const sync = async () => {
       try {

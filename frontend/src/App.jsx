@@ -154,18 +154,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) { setProfile(null); setFamilies([]); setDataLoaded(false); return; }
+    // Difesa: durante l'hydration da localStorage la session potrebbe esistere
+    // senza `user` popolato → non basta `if (!session)`, serve verificare user.id
+    // per evitare il crash "null is not an object" su session.user.id.
+    const userId = session?.user?.id;
+    if (!userId) { setProfile(null); setFamilies([]); setDataLoaded(false); return; }
     let cancelled = false;
     (async () => {
       try {
-        const { data: p } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+        const { data: p } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
         if (cancelled) return;
         setProfile(p);
 
         const { data: m } = await supabase
           .from('members')
           .select('family_id, families(*)')
-          .eq('user_id', session.user.id);
+          .eq('user_id', userId);
         if (cancelled) return;
         const fams = (m || []).map((row) => row.families).filter(Boolean);
         setFamilies(fams);

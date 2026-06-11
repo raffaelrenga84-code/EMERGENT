@@ -1,5 +1,66 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.35 (12 febbraio 2026) — Hotfix crash JS WelcomeScreen + SQL unified + lang switcher
+
+### Bug fix #1 — Crash "null is not an object" sulla Welcome / boot dell'app
+**Root cause**: durante l'hydration della session da `localStorage`, l'oggetto
+salvato poteva NON contenere ancora `user` (formato vecchio Supabase SDK,
+refresh token in corso, o blob corrotto). Tre punti accedevano direttamente
+a `session.user.id` senza optional chaining → crash bloccante prima
+ancora di mostrare la UI:
+
+- `useGoogleAvatar.js:20` → `const userId = session.user.id;`
+- `App.jsx:161` → `.eq('id', session.user.id)` nell'effect di caricamento profile
+- `WelcomeScreen.jsx` (skipToBoard, FamilyCreateForm, FamilyThenItem, DemoCreator)
+  → `session.user.email.split('@')[0]` con email null per account phone-only
+
+**Fix**:
+- `useGoogleAvatar.js`: guardia unificata `const userId = session?.user?.id; if (!userId || !profile) return;`
+- `App.jsx`: stessa pattern nell'useEffect di caricamento profile/families
+- `WelcomeScreen.jsx`: nuova funzione helper `fallbackDisplayName(profile, session)`
+  che usa profile.display_name → email → phone → 'Membro' come fallback. Sostituite
+  tutte e 4 le occorrenze di `session.user.email.split('@')[0]`.
+
+### Bug fix #2 — Script SQL hotfix attachments con 3 bug
+**Root cause** in `fammy-attachments-hotfix.sql`:
+1. Riferimento a `f.owner_user_id` (colonna inesistente) — la colonna corretta
+   nella tabella `families` è `created_by` (vedi `fammy-schema.sql:72`).
+2. Riferimenti non qualificati a `name` nelle storage policies → ambiguità con
+   `members.name` nei JOIN delle subquery → errore "column reference name is ambiguous".
+3. La colonna `tasks.priority` poteva non esistere su DB più vecchi che non avevano
+   eseguito `fammy-add-priority-and-permissions.sql`.
+
+**Fix**: nuovo file `/app/frontend/fammy-attachments-hotfix-fixed.sql`:
+- `f.owner_user_id` → `f.created_by`
+- `name` → `storage.objects.name` (qualificato esplicitamente)
+- Aggiunto `alter table public.tasks add column if not exists priority text ...`
+  in cima (idempotente, no-op se la colonna esiste già)
+- Tutto idempotente: rilanciabile senza danni
+
+### Feature — Switcher lingua su WelcomeScreen
+Aggiunto in alto a destra (stesso pattern di `LoginScreen.jsx`): 4 flag IT/EN/FR/DE
+cliccabili. Identifica il valore attivo con opacity 1 vs 0.4. data-testid:
+`welcome-lang-{it|en|fr|de}` per testing automatico.
+
+### File modificati
+- ✏️ `/app/frontend/src/lib/useGoogleAvatar.js` — optional chaining
+- ✏️ `/app/frontend/src/App.jsx` — optional chaining nell'effect
+- ✏️ `/app/frontend/src/screens/WelcomeScreen.jsx` — fallbackDisplayName helper + LanguageSwitcher
+- ➕ `/app/frontend/fammy-attachments-hotfix-fixed.sql` — nuovo SQL pulito
+
+### ⚠️ AZIONE UTENTE (2 step)
+1. **Push Vercel** (Save to GitHub → auto-deploy frontend)
+2. **Esegui SQL** sul Supabase Dashboard SQL Editor:
+   `fammy-attachments-hotfix-fixed.sql` (NON il vecchio `fammy-attachments-hotfix.sql`)
+
+### Testing
+- Lint: ✅ files modificati (2 errori pre-esistenti sul codebase non introdotti dai miei fix)
+- Smoke screenshot: ✅ landing page carica correttamente, niente crash JS
+- ⚠️ Test reale del flusso WelcomeScreen richiede login Google (non automatizzabile da headless)
+
+---
+
+
 ## Iterazione 16.5.34 (11 febbraio 2026) — Hotfix attachments schema
 
 ### Bug fix — 2 errori di schema riportati dall'utente

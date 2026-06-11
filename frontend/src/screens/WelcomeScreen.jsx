@@ -1,13 +1,24 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { useT } from '../lib/i18n.jsx';
+import { useT, LANGS } from '../lib/i18n.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import JoinFamilyByCodeModal from '../components/JoinFamilyByCodeModal.jsx';
 
 const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '❤️', '🌟', '🍝'];
 
+// Fallback nome: alcuni account (phone-only, Apple "Hide my email") possono
+// avere session.user.email = null. Mai accedere a .split('@') direttamente.
+function fallbackDisplayName(profile, session) {
+  if (profile?.display_name) return profile.display_name;
+  const email = session?.user?.email;
+  if (email) return email.split('@')[0];
+  const phone = session?.user?.phone;
+  if (phone) return phone;
+  return 'Membro';
+}
+
 export default function WelcomeScreen({ session, profile, onCreated }) {
-  const { t } = useT();
+  const { t, lang, setLang } = useT();
   const [view, setView] = useState('hub'); // 'hub' | 'family' | 'task' | 'event' | 'demo'
   const [busy, setBusy] = useState(false);
   // Mostra il tour onboarding la prima volta (anche prima di creare famiglia).
@@ -27,7 +38,7 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
   // lo stesso nome, generando confusione (vedi bug del 10/05/2026).
   const skipToBoard = async () => {
     if (busy) return;
-    const displayName = profile?.display_name || session.user.email.split('@')[0];
+    const displayName = fallbackDisplayName(profile, session);
     // Nome di fallback: "La famiglia di <Nome>" → univoco per persona, niente collisioni
     const defaultFamilyName = `La famiglia di ${displayName}`;
     setBusy(true);
@@ -58,6 +69,23 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
 
   return (
     <div className="hub-wrap">
+      {/* Switcher lingua in alto a destra — pattern identico a LoginScreen */}
+      <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 4, zIndex: 5 }}>
+        {LANGS.map((l) => (
+          <button
+            key={l.id}
+            onClick={() => setLang(l.id)}
+            data-testid={`welcome-lang-${l.id}`}
+            style={{
+              background: 'none', border: 'none', fontSize: 18, padding: 6,
+              opacity: lang === l.id ? 1 : 0.4, cursor: 'pointer',
+            }}
+            title={l.label}>
+            {l.flag}
+          </button>
+        ))}
+      </div>
+
       {showOnboarding && (
         <OnboardingTour onClose={() => setShowOnboarding(false)} />
       )}
@@ -131,7 +159,7 @@ function FamilyCreateForm({ session, profile, onCreated, onBack }) {
         .select().single();
       if (e1) throw e1;
 
-      const displayName = profile?.display_name || session.user.email.split('@')[0];
+      const displayName = fallbackDisplayName(profile, session);
       const { error: e2 } = await supabase.from('members').insert({
         family_id: fam.id, user_id: session.user.id, name: displayName,
         role: 'tu', avatar_letter: displayName.charAt(0).toUpperCase(), status: 'active',
@@ -212,7 +240,7 @@ function FamilyThenItem({ mode, session, profile, onCreated, onBack }) {
         .from('families').insert({ name: familyName.trim(), emoji, created_by: session.user.id })
         .select().single();
       if (e1) throw e1;
-      const displayName = profile?.display_name || session.user.email.split('@')[0];
+      const displayName = fallbackDisplayName(profile, session);
       const { data: mem, error: e2 } = await supabase.from('members').insert({
         family_id: fam.id, user_id: session.user.id, name: displayName,
         role: 'tu', avatar_letter: displayName.charAt(0).toUpperCase(), status: 'active',
@@ -377,7 +405,7 @@ function DemoCreator({ session, profile, onCreated, onBack }) {
         .select().single();
       if (e1) throw e1;
 
-      const displayName = profile?.display_name || session.user.email.split('@')[0];
+      const displayName = fallbackDisplayName(profile, session);
       await supabase.from('members').insert([
         { family_id: fam.id, user_id: session.user.id, name: displayName,
           role: 'tu', avatar_letter: displayName.charAt(0).toUpperCase(),
