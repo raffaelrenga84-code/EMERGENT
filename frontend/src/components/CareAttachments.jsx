@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { isIOS } from '../lib/platformDetect.js';
 
 /**
  * CareAttachments — uploader + galleria di allegati Care Hub.
@@ -100,45 +101,89 @@ export default function CareAttachments({ memberId, kind, parentId = null, meId 
             📎 {t('care_att_h') || 'Documenti & foto'} {items.length > 0 && `(${items.length})`}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <label
-              data-testid={`care-att-camera-btn-${kind}`}
-              title={t('take_photo')}
-              style={{
-                padding: '6px 10px', borderRadius: 100,
-                border: '1.5px solid var(--ac)', background: 'white',
-                color: 'var(--ac)', fontSize: 12, fontWeight: 700,
-                cursor: uploading ? 'wait' : 'pointer',
-                opacity: uploading ? 0.6 : 1,
-              }}>
-              📷
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFile}
-                disabled={uploading}
-                style={{ display: 'none' }}
-              />
-            </label>
-            <label
-              data-testid={`care-att-upload-btn-${kind}`}
-              title={t('from_gallery')}
-              style={{
-                padding: '6px 12px', borderRadius: 100,
-                border: '1.5px solid var(--ac)', background: 'white',
-                color: 'var(--ac)', fontSize: 12, fontWeight: 700,
-                cursor: uploading ? 'wait' : 'pointer', whiteSpace: 'nowrap',
-                opacity: uploading ? 0.6 : 1,
-              }}>
-              {uploading ? (t('care_att_uploading') || 'Carico…') : `🖼️ ${t('care_att_add') || 'File'}`}
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={handleFile}
-                disabled={uploading}
-                style={{ display: 'none' }}
-              />
-            </label>
+            {isIOS() ? (
+              /* iOS: 1 solo bottone (picker nativo già offre tutto) */
+              <label
+                data-testid={`care-att-upload-btn-${kind}`}
+                style={{
+                  padding: '6px 12px', borderRadius: 100,
+                  border: '1.5px solid var(--ac)', background: 'white',
+                  color: 'var(--ac)', fontSize: 12, fontWeight: 700,
+                  cursor: uploading ? 'wait' : 'pointer', whiteSpace: 'nowrap',
+                  opacity: uploading ? 0.6 : 1,
+                }}>
+                {uploading ? (t('care_att_uploading') || 'Carico…') : `+ ${t('care_att_add') || 'Aggiungi'}`}
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={handleFile}
+                  disabled={uploading}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            ) : (
+              /* Android: 3 bottoni separati — Camera, Galleria, File generico */
+              <>
+                <label
+                  data-testid={`care-att-camera-btn-${kind}`}
+                  title={t('take_photo')}
+                  style={{
+                    padding: '6px 10px', borderRadius: 100,
+                    border: '1.5px solid var(--ac)', background: 'white',
+                    color: 'var(--ac)', fontSize: 12, fontWeight: 700,
+                    cursor: uploading ? 'wait' : 'pointer',
+                    opacity: uploading ? 0.6 : 1,
+                  }}>
+                  📷
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFile}
+                    disabled={uploading}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                <label
+                  data-testid={`care-att-gallery-btn-${kind}`}
+                  title={t('from_gallery')}
+                  style={{
+                    padding: '6px 10px', borderRadius: 100,
+                    border: '1.5px solid var(--ac)', background: 'white',
+                    color: 'var(--ac)', fontSize: 12, fontWeight: 700,
+                    cursor: uploading ? 'wait' : 'pointer',
+                    opacity: uploading ? 0.6 : 1,
+                  }}>
+                  🖼️
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFile}
+                    disabled={uploading}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                <label
+                  data-testid={`care-att-upload-btn-${kind}`}
+                  title="File / PDF"
+                  style={{
+                    padding: '6px 12px', borderRadius: 100,
+                    border: '1.5px solid var(--ac)', background: 'white',
+                    color: 'var(--ac)', fontSize: 12, fontWeight: 700,
+                    cursor: uploading ? 'wait' : 'pointer', whiteSpace: 'nowrap',
+                    opacity: uploading ? 0.6 : 1,
+                  }}>
+                  {uploading ? (t('care_att_uploading') || 'Carico…') : `📎 File`}
+                  <input
+                    type="file"
+                    accept="application/pdf,image/*"
+                    onChange={handleFile}
+                    disabled={uploading}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </>
+            )}
           </div>
         </div>
       )}

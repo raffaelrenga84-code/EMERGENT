@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { isIOS } from '../lib/platformDetect.js';
 import { createBirthdayEventData } from '../lib/birthdayUtils.js';
 import GiftIdeasModal from './GiftIdeasModal.jsx';
 import CaregiverPicker from './CaregiverPicker.jsx';
@@ -229,28 +230,32 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
                 border: '2px solid white',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.18)',
               }}
-              title={t('take_photo')}>
+              title={isIOS() ? t('attach_photo_optional') : t('take_photo')}>
                 📷
-                <input type="file" accept="image/*" capture="environment" hidden
+                {/* iOS: 1 solo input (picker nativo offre già camera+album).
+                    Android: questo è il bottone CAMERA. */}
+                <input type="file" accept="image/*" {...(!isIOS() && { capture: 'environment' })} hidden
                   data-testid="editmember-avatar-input-camera"
                   onChange={(e) => handleAvatarUpload(e.target.files?.[0])} />
               </label>
-              {/* Pulsante album (galleria) sull'altro lato dell'avatar */}
-              <label style={{
-                position: 'absolute', bottom: -2, left: -2,
-                width: 28, height: 28, borderRadius: '50%',
-                background: 'var(--k)', color: 'white',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, cursor: 'pointer',
-                border: '2px solid white',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.18)',
-              }}
-              title={t('from_gallery')}>
-                🖼️
-                <input type="file" accept="image/*" hidden
-                  data-testid="editmember-avatar-input"
-                  onChange={(e) => handleAvatarUpload(e.target.files?.[0])} />
-              </label>
+              {/* Pulsante album (galleria) sull'altro lato dell'avatar — solo Android */}
+              {!isIOS() && (
+                <label style={{
+                  position: 'absolute', bottom: -2, left: -2,
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: 'var(--k)', color: 'white',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, cursor: 'pointer',
+                  border: '2px solid white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.18)',
+                }}
+                title={t('from_gallery')}>
+                  🖼️
+                  <input type="file" accept="image/*" hidden
+                    data-testid="editmember-avatar-input"
+                    onChange={(e) => handleAvatarUpload(e.target.files?.[0])} />
+                </label>
+              )}
             </div>
             <div style={{ flex: 1, fontSize: 12, color: 'var(--km)' }}>
               {uploading ? (

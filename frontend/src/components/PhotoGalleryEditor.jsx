@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { isIOS } from '../lib/platformDetect.js';
 
 /**
  * PhotoGalleryEditor — UI compatta per gestire le foto allegate a un
@@ -124,22 +125,32 @@ export default function PhotoGalleryEditor({
           📸 {t('td_attach_photos') || 'Foto'}{hasPhotos ? ` (${attachments.length})` : ''}
         </div>
         {hasPhotos && (
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" onClick={handlePickCamera} disabled={uploading}
-              data-testid={`photo-gallery-camera-btn-${kind}`}
-              style={{
-                padding: '6px 10px', borderRadius: 100, background: 'var(--ac)',
-                color: 'white', border: 'none', fontSize: 12, fontWeight: 700,
-                cursor: 'pointer',
-              }}>📷</button>
+          isIOS() ? (
             <button type="button" onClick={handlePick} disabled={uploading}
               data-testid={`photo-gallery-add-btn-${kind}`}
               style={{
-                padding: '6px 10px', borderRadius: 100, background: 'var(--ac)',
+                padding: '6px 12px', borderRadius: 100, background: 'var(--ac)',
                 color: 'white', border: 'none', fontSize: 12, fontWeight: 700,
                 cursor: 'pointer',
-              }}>🖼️</button>
-          </div>
+              }}>+ {t('td_add_photo') || 'Aggiungi'}</button>
+          ) : (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" onClick={handlePickCamera} disabled={uploading}
+                data-testid={`photo-gallery-camera-btn-${kind}`}
+                style={{
+                  padding: '6px 10px', borderRadius: 100, background: 'var(--ac)',
+                  color: 'white', border: 'none', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer',
+                }}>📷</button>
+              <button type="button" onClick={handlePick} disabled={uploading}
+                data-testid={`photo-gallery-add-btn-${kind}`}
+                style={{
+                  padding: '6px 10px', borderRadius: 100, background: 'var(--ac)',
+                  color: 'white', border: 'none', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer',
+                }}>🖼️</button>
+            </div>
+          )
         )}
       </div>
 

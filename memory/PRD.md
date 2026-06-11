@@ -1,5 +1,49 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.42 (12 febbraio 2026) — iOS detect su TUTTI i modal + bottone "📎 File"
+
+### iOS detect esteso a 5 modal restanti
+Pattern unificato: `import { isIOS } from '../lib/platformDetect.js'` + render condizionale:
+- **iOS**: 1 bottone unificato (picker nativo iOS già mostra "Scatta foto / Libreria foto / Sfoglia")
+- **Android**: bottoni separati per Camera / Galleria
+
+Modal aggiornati:
+- `NewFamilyModal.jsx`
+- `EditFamilyModal.jsx`
+- `EditMemberModal.jsx` (avatar: 1 bottone su iOS, 2 sui lati su Android)
+- `PhotoGalleryEditor.jsx`
+- `CareAttachments.jsx`
+
+### CareAttachments: 3 bottoni su Android (📷 + 🖼️ + 📎 File)
+Richiesta utente: ora anche un bottone esplicito "📎 File" che apre il picker generico PDF/immagini, in aggiunta a camera + galleria. Su iOS resta 1 bottone unificato (il picker iOS già copre tutto).
+
+### File modificati
+- ✏️ `NewFamilyModal.jsx`, `EditFamilyModal.jsx`, `EditMemberModal.jsx`
+- ✏️ `PhotoGalleryEditor.jsx`
+- ✏️ `CareAttachments.jsx` (con terzo bottone 📎 File)
+
+### Testing
+- Lint: ✅ files modificati (1 errore pre-esistente in CareAttachments, non introdotto)
+- Test reali iOS + Android richiesti per validare UX consistente
+
+### Coverage finale
+Tutti i punti di upload file/foto dell'app sono ora ottimizzati:
+| Modal | iOS | Android |
+|---|---|---|
+| AddTaskModal | 1 btn | 2 btn |
+| AddEventModal | 1 btn | 2 btn |
+| AddExpenseModal | 1 btn | 2 btn |
+| NewFamilyModal | 1 btn | 2 btn |
+| EditFamilyModal | 1 btn | 2 btn |
+| EditMemberModal | 1 btn | 2 btn (laterali) |
+| PhotoGalleryEditor | 1 btn | 2 btn |
+| CareAttachments | 1 btn | 3 btn (cam+gallery+file) |
+
+Esclusi: `ImportScheduleModal` (use case specifico screenshot), `TaskDetailModal` chat 📎 (refactor pendente).
+
+---
+
+
 ## Iterazione 16.5.41 (12 febbraio 2026) — Fix critico click incarico + iOS detect + "Per me" sempre visibile
 
 ### 🔴 Fix critico: TaskDetailModal si chiudeva subito dopo l'apertura

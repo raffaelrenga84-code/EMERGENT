@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { isIOS } from '../lib/platformDetect.js';
 
 const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '❤️', '🌟', '🍝', '🐾', '🚗'];
 
@@ -135,32 +136,47 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted })
               )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => fileInputCameraRef.current?.click()}
-                  data-testid="family-photo-camera-btn"
-                  style={{
-                    padding: '8px 12px', borderRadius: 100,
-                    border: '1.5px solid var(--ac)', background: 'white',
-                    color: 'var(--ac)', fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', flex: 1,
-                  }}>
-                  📷 Foto
-                </button>
+              {isIOS() ? (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   data-testid="family-photo-upload-btn"
                   style={{
-                    padding: '8px 12px', borderRadius: 100,
+                    padding: '8px 14px', borderRadius: 100,
                     border: '1.5px solid var(--ac)', background: 'white',
-                    color: 'var(--ac)', fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', flex: 1,
+                    color: 'var(--ac)', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer',
                   }}>
-                  🖼️ Galleria
+                  📸 {photoPreview ? 'Cambia foto' : 'Carica foto'}
                 </button>
-              </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => fileInputCameraRef.current?.click()}
+                    data-testid="family-photo-camera-btn"
+                    style={{
+                      padding: '8px 12px', borderRadius: 100,
+                      border: '1.5px solid var(--ac)', background: 'white',
+                      color: 'var(--ac)', fontSize: 12, fontWeight: 600,
+                      cursor: 'pointer', flex: 1,
+                    }}>
+                    📷 Foto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    data-testid="family-photo-upload-btn"
+                    style={{
+                      padding: '8px 12px', borderRadius: 100,
+                      border: '1.5px solid var(--ac)', background: 'white',
+                      color: 'var(--ac)', fontSize: 12, fontWeight: 600,
+                      cursor: 'pointer', flex: 1,
+                    }}>
+                    🖼️ Galleria
+                  </button>
+                </div>
+              )}
               <p style={{ fontSize: 11, color: 'var(--km)', margin: '6px 0 0', lineHeight: 1.4 }}>
                 Una foto rende la famiglia più riconoscibile. Senza foto, viene mostrata l'emoji.
               </p>
