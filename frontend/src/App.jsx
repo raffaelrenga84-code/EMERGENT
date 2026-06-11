@@ -129,6 +129,17 @@ export default function App() {
         const expiresAt = parsed?.expires_at ? parsed.expires_at * 1000 : 0;
         if (parsed?.user?.id && (!expiresAt || expiresAt > Date.now())) {
           setSession(parsed);
+          // 🔑 CRITICO: allinea anche il client Supabase con la session
+          // ripristinata. Senza questa chiamata, il client manda le
+          // richieste come "anon" → auth.uid() = NULL → tutte le RLS
+          // policy che richiedono autenticazione falliscono ("new row
+          // violates row-level security policy").
+          if (parsed.access_token && parsed.refresh_token) {
+            supabase.auth.setSession({
+              access_token: parsed.access_token,
+              refresh_token: parsed.refresh_token,
+            }).catch((e) => console.warn('setSession from localStorage failed:', e));
+          }
         }
       } catch (e) { /* ignore */ }
     }
