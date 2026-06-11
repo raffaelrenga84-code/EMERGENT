@@ -1,5 +1,57 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.38 (12 febbraio 2026) — Disaster Recovery + Master Restore Script
+
+### 🚨 Confermato: DB completamente wipato per rerun accidentale di `fammy-schema.sql`
+Diagnostica eseguita dall'utente ha mostrato: **0 families, 0 members, 0 tasks, 0 events,
+0 expenses** (sopravvivono solo `auth.users` e `profiles` ricreati dal trigger).
+Nessun backup sul piano Free → dati perduti.
+
+### Errori a cascata dopo il reset
+Il codice frontend referenzia colonne aggiunte da migration successive che dopo il
+reset non esistono più: `invite_code`, `assigned_to`, `priority`, `subtasks` table,
+ecc. → cascata di errori "column does not exist" / "record 'mem' is not assigned yet".
+
+### Fix preventivo applicato
+1. **Spostati i 2 file SQL distruttivi** in `/app/frontend/_DANGEROUS_DO_NOT_RUN/`:
+   - `fammy-schema.sql` → `.DESTRUCTIVE` (drop+create completo)
+   - `fammy-gdpr-delete.sql` → `.DESTRUCTIVE` (cancella account + cascade)
+   - `fammy-attachments-hotfix.sql` → `.OLD_BUGGY` (versione bacata sostituita)
+   - Aggiunto `README.md` con regole d'uso
+
+2. **Creato Master Restore script in 3 parti**:
+   - `/app/frontend/fammy-RESTORE-1-of-3.sql` (1329 righe, 19 migrations)
+   - `/app/frontend/fammy-RESTORE-2-of-3.sql` (1682 righe, 19 migrations)
+   - `/app/frontend/fammy-RESTORE-3-of-3.sql` (1738 righe, 17 migrations)
+   - Totale: 55 migrations concatenate in ordine cronologico
+   - Riallinea il DB con tutte le colonne/tabelle/funzioni/RLS che il codice attuale
+     si aspetta (invite_code, assigned_to, priority, subtasks, reactions, feedback,
+     absences, medications, push subs, task/event attachments, ecc.)
+   - Tutte idempotenti (`if not exists`, `or replace`, `drop policy if exists`)
+
+### ⚠️ AZIONE UTENTE (4 step in ordine)
+1. **Esegui** `fammy-RESTORE-1-of-3.sql` su Supabase SQL Editor → attendi "Success"
+2. **Esegui** `fammy-RESTORE-2-of-3.sql` → attendi "Success"
+3. **Esegui** `fammy-RESTORE-3-of-3.sql` → attendi "Success"
+4. Chiudi e riapri la PWA → tutti gli errori "column does not exist" dovrebbero sparire
+
+Se uno dei 3 file dà errore, mandami lo screenshot dell'errore preciso così
+diagnostico quale migration è in conflitto.
+
+### Backlog rimaste da fare appena il DB sarà ripristinato
+1. **Doppia conferma** sul bottone "Cancella account" (digita "CANCELLA" per confermare)
+2. **Soft-delete** (`deleted_at`) per tasks/events/expenses → recovery facile
+3. **Audit log** per tutte le DELETE su tabelle critiche
+4. **Upgrade Supabase Pro** consigliato fortemente per backup giornalieri + PITR
+
+### File modificati
+- 📁 `_DANGEROUS_DO_NOT_RUN/` (nuova cartella con README + 3 file pericolosi rinominati)
+- ➕ `fammy-RESTORE-1-of-3.sql` / `2-of-3.sql` / `3-of-3.sql` (nuovi)
+- ➕ `fammy-MASTER-restore-after-reset.sql` (versione monolitica 4763 righe)
+
+---
+
+
 ## Iterazione 16.5.37 (12 febbraio 2026) — FIX DEFINITIVO crash "families_created_by_fkey"
 
 ### 🔥 Root cause vera identificata
