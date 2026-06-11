@@ -300,10 +300,12 @@ grant execute on function can_see_family(uuid) to authenticated;
 drop policy if exists "tasks_read"   on tasks;
 drop policy if exists "tasks_update" on tasks;
 
+drop policy if exists "tasks_read" on tasks;
 create policy "tasks_read" on tasks for select using (
   is_family_member(family_id) or is_task_assignee(id)
 );
 
+drop policy if exists "tasks_update" on tasks;
 create policy "tasks_update" on tasks for update
   using (is_family_member(family_id) or is_task_assignee(id))
   with check (is_family_member(family_id) or is_task_assignee(id));
@@ -341,6 +343,7 @@ drop policy if exists "members_write" on members;
 
 -- INSERT: consentito se sei già membro della famiglia
 -- OPPURE se sei il creatore della famiglia (caso del primo membro)
+drop policy if exists "members_insert" on members;
 create policy "members_insert" on members for insert with check (
   is_family_member(family_id)
   or exists (
@@ -350,11 +353,13 @@ create policy "members_insert" on members for insert with check (
 );
 
 -- UPDATE: solo membri esistenti possono modificare
+drop policy if exists "members_update" on members;
 create policy "members_update" on members for update
   using (is_family_member(family_id))
   with check (is_family_member(family_id));
 
 -- DELETE: solo membri esistenti possono cancellare
+drop policy if exists "members_delete" on members;
 create policy "members_delete" on members for delete
   using (is_family_member(family_id));
 
@@ -1064,8 +1069,7 @@ alter table public.absences enable row level security;
 --   • le mie assenze (sempre)
 --   • le assenze condivise con una famiglia di cui sono membro
 drop policy if exists "Read own or shared absences" on public.absences;
-create policy "Read own or shared absences"
-  on public.absences for select
+create policy "Read own or shared absences" on public.absences for select
   to authenticated
   using (
     user_id = auth.uid()
@@ -1078,23 +1082,20 @@ create policy "Read own or shared absences"
 
 -- Insert: solo io posso creare le mie
 drop policy if exists "Create own absence" on public.absences;
-create policy "Create own absence"
-  on public.absences for insert
+create policy "Create own absence" on public.absences for insert
   to authenticated
   with check (user_id = auth.uid());
 
 -- Update: solo il proprietario
 drop policy if exists "Update own absence" on public.absences;
-create policy "Update own absence"
-  on public.absences for update
+create policy "Update own absence" on public.absences for update
   to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
 -- Delete: solo il proprietario
 drop policy if exists "Delete own absence" on public.absences;
-create policy "Delete own absence"
-  on public.absences for delete
+create policy "Delete own absence" on public.absences for delete
   to authenticated
   using (user_id = auth.uid());
 
@@ -1144,8 +1145,7 @@ alter table public.absence_responses enable row level security;
 -- READ: tutti i membri delle famiglie a cui l'assenza è visibile
 -- (o l'autore dell'assenza stessa).
 drop policy if exists "absence_responses read" on public.absence_responses;
-create policy "absence_responses read"
-  on public.absence_responses for select
+create policy "absence_responses read" on public.absence_responses for select
   to authenticated
   using (
     exists (
@@ -1167,8 +1167,7 @@ create policy "absence_responses read"
 
 -- INSERT: stessi criteri della read
 drop policy if exists "absence_responses insert" on public.absence_responses;
-create policy "absence_responses insert"
-  on public.absence_responses for insert
+create policy "absence_responses insert" on public.absence_responses for insert
   to authenticated
   with check (
     author_id = auth.uid() and
@@ -1191,8 +1190,7 @@ create policy "absence_responses insert"
 
 -- UPDATE: solo l'autore può modificare (es. reactions)
 drop policy if exists "absence_responses update own" on public.absence_responses;
-create policy "absence_responses update own"
-  on public.absence_responses for update
+create policy "absence_responses update own" on public.absence_responses for update
   to authenticated
   using (author_id = auth.uid())
   with check (author_id = auth.uid());
@@ -1204,8 +1202,7 @@ create policy "absence_responses update own"
 
 -- DELETE: solo autore
 drop policy if exists "absence_responses delete own" on public.absence_responses;
-create policy "absence_responses delete own"
-  on public.absence_responses for delete
+create policy "absence_responses delete own" on public.absence_responses for delete
   to authenticated
   using (author_id = auth.uid());
 
@@ -1302,8 +1299,7 @@ alter table public.medication_logs enable row level security;
 
 -- SELECT medications: chiunque della famiglia del member
 drop policy if exists "med_select_same_family" on public.medications;
-create policy "med_select_same_family"
-  on public.medications for select
+create policy "med_select_same_family" on public.medications for select
   to authenticated
   using (
     exists (
@@ -1316,8 +1312,7 @@ create policy "med_select_same_family"
 
 -- INSERT/UPDATE/DELETE: idem
 drop policy if exists "med_modify_same_family" on public.medications;
-create policy "med_modify_same_family"
-  on public.medications for all
+create policy "med_modify_same_family" on public.medications for all
   to authenticated
   using (
     exists (
@@ -1336,8 +1331,7 @@ create policy "med_modify_same_family"
 
 -- Stesse policy per medication_logs
 drop policy if exists "medlog_select_same_family" on public.medication_logs;
-create policy "medlog_select_same_family"
-  on public.medication_logs for select
+create policy "medlog_select_same_family" on public.medication_logs for select
   to authenticated
   using (
     exists (
@@ -1348,8 +1342,7 @@ create policy "medlog_select_same_family"
   );
 
 drop policy if exists "medlog_modify_same_family" on public.medication_logs;
-create policy "medlog_modify_same_family"
-  on public.medication_logs for all
+create policy "medlog_modify_same_family" on public.medication_logs for all
   to authenticated
   using (
     exists (
@@ -1462,8 +1455,7 @@ create trigger trg_medical_updated
 alter table public.medical_profiles enable row level security;
 
 drop policy if exists "medical_select_same_family" on public.medical_profiles;
-create policy "medical_select_same_family"
-  on public.medical_profiles for select
+create policy "medical_select_same_family" on public.medical_profiles for select
   to authenticated
   using (
     exists (
@@ -1474,8 +1466,7 @@ create policy "medical_select_same_family"
   );
 
 drop policy if exists "medical_modify_same_family" on public.medical_profiles;
-create policy "medical_modify_same_family"
-  on public.medical_profiles for all
+create policy "medical_modify_same_family" on public.medical_profiles for all
   to authenticated
   using (
     exists (
@@ -1524,8 +1515,7 @@ create trigger trg_diary_updated
 alter table public.daily_diary enable row level security;
 
 drop policy if exists "diary_select_same_family" on public.daily_diary;
-create policy "diary_select_same_family"
-  on public.daily_diary for select
+create policy "diary_select_same_family" on public.daily_diary for select
   to authenticated
   using (
     exists (
@@ -1536,8 +1526,7 @@ create policy "diary_select_same_family"
   );
 
 drop policy if exists "diary_modify_same_family" on public.daily_diary;
-create policy "diary_modify_same_family"
-  on public.daily_diary for all
+create policy "diary_modify_same_family" on public.daily_diary for all
   to authenticated
   using (
     exists (

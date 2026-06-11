@@ -837,20 +837,17 @@ create index if not exists user_preferences_sync_idx
 alter table public.user_preferences enable row level security;
 
 drop policy if exists "Read own prefs" on public.user_preferences;
-create policy "Read own prefs"
-  on public.user_preferences for select
+create policy "Read own prefs" on public.user_preferences for select
   to authenticated
   using (user_id = auth.uid());
 
 drop policy if exists "Insert own prefs" on public.user_preferences;
-create policy "Insert own prefs"
-  on public.user_preferences for insert
+create policy "Insert own prefs" on public.user_preferences for insert
   to authenticated
   with check (user_id = auth.uid());
 
 drop policy if exists "Update own prefs" on public.user_preferences;
-create policy "Update own prefs"
-  on public.user_preferences for update
+create policy "Update own prefs" on public.user_preferences for update
   to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
@@ -1012,17 +1009,21 @@ drop policy if exists "tasks_insert" on tasks;
 drop policy if exists "tasks_update" on tasks;
 drop policy if exists "tasks_delete" on tasks;
 
+drop policy if exists "tasks_select" on tasks;
 create policy "tasks_select" on tasks for select
   using (is_family_member(family_id));
 
+drop policy if exists "tasks_insert" on tasks;
 create policy "tasks_insert" on tasks for insert
   with check (is_family_member(family_id));
 
+drop policy if exists "tasks_update" on tasks;
 create policy "tasks_update" on tasks for update
   using (is_family_member(family_id))
   with check (is_family_member(family_id));
 
 -- DELETE: solo il creatore (author_id = mio member.id) o se author_id è null
+drop policy if exists "tasks_delete" on tasks;
 create policy "tasks_delete" on tasks for delete
   using (
     is_family_member(family_id)
@@ -1040,16 +1041,20 @@ drop policy if exists "events_insert" on events;
 drop policy if exists "events_update" on events;
 drop policy if exists "events_delete" on events;
 
+drop policy if exists "events_select" on events;
 create policy "events_select" on events for select
   using (is_family_member(family_id));
 
+drop policy if exists "events_insert" on events;
 create policy "events_insert" on events for insert
   with check (is_family_member(family_id));
 
+drop policy if exists "events_update" on events;
 create policy "events_update" on events for update
   using (is_family_member(family_id))
   with check (is_family_member(family_id));
 
+drop policy if exists "events_delete" on events;
 create policy "events_delete" on events for delete
   using (
     is_family_member(family_id)
@@ -1067,16 +1072,20 @@ drop policy if exists "expenses_insert" on expenses;
 drop policy if exists "expenses_update" on expenses;
 drop policy if exists "expenses_delete" on expenses;
 
+drop policy if exists "expenses_select" on expenses;
 create policy "expenses_select" on expenses for select
   using (is_family_member(family_id));
 
+drop policy if exists "expenses_insert" on expenses;
 create policy "expenses_insert" on expenses for insert
   with check (is_family_member(family_id));
 
+drop policy if exists "expenses_update" on expenses;
 create policy "expenses_update" on expenses for update
   using (is_family_member(family_id))
   with check (is_family_member(family_id));
 
+drop policy if exists "expenses_delete" on expenses;
 create policy "expenses_delete" on expenses for delete
   using (
     is_family_member(family_id)
@@ -1149,8 +1158,8 @@ DROP POLICY IF EXISTS "Users can view task attachments in their families" ON tas
 DROP POLICY IF EXISTS "Users can insert task attachments for tasks in their families" ON task_attachments;
 DROP POLICY IF EXISTS "Users can delete task attachments they created" ON task_attachments;
 
-CREATE POLICY "Users can view task attachments in their families"
-  ON task_attachments FOR SELECT
+drop policy if exists "Users can view task attachments in their families" on task_attachments;
+create policy "Users can view task attachments in their families" on task_attachments FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM tasks t
@@ -1161,8 +1170,8 @@ CREATE POLICY "Users can view task attachments in their families"
     )
   );
 
-CREATE POLICY "Users can insert task attachments for tasks in their families"
-  ON task_attachments FOR INSERT
+drop policy if exists "Users can insert task attachments for tasks in their families" on task_attachments;
+create policy "Users can insert task attachments for tasks in their families" on task_attachments FOR INSERT
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM tasks t
@@ -1173,8 +1182,8 @@ CREATE POLICY "Users can insert task attachments for tasks in their families"
     )
   );
 
-CREATE POLICY "Users can delete task attachments they created"
-  ON task_attachments FOR DELETE
+drop policy if exists "Users can delete task attachments they created" on task_attachments;
+create policy "Users can delete task attachments they created" on task_attachments FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM tasks t
@@ -1195,15 +1204,15 @@ DROP POLICY IF EXISTS "Users can upload task attachments in their families" ON s
 DROP POLICY IF EXISTS "Users can view task attachments in their families" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete task attachments they have access to" ON storage.objects;
 
-CREATE POLICY "Users can upload task attachments in their families"
-  ON storage.objects FOR INSERT
+drop policy if exists "Users can upload task attachments in their families" on storage.objects;
+create policy "Users can upload task attachments in their families" on storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'task-attachments' AND
     auth.role() = 'authenticated'
   );
 
-CREATE POLICY "Users can view task attachments in their families"
-  ON storage.objects FOR SELECT
+drop policy if exists "Users can view task attachments in their families" on storage.objects;
+create policy "Users can view task attachments in their families" on storage.objects FOR SELECT
   USING (
     bucket_id = 'task-attachments' AND
     EXISTS (
@@ -1216,8 +1225,8 @@ CREATE POLICY "Users can view task attachments in their families"
     )
   );
 
-CREATE POLICY "Users can delete task attachments they have access to"
-  ON storage.objects FOR DELETE
+drop policy if exists "Users can delete task attachments they have access to" on storage.objects;
+create policy "Users can delete task attachments they have access to" on storage.objects FOR DELETE
   USING (
     bucket_id = 'task-attachments' AND
     EXISTS (
@@ -1255,8 +1264,8 @@ DROP POLICY IF EXISTS "Users can view expense attachments in their families" ON 
 DROP POLICY IF EXISTS "Users can insert expense attachments for expenses in their families" ON expense_attachments;
 DROP POLICY IF EXISTS "Users can delete expense attachments they have access to" ON expense_attachments;
 
-CREATE POLICY "Users can view expense attachments in their families"
-  ON expense_attachments FOR SELECT
+drop policy if exists "Users can view expense attachments in their families" on expense_attachments;
+create policy "Users can view expense attachments in their families" on expense_attachments FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM expenses e
@@ -1267,8 +1276,8 @@ CREATE POLICY "Users can view expense attachments in their families"
     )
   );
 
-CREATE POLICY "Users can insert expense attachments for expenses in their families"
-  ON expense_attachments FOR INSERT
+drop policy if exists "Users can insert expense attachments for expenses in their families" on expense_attachments;
+create policy "Users can insert expense attachments for expenses in their families" on expense_attachments FOR INSERT
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM expenses e
@@ -1279,8 +1288,8 @@ CREATE POLICY "Users can insert expense attachments for expenses in their famili
     )
   );
 
-CREATE POLICY "Users can delete expense attachments they have access to"
-  ON expense_attachments FOR DELETE
+drop policy if exists "Users can delete expense attachments they have access to" on expense_attachments;
+create policy "Users can delete expense attachments they have access to" on expense_attachments FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM expenses e
@@ -1301,15 +1310,15 @@ DROP POLICY IF EXISTS "Users can upload expense attachments in their families" O
 DROP POLICY IF EXISTS "Users can view expense attachments in their families" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete expense attachments they have access to" ON storage.objects;
 
-CREATE POLICY "Users can upload expense attachments in their families"
-  ON storage.objects FOR INSERT
+drop policy if exists "Users can upload expense attachments in their families" on storage.objects;
+create policy "Users can upload expense attachments in their families" on storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'expense-attachments' AND
     auth.role() = 'authenticated'
   );
 
-CREATE POLICY "Users can view expense attachments in their families"
-  ON storage.objects FOR SELECT
+drop policy if exists "Users can view expense attachments in their families" on storage.objects;
+create policy "Users can view expense attachments in their families" on storage.objects FOR SELECT
   USING (
     bucket_id = 'expense-attachments' AND
     EXISTS (
@@ -1322,8 +1331,8 @@ CREATE POLICY "Users can view expense attachments in their families"
     )
   );
 
-CREATE POLICY "Users can delete expense attachments they have access to"
-  ON storage.objects FOR DELETE
+drop policy if exists "Users can delete expense attachments they have access to" on storage.objects;
+create policy "Users can delete expense attachments they have access to" on storage.objects FOR DELETE
   USING (
     bucket_id = 'expense-attachments' AND
     EXISTS (
@@ -1390,7 +1399,7 @@ create index if not exists idx_tasks_delegated_to on tasks(delegated_to);
 -- BLOCCO: sql/fammy-add-gift-messages.sql
 -- ============================================================
 -- Create gift_messages table for gift coordination conversations
-CREATE TABLE gift_messages (
+CREATE TABLE IF NOT EXISTS gift_messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
   birthday_member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
@@ -1401,15 +1410,15 @@ CREATE TABLE gift_messages (
 );
 
 -- Create index for efficient queries
-CREATE INDEX idx_gift_messages_birthday ON gift_messages(birthday_member_id);
-CREATE INDEX idx_gift_messages_family ON gift_messages(family_id);
+CREATE INDEX IF NOT EXISTS idx_gift_messages_birthday ON gift_messages(birthday_member_id);
+CREATE INDEX IF NOT EXISTS idx_gift_messages_family ON gift_messages(family_id);
 
 -- Enable RLS
 ALTER TABLE gift_messages ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Users can see messages for their family's birthday events
-CREATE POLICY "Users can view family gift messages"
-  ON gift_messages FOR SELECT
+drop policy if exists "Users can view family gift messages" on gift_messages;
+create policy "Users can view family gift messages" on gift_messages FOR SELECT
   USING (
     family_id IN (
       SELECT family_id FROM members WHERE user_id = auth.uid()
@@ -1417,8 +1426,8 @@ CREATE POLICY "Users can view family gift messages"
   );
 
 -- RLS Policy: Users can create messages for their family
-CREATE POLICY "Users can create gift messages in their family"
-  ON gift_messages FOR INSERT
+drop policy if exists "Users can create gift messages in their family" on gift_messages;
+create policy "Users can create gift messages in their family" on gift_messages FOR INSERT
   WITH CHECK (
     family_id IN (
       SELECT family_id FROM members WHERE user_id = auth.uid()
@@ -1488,8 +1497,7 @@ alter table public.care_attachments enable row level security;
 
 -- SELECT
 drop policy if exists "care_attachments same family read" on public.care_attachments;
-create policy "care_attachments same family read"
-  on public.care_attachments for select
+create policy "care_attachments same family read" on public.care_attachments for select
   using (
     exists (
       select 1 from public.members m_target
@@ -1501,8 +1509,7 @@ create policy "care_attachments same family read"
 
 -- INSERT
 drop policy if exists "care_attachments same family insert" on public.care_attachments;
-create policy "care_attachments same family insert"
-  on public.care_attachments for insert
+create policy "care_attachments same family insert" on public.care_attachments for insert
   with check (
     exists (
       select 1 from public.members m_target
@@ -1514,8 +1521,7 @@ create policy "care_attachments same family insert"
 
 -- DELETE: uploader o owner della famiglia (NB: la colonna è `created_by`)
 drop policy if exists "care_attachments uploader or owner manage" on public.care_attachments;
-create policy "care_attachments uploader or owner manage"
-  on public.care_attachments for delete
+create policy "care_attachments uploader or owner manage" on public.care_attachments for delete
   using (
     exists (
       select 1 from public.members m_me
@@ -1548,8 +1554,7 @@ end$$;
 --     nei JOIN delle subquery → errore "column reference name is ambiguous".
 -- =====================================================================
 drop policy if exists "care-attachments read same family" on storage.objects;
-create policy "care-attachments read same family"
-  on storage.objects for select
+create policy "care-attachments read same family" on storage.objects for select
   using (
     bucket_id = 'care-attachments' AND (
       exists (
@@ -1562,8 +1567,7 @@ create policy "care-attachments read same family"
   );
 
 drop policy if exists "care-attachments write same family" on storage.objects;
-create policy "care-attachments write same family"
-  on storage.objects for insert
+create policy "care-attachments write same family" on storage.objects for insert
   with check (
     bucket_id = 'care-attachments' AND (
       exists (
@@ -1576,8 +1580,7 @@ create policy "care-attachments write same family"
   );
 
 drop policy if exists "care-attachments delete uploader or owner" on storage.objects;
-create policy "care-attachments delete uploader or owner"
-  on storage.objects for delete
+create policy "care-attachments delete uploader or owner" on storage.objects for delete
   using (
     bucket_id = 'care-attachments' AND (
       -- Uploader: chi ha registrato l'attachment può cancellare anche il file
@@ -1668,8 +1671,7 @@ alter table public.care_attachments enable row level security;
 
 -- Tutti i membri della stessa famiglia possono leggere / scrivere / cancellare
 drop policy if exists "care_attachments same family read" on public.care_attachments;
-create policy "care_attachments same family read"
-  on public.care_attachments for select
+create policy "care_attachments same family read" on public.care_attachments for select
   to authenticated
   using (
     exists (
@@ -1682,8 +1684,7 @@ create policy "care_attachments same family read"
   );
 
 drop policy if exists "care_attachments same family insert" on public.care_attachments;
-create policy "care_attachments same family insert"
-  on public.care_attachments for insert
+create policy "care_attachments same family insert" on public.care_attachments for insert
   to authenticated
   with check (
     exists (
@@ -1696,8 +1697,7 @@ create policy "care_attachments same family insert"
   );
 
 drop policy if exists "care_attachments same family delete" on public.care_attachments;
-create policy "care_attachments same family delete"
-  on public.care_attachments for delete
+create policy "care_attachments same family delete" on public.care_attachments for delete
   to authenticated
   using (
     exists (
@@ -1712,22 +1712,19 @@ create policy "care_attachments same family delete"
 -- 4) RLS sullo storage bucket
 -- Lettura pubblica (il bucket è pubblico, link diretti funzionano)
 drop policy if exists "care-attachments public read" on storage.objects;
-create policy "care-attachments public read"
-  on storage.objects for select
+create policy "care-attachments public read" on storage.objects for select
   to public
   using (bucket_id = 'care-attachments');
 
 -- Upload solo da utenti autenticati
 drop policy if exists "care-attachments authenticated upload" on storage.objects;
-create policy "care-attachments authenticated upload"
-  on storage.objects for insert
+create policy "care-attachments authenticated upload" on storage.objects for insert
   to authenticated
   with check (bucket_id = 'care-attachments');
 
 -- Delete solo da utenti autenticati (il DB-level RLS protegge il record)
 drop policy if exists "care-attachments authenticated delete" on storage.objects;
-create policy "care-attachments authenticated delete"
-  on storage.objects for delete
+create policy "care-attachments authenticated delete" on storage.objects for delete
   to authenticated
   using (bucket_id = 'care-attachments');
 

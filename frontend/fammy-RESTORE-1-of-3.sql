@@ -71,8 +71,7 @@ create trigger on_auth_user_created
 -- (1) Policy INSERT su profiles (manca dallo schema iniziale)
 -- =====================================================================
 drop policy if exists "profiles_insert_own" on public.profiles;
-create policy "profiles_insert_own"
-  on public.profiles for insert
+create policy "profiles_insert_own" on public.profiles for insert
   with check (id = auth.uid());
 
 -- =====================================================================
@@ -581,14 +580,14 @@ on conflict (id) do nothing;
 drop policy if exists "Family members can upload family photo" on storage.objects;
 drop policy if exists "Family members can delete family photo" on storage.objects;
 
-create policy "Family members can upload family photo"
-  on storage.objects for insert
+drop policy if exists "Family members can upload family photo" on storage.objects;
+create policy "Family members can upload family photo" on storage.objects for insert
   with check (
     bucket_id = 'family-photos' and auth.role() = 'authenticated'
   );
 
-create policy "Family members can delete family photo"
-  on storage.objects for delete
+drop policy if exists "Family members can delete family photo" on storage.objects;
+create policy "Family members can delete family photo" on storage.objects for delete
   using (
     bucket_id = 'family-photos' and auth.role() = 'authenticated'
   );
@@ -613,8 +612,7 @@ create policy "Family members can delete family photo"
 
 -- 1) FAMILY UPDATE — tutti i membri (non solo il creator)
 drop policy if exists "Update family if member" on public.families;
-create policy "Update family if member"
-  on public.families for update
+create policy "Update family if member" on public.families for update
   to authenticated
   using (
     -- Sono il creator OPPURE sono membro di questa famiglia
@@ -642,23 +640,23 @@ drop policy if exists "Family members can update family photo" on storage.object
 drop policy if exists "Family members can delete family photo" on storage.objects;
 drop policy if exists "Anyone can read family photo" on storage.objects;
 
-create policy "Anyone can read family photo"
-  on storage.objects for select
+drop policy if exists "Anyone can read family photo" on storage.objects;
+create policy "Anyone can read family photo" on storage.objects for select
   using (bucket_id = 'family-photos');
 
-create policy "Family members can upload family photo"
-  on storage.objects for insert
+drop policy if exists "Family members can upload family photo" on storage.objects;
+create policy "Family members can upload family photo" on storage.objects for insert
   to authenticated
   with check (bucket_id = 'family-photos');
 
-create policy "Family members can update family photo"
-  on storage.objects for update
+drop policy if exists "Family members can update family photo" on storage.objects;
+create policy "Family members can update family photo" on storage.objects for update
   to authenticated
   using (bucket_id = 'family-photos')
   with check (bucket_id = 'family-photos');
 
-create policy "Family members can delete family photo"
-  on storage.objects for delete
+drop policy if exists "Family members can delete family photo" on storage.objects;
+create policy "Family members can delete family photo" on storage.objects for delete
   to authenticated
   using (bucket_id = 'family-photos');
 
@@ -675,23 +673,23 @@ drop policy if exists "Members can upload member avatar" on storage.objects;
 drop policy if exists "Members can update member avatar" on storage.objects;
 drop policy if exists "Members can delete member avatar" on storage.objects;
 
-create policy "Anyone can read member avatar"
-  on storage.objects for select
+drop policy if exists "Anyone can read member avatar" on storage.objects;
+create policy "Anyone can read member avatar" on storage.objects for select
   using (bucket_id = 'member-avatars');
 
-create policy "Members can upload member avatar"
-  on storage.objects for insert
+drop policy if exists "Members can upload member avatar" on storage.objects;
+create policy "Members can upload member avatar" on storage.objects for insert
   to authenticated
   with check (bucket_id = 'member-avatars');
 
-create policy "Members can update member avatar"
-  on storage.objects for update
+drop policy if exists "Members can update member avatar" on storage.objects;
+create policy "Members can update member avatar" on storage.objects for update
   to authenticated
   using (bucket_id = 'member-avatars')
   with check (bucket_id = 'member-avatars');
 
-create policy "Members can delete member avatar"
-  on storage.objects for delete
+drop policy if exists "Members can delete member avatar" on storage.objects;
+create policy "Members can delete member avatar" on storage.objects for delete
   to authenticated
   using (bucket_id = 'member-avatars');
 
@@ -699,8 +697,7 @@ create policy "Members can delete member avatar"
 -- 4) MEMBERS — tutti possono modificare i propri dati cosmetici;
 --    il creator della famiglia può modificare quelli degli altri.
 drop policy if exists "Update own member or as family creator" on public.members;
-create policy "Update own member or as family creator"
-  on public.members for update
+create policy "Update own member or as family creator" on public.members for update
   to authenticated
   using (
     user_id = auth.uid()
@@ -1106,8 +1103,8 @@ drop policy if exists "Users can view event attachments in their families" on pu
 drop policy if exists "Users can insert event attachments in their families" on public.event_attachments;
 drop policy if exists "Users can delete event attachments in their families" on public.event_attachments;
 
-create policy "Users can view event attachments in their families"
-  on public.event_attachments for select
+drop policy if exists "Users can view event attachments in their families" on public.event_attachments;
+create policy "Users can view event attachments in their families" on public.event_attachments for select
   using (
     exists (
       select 1 from public.events e
@@ -1118,8 +1115,8 @@ create policy "Users can view event attachments in their families"
     )
   );
 
-create policy "Users can insert event attachments in their families"
-  on public.event_attachments for insert
+drop policy if exists "Users can insert event attachments in their families" on public.event_attachments;
+create policy "Users can insert event attachments in their families" on public.event_attachments for insert
   with check (
     exists (
       select 1 from public.events e
@@ -1130,8 +1127,8 @@ create policy "Users can insert event attachments in their families"
     )
   );
 
-create policy "Users can delete event attachments in their families"
-  on public.event_attachments for delete
+drop policy if exists "Users can delete event attachments in their families" on public.event_attachments;
+create policy "Users can delete event attachments in their families" on public.event_attachments for delete
   using (
     exists (
       select 1 from public.events e
@@ -1151,14 +1148,14 @@ drop policy if exists "Users can upload event attachments" on storage.objects;
 drop policy if exists "Users can view event attachments" on storage.objects;
 drop policy if exists "Users can delete event attachments" on storage.objects;
 
-create policy "Users can upload event attachments"
-  on storage.objects for insert
+drop policy if exists "Users can upload event attachments" on storage.objects;
+create policy "Users can upload event attachments" on storage.objects for insert
   with check (
     bucket_id = 'event-attachments' and auth.role() = 'authenticated'
   );
 
-create policy "Users can view event attachments"
-  on storage.objects for select
+drop policy if exists "Users can view event attachments" on storage.objects;
+create policy "Users can view event attachments" on storage.objects for select
   using (
     bucket_id = 'event-attachments' and exists (
       select 1 from public.event_attachments ea
@@ -1170,8 +1167,8 @@ create policy "Users can view event attachments"
     )
   );
 
-create policy "Users can delete event attachments"
-  on storage.objects for delete
+drop policy if exists "Users can delete event attachments" on storage.objects;
+create policy "Users can delete event attachments" on storage.objects for delete
   using (
     bucket_id = 'event-attachments' and exists (
       select 1 from public.event_attachments ea
@@ -1266,6 +1263,7 @@ alter table events
 -- 1. Aggiorna policy READ su tasks: includi gli assegnatari
 drop policy if exists "tasks_read" on tasks;
 
+drop policy if exists "tasks_read" on tasks;
 create policy "tasks_read" on tasks for select using (
   is_family_member(family_id)
   or exists (
@@ -1284,6 +1282,7 @@ drop policy if exists "tasks_write" on tasks;
 -- Per ora: chi è membro della famiglia OR assegnato può fare update.
 -- Vincolo più stretto: solo author/membri famiglia per modifiche
 -- avanzate verrà aggiunto in una versione futura.
+drop policy if exists "tasks_update" on tasks;
 create policy "tasks_update" on tasks for update using (
   is_family_member(family_id)
   or exists (
@@ -1293,10 +1292,12 @@ create policy "tasks_update" on tasks for update using (
   )
 );
 
+drop policy if exists "tasks_insert" on tasks;
 create policy "tasks_insert" on tasks for insert with check (
   is_family_member(family_id)
 );
 
+drop policy if exists "tasks_delete" on tasks;
 create policy "tasks_delete" on tasks for delete using (
   is_family_member(family_id)
 );
@@ -1307,6 +1308,7 @@ create policy "tasks_delete" on tasks for delete using (
 --    quindi serve estendere.
 drop policy if exists "members_read" on members;
 
+drop policy if exists "members_read" on members;
 create policy "members_read" on members for select using (
   is_family_member(family_id)
   or exists (
@@ -1320,6 +1322,7 @@ create policy "members_read" on members for select using (
 -- 4. Stessa cosa per la lettura della famiglia
 drop policy if exists "families_read" on families;
 
+drop policy if exists "families_read" on families;
 create policy "families_read" on families for select using (
   is_family_member(id)
   or created_by = auth.uid()
