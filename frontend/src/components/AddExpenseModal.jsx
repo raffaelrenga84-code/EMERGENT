@@ -3,6 +3,7 @@ import { toLocalYMD } from '../lib/dateUtils.js';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useAndroidBack } from '../lib/useAndroidBack.js';
+import { isIOS } from '../lib/platformDetect.js';
 import { EXPENSE_CATEGORIES } from '../lib/expenseCategories.js';
 
 export default function AddExpenseModal({ familyId, families = [], members, defaultPaidBy, authorMemberId, prefilledTask = null, prefilledExpense = null, onClose, onCreated }) {
@@ -376,24 +377,35 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
             <input type="file" id="expense-file-input-camera" multiple accept="image/*" capture="environment"
               onChange={handleFileSelect}
               style={{ display: 'none' }} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={() => document.getElementById('expense-file-input-camera').click()}
-                style={{
-                  flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
-                  background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
-                  color: 'var(--ac)',
-                }}>
-                📷 {t('take_photo') || 'Foto'}
-              </button>
+            {isIOS() ? (
               <button type="button" onClick={() => document.getElementById('expense-file-input').click()}
                 style={{
-                  flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                  width: '100%', padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
                   background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
                   color: 'var(--ac)',
                 }}>
-                🖼️ {t('from_gallery') || 'Galleria'}
+                {t('take_or_attach_photo')}
               </button>
-            </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" onClick={() => document.getElementById('expense-file-input-camera').click()}
+                  style={{
+                    flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                    background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                    color: 'var(--ac)',
+                  }}>
+                  📷 {t('take_photo') || 'Foto'}
+                </button>
+                <button type="button" onClick={() => document.getElementById('expense-file-input').click()}
+                  style={{
+                    flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                    background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                    color: 'var(--ac)',
+                  }}>
+                  🖼️ {t('from_gallery') || 'Galleria'}
+                </button>
+              </div>
+            )}
 
             {attachments.length > 0 && (
               <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8 }}>

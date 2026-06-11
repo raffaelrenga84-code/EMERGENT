@@ -1,5 +1,39 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.41 (12 febbraio 2026) — Fix critico click incarico + iOS detect + "Per me" sempre visibile
+
+### 🔴 Fix critico: TaskDetailModal si chiudeva subito dopo l'apertura
+**Causa**: il mio `useAndroidBack` v1 aveva una race condition: il `history.back()` nel cleanup veniva chiamato durante l'unmount, e nel doppio mount/unmount di React StrictMode (dev) o in alcune sequenze rapide di interazione triggherava un popstate residuo che chiudeva immediatamente il modal appena aperto.
+
+**Fix v2**: 
+- Singolo listener `popstate` globale + stack dei modal aperti
+- Cleanup rimuove solo la entry dallo stack, NIENTE `history.back()` automatico
+- Trade-off: una piccola entry orfana resta in history (innocua), ma niente più chiusura immediata
+
+### iOS-specific picker (1 bottone vs 2)
+- Nuovo `lib/platformDetect.js` con `isIOS()` (gestisce anche iPad iOS 13+ mascherato da Mac)
+- AddTaskModal, AddEventModal, AddExpenseModal: su iOS mostrano 1 singolo bottone "📷 Scatta o allega Foto" (picker nativo iOS già offre tutte le opzioni). Su Android mostrano i 2 bottoni separati Camera/Galleria.
+
+### "Per me" sempre visibile nel Profilo
+- ProfileTab: `mySelfAssistedRows` ora include fallback automatico — se l'utente NON ha attivato la checkbox "Sono un membro assistito", la entry "Per me" appare comunque nella sezione "LA MIA ASSISTENZA" del profilo, per uso personale (medicine, diario, ecc.).
+- L'utente può quindi sempre aprire il Care Hub per sé stesso senza dover prima attivare il toggle.
+
+### File modificati
+- ✏️ `src/lib/useAndroidBack.js` — refactor con stack globale
+- ➕ `src/lib/platformDetect.js` — `isIOS()` / `isAndroid()` helpers
+- ✏️ `src/components/AddTaskModal.jsx` — iOS detect
+- ✏️ `src/components/AddEventModal.jsx` — iOS detect
+- ✏️ `src/components/AddExpenseModal.jsx` — iOS detect
+- ✏️ `src/screens/tabs/ProfileTab.jsx` — "Per me" sempre visibile
+
+### Google Maps autocomplete indirizzo (richiesta utente)
+DOMANDA: ha senso integrare Google Maps Places Autocomplete per inserimento indirizzo?
+**Risposta**: SÌ, è utile e fattibile. Costo: i primi 28.500 lookup/mese sono GRATIS (Google free tier). Per FAMMY con 8-100 utenti, non si paga niente. Implementazione: 30 min via integration playbook. Richiede solo la Places API key da Google Cloud.
+**Da fare se utente conferma**: chiamare `integration_playbook_expert_v2` per istruzioni precise + UI con field autocomplete + storage `address_lat/address_lng` su `profiles`.
+
+---
+
+
 ## Iterazione 16.5.40 (12 febbraio 2026) — Estensione Camera/Album ai modal minori
 
 ### File modificati con pattern Camera/Album

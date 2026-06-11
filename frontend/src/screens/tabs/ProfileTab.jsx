@@ -107,6 +107,13 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const mySelfAssistedRows = (members || []).filter(
     (m) => m.is_assisted && m.user_id === session.user.id
   );
+  // Fallback: anche se NON sei marcato "membro assistito", esponiamo SEMPRE
+  // la entry "Per me" nel profilo per uso personale (medicine, diario, ecc.).
+  // L'utente può così accedere alla propria gestione salute senza dover
+  // attivare prima il toggle.
+  if (mySelfAssistedRows.length === 0 && myMembers.length > 0) {
+    mySelfAssistedRows.push(myMembers[0]);
+  }
   const othersIAssist = (members || []).filter((m) =>
     m.is_assisted && m.user_id !== session.user.id &&
     Array.isArray(m.cared_by) &&
