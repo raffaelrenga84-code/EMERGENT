@@ -1,5 +1,38 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.34 (11 febbraio 2026) — Hotfix attachments schema
+
+### Bug fix — 2 errori di schema riportati dall'utente
+1. **Care Hub** — `Could not find the table 'public.care_attachments' in the schema cache`
+   La tabella `care_attachments` (allegati foto/PDF dei profili medici)
+   non era mai stata creata sul DB dell'utente: il file SQL esisteva
+   da iterazioni precedenti ma non era stato eseguito.
+
+2. **Task chat photo** — `Could not find the 'uploaded_by' column of 'task_attachments' in the schema cache`
+   La tabella `task_attachments` esiste da uno schema più vecchio ma
+   non ha la colonna `uploaded_by`. Il codice `TaskDetailModal.jsx:1176`
+   prova a inserirla quando l'utente carica una foto in chat task.
+
+### Soluzione (SQL idempotente unico)
+File: `/app/frontend/fammy-attachments-hotfix.sql`
+
+- `alter table task_attachments add column if not exists uploaded_by`
+  (references members.id on delete set null)
+- Crea `care_attachments` con RLS owner+same-family + Realtime
+- Crea bucket storage `care-attachments` + 3 storage policies
+  (read/write same-family, delete uploader-or-owner)
+- Aggiunto indice `idx_task_attachments_uploaded_by`
+
+### File nuovi
+- ➕ `/app/frontend/fammy-attachments-hotfix.sql`
+
+### ⚠️ AZIONE UTENTE
+Esegui SOLO questo file: **`fammy-attachments-hotfix.sql`** su Supabase
+Dashboard → SQL Editor → Run.
+Dopo l'esecuzione i 2 errori spariranno.
+
+---
+
 ## Iterazione 16.5.33 (10 febbraio 2026) — Priorità in nuovo incarico + "Nome" più conciso
 
 ### Fix #1 — Priorità mancante in AddTaskModal
