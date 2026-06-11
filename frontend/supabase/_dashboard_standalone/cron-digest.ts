@@ -1,7 +1,9 @@
 // =============================================================================
-// FAMMY — cron-digest (digest serale 21:00 + weekly summary domenica)
+// FAMMY — cron-digest (digest mattutino 8:00 + serale 21:00 + weekly domenica)
 // =============================================================================
 // Chiamata da pg_cron via SQL. Per ogni utente con almeno una push_subscription:
+//   - kind="morning" → conta i task con due_date=OGGI non done + eventi OGGI,
+//                     invia "☀️ Buongiorno! Oggi ti aspettano X incarichi e Y eventi"
 //   - kind="daily"  → conta i task con due_date=domani non done + eventi domani,
 //                     invia "🌙 Pronto per domani? Domani ti aspettano X task e Y eventi"
 //   - kind="weekly" → conta i task done della settimana e gli upcoming events,
@@ -155,15 +157,17 @@ serve(async (req) => {
     return json({ kind, candidate_users: userIds.length, sent_users: sendList.length, ...result });
   }
 
-  // ============================
-  // ===== Daily digest =========
-  // ============================
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowKey = dayKey(tomorrow);
-  const startTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
-  const endTomorrow = new Date(startTomorrow);
-  endTomorrow.setDate(endTomorrow.getDate() + 1);
+  // =========================================
+  // ===== Daily digest (morning | daily) =====
+  // =========================================
+  // morning → la giornata di OGGI (cron 8:00). daily → DOMANI (cron 21:00).
+  const isMorning = kind === 'morning';
+  const target = new Date();
+  if (!isMorning) target.setDate(target.getDate() + 1);
+  const targetKey = dayKey(target);
+  const startTarget = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const endTarget = new Date(startTarget);
+  endTarget.setDate(endTarget.getDate() + 1);
 
   // 3a) TASK: tutti i non-done delle famiglie target
   //     Includiamo SIA single (due_date=domani) SIA ricorrenti (recurring_days).
@@ -189,29 +193,29 @@ serve(async (req) => {
     }
   }
 
-  // 3c) TASK_COMPLETIONS: istanze ricorrenti già completate per domani
-  let completedForTomorrow = new Set<string>();
+  // 3c) TASK_COMPLETIONS: istanze ricorrenti già completate per il giorno target
+  let completedForTarget = new Set<string>();
   if (taskIds.length > 0) {
     const { data: comps } = await supabaseAdmin
       .from('task_completions')
       .select('task_id, occurrence_date')
       .in('task_id', taskIds)
-      .eq('occurrence_date', tomorrowKey);
-    for (const c of comps || []) completedForTomorrow.add(c.task_id);
+      .eq('occurrence_date', targetKey);
+    for (const c of comps || []) completedForTarget.add(c.task_id);
   }
 
-  // 3d) Calcola quali task "scadono" domani (single OR ricorrente valido)
-  const tomorrowTasks = (allTasks || []).filter((t) => {
-    if (completedForTomorrow.has(t.id)) return false;
+  // 3d) Calcola quali task "scadono" nel giorno target (single OR ricorrente valido)
+  const targetTasks = (allTasks || []).filter((t) => {
+    if (completedForTarget.has(t.id)) return false;
     // Single task con due_date specifica
-    if (t.due_date && String(t.due_date).slice(0, 10) === tomorrowKey) return true;
-    // Task ricorrente che cade domani
+    if (t.due_date && String(t.due_date).slice(0, 10) === targetKey) return true;
+    // Task ricorrente che cade nel giorno target
     return isRecurringOccurrence(
       t.recurring_days,
       t.recurring_until,
       t.recurring_exceptions,
-      tomorrow,
-      tomorrowKey,
+      target,
+      targetKey,
     );
   });
 
@@ -221,20 +225,20 @@ serve(async (req) => {
     .select('id, family_id, starts_at, recurring_days, recurring_until, recurring_exceptions')
     .in('family_id', familyIds);
 
-  const tomorrowEvents = (allEvents || []).filter((e) => {
+  const targetEvents = (allEvents || []).filter((e) => {
     if (!e.starts_at) return false;
     const startMs = new Date(e.starts_at).getTime();
-    // Single event con starts_at che cade in [startTomorrow, endTomorrow)
-    if (startMs >= startTomorrow.getTime() && startMs < endTomorrow.getTime()) return true;
-    // Evento ricorrente: la prima occorrenza è precedente o uguale a domani,
-    // e il pattern include domani come giorno valido
-    if (startMs > endTomorrow.getTime()) return false; // partirà solo dopo domani
+    // Single event con starts_at che cade in [startTarget, endTarget)
+    if (startMs >= startTarget.getTime() && startMs < endTarget.getTime()) return true;
+    // Evento ricorrente: la prima occorrenza è precedente o uguale al target,
+    // e il pattern include il giorno target come giorno valido
+    if (startMs > endTarget.getTime()) return false; // partirà solo dopo il target
     return isRecurringOccurrence(
       e.recurring_days,
       e.recurring_until,
       e.recurring_exceptions,
-      tomorrow,
-      tomorrowKey,
+      target,
+      targetKey,
     );
   });
 
@@ -248,7 +252,7 @@ serve(async (req) => {
     //   - assegnato a me (in task_assignees) — MULTI-ASSIGNEE
     //   - oppure io sono l'autore
     //   - oppure non c'è alcun assegnatario → "task di famiglia" rilevante per tutti
-    const myTasks = tomorrowTasks.filter((t) => {
+    const myTasks = targetTasks.filter((t) => {
       if (!fams.has(t.family_id)) return false;
       const ass = assigneesByTask[t.id] || [];
       const isAssignedToMe = ass.some((mid) => myMemberSet.has(mid));
@@ -257,7 +261,7 @@ serve(async (req) => {
       return isAssignedToMe || isMyAuthor || hasNoAssignee;
     });
 
-    const myEvents = tomorrowEvents.filter((e) => fams.has(e.family_id));
+    const myEvents = targetEvents.filter((e) => fams.has(e.family_id));
 
     const totalTasks = myTasks.length;
     const totalEvents = myEvents.length;
@@ -266,14 +270,18 @@ serve(async (req) => {
     const parts: string[] = [];
     if (totalTasks > 0) parts.push(totalTasks === 1 ? '1 incarico' : `${totalTasks} incarichi`);
     if (totalEvents > 0) parts.push(totalEvents === 1 ? '1 evento' : `${totalEvents} eventi`);
-    const body = `Domani ti aspettano ${parts.join(' e ')}. Buona serata! 🌙`;
+    const body = isMorning
+      ? `Oggi ti aspettano ${parts.join(' e ')}. Buona giornata! ☀️`
+      : `Domani ti aspettano ${parts.join(' e ')}. Buona serata! 🌙`;
     sendList.push({ uid, body });
   }
 
   // Invio aggregato
+  const pushTitle = isMorning ? '☀️ Buongiorno! Ecco la tua giornata' : '🌙 Pronto per domani?';
+  const pushTag = isMorning ? 'morning-digest' : 'daily-digest';
   let sentTotal = 0;
   await Promise.all(sendList.map(async ({ uid, body }) => {
-    const r = await sendPushTo([uid], '🌙 Pronto per domani?', body, 'daily-digest');
+    const r = await sendPushTo([uid], pushTitle, body, pushTag);
     if (r?.sent) sentTotal += r.sent;
   }));
 
@@ -284,10 +292,10 @@ serve(async (req) => {
     total_pushes_sent: sentTotal,
     // Diagnostica (utile in fase di debug, niente PII):
     debug: {
-      tomorrow_key: tomorrowKey,
-      tomorrow_weekday: fammyWeekday(tomorrow),
-      total_tasks_window: tomorrowTasks.length,
-      total_events_window: tomorrowEvents.length,
+      target_key: targetKey,
+      target_weekday: fammyWeekday(target),
+      total_tasks_window: targetTasks.length,
+      total_events_window: targetEvents.length,
     },
   });
 });

@@ -2,6 +2,32 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-11 — Digest del mattino (push ☀️ alle 8:00)
+
+### Feature
+Push notification mattutina per tutta la famiglia con gli incarichi e gli
+eventi di OGGI ("☀️ Buongiorno! Ecco la tua giornata — Oggi ti aspettano
+X incarichi e Y eventi"). Riusa l'infrastruttura del digest serale.
+
+### File modificati/creati
+- ✏️ `/app/frontend/supabase/_dashboard_standalone/cron-digest.ts`
+  — aggiunto `kind: "morning"`: target = OGGI (il serale guarda DOMANI),
+  titolo/copy/tag dedicati (`morning-digest`). Stessa logica già collaudata:
+  multi-assignee via `task_assignees`, ricorrenti, `task_completions`,
+  regola no-spam (skip utenti con 0 incarichi e 0 eventi).
+  Debug fields rinominati: `target_key`, `target_weekday`.
+- ➕ `/app/frontend/fammy-morning-digest.sql` (idempotente)
+  — `fammy_private.trigger_morning_digest()` (security definer, pattern
+  identico a `trigger_daily_digest`) + cron job `fammy-morning-digest`
+  a `0 6 * * *` UTC (≈ 8:00 IT estate / 7:00 inverno, stessa convenzione
+  UTC fissa del serale).
+
+### Azioni utente richieste
+1. Re-deploy edge function `cron-digest` (Dashboard → Edge Functions)
+   col contenuto aggiornato di `cron-digest.ts`
+2. Eseguire `fammy-morning-digest.sql` nel SQL Editor
+3. Test manuale: `select fammy_private.trigger_morning_digest();`
+
 ## 2026-06-11 — Hotfix errori HTTP 400 post-restore + pulizia i18n
 
 ### Fix database (eseguiti dall'utente via Supabase SQL Editor)

@@ -2,6 +2,11 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.45 (11 giugno 2026) — Digest del mattino ☀️
+- Push alle 8:00 con incarichi/eventi di OGGI per tutta la famiglia.
+- `cron-digest.ts` ora supporta `kind:"morning"`; nuovo `fammy-morning-digest.sql`
+  (trigger function + cron `0 6 * * *` UTC). Richiede re-deploy edge function + run SQL.
+
 ## Iterazione 16.5.44 (11 giugno 2026) — Hotfix HTTP 400 post-restore + dedup i18n
 - Risolti i 400 su `push_subscriptions` (colonna `last_used_at` mancante + UNIQUE),
   `task_attachments` e `event_attachments` (FK mancanti verso tasks/events).
