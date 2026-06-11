@@ -43,17 +43,36 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
     const defaultFamilyName = `La famiglia di ${displayName}`;
     setBusy(true);
     try {
-      const { data: fam } = await supabase
+      // Pre-check: se per qualche motivo l'utente ha GIÀ delle famiglie ma
+      // la fetch precedente le aveva mancate (RLS race / network glitch),
+      // evita di crearne una duplicata: ricontrolla qui e in caso esci.
+      const { data: existingMembers, error: checkErr } = await supabase
+        .from('members')
+        .select('family_id')
+        .eq('user_id', session.user.id)
+        .limit(1);
+      if (!checkErr && Array.isArray(existingMembers) && existingMembers.length > 0) {
+        // Ha già famiglie → refresh App.jsx invece di crearne una nuova
+        onCreated && onCreated();
+        return;
+      }
+
+      const { data: fam, error: famErr } = await supabase
         .from('families')
         .insert({ name: defaultFamilyName, emoji: '🏡', created_by: session.user.id })
         .select().single();
-      await supabase.from('members').insert({
+      if (famErr || !fam || !fam.id) {
+        throw new Error(famErr?.message || 'Impossibile creare la famiglia (permessi o rete).');
+      }
+      const { error: memErr } = await supabase.from('members').insert({
         family_id: fam.id, user_id: session.user.id, name: displayName,
         role: 'tu', avatar_letter: displayName.charAt(0).toUpperCase(), status: 'active',
       });
+      if (memErr) throw new Error(memErr.message);
       onCreated && onCreated();
     } catch (e) {
-      alert(e.message); setBusy(false);
+      alert(e.message || 'Errore imprevisto. Riprova tra poco.');
+      setBusy(false);
     }
   };
 

@@ -143,10 +143,18 @@ export default function ProfileTab({ session, profile, families = [], members = 
       return;
     }
     setBusy(true);
+    const clean = name.trim();
     await supabase.from('profiles').update({
-      display_name: name.trim(),
-      avatar_letter: name.trim().charAt(0).toUpperCase(),
+      display_name: clean,
+      avatar_letter: clean.charAt(0).toUpperCase(),
     }).eq('id', session.user.id);
+    // Sync auth.users.user_metadata.full_name → la Supabase Dashboard
+    // mostra il nome anche per gli account phone-only. Non-blocking.
+    try {
+      await supabase.auth.updateUser({ data: { full_name: clean } });
+    } catch (metaErr) {
+      console.warn('Sync auth metadata failed (non-blocking):', metaErr);
+    }
     onChanged && onChanged();
     setBusy(false);
     setEditingName(false);

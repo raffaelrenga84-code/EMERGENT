@@ -40,6 +40,16 @@ export default function NamePromptModal({ session, profile, onSaved }) {
         .eq('id', session.user.id);
       if (pErr) throw pErr;
 
+      // 1bis) Sincronizza anche auth.users.user_metadata.full_name
+      // così la Supabase Dashboard mostra il nome nella colonna
+      // "Display name" anche per gli account creati via phone-only.
+      // Best-effort: se fallisce non blocca il salvataggio del profilo.
+      try {
+        await supabase.auth.updateUser({ data: { full_name: clean } });
+      } catch (metaErr) {
+        console.warn('Sync auth metadata failed (non-blocking):', metaErr);
+      }
+
       // 2) Allinea anche i `members` che ereditavano il vecchio nome generico.
       // Filtri tipici: vecchio = "Membro", inizia con "*", oppure = display_name vecchio.
       const isGenericMemberName = (n) =>

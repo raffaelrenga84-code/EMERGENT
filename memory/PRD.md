@@ -1,5 +1,79 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.36 (12 febbraio 2026) — Fix bug critico: utenti esistenti trattati come nuovi + auth.users sync
+
+### 🚨 Bug critico — Utente già esistente vede WelcomeScreen + crash su Salta
+**Sintomo**: Raffael (con famiglie e task già esistenti) faceva logout/login con Google
+dalla PWA installata sulla home, e l'app gli mostrava "Da dove iniziamo?" come fosse
+nuovo. Cliccando "Salta vai alla bacheca" otteneva: `null is not an object (evaluating 'v.id')`
+(`v` = nome minified di `fam` in produzione).
+
+**Root cause (race condition session ↔ RLS)**:
+1. App.jsx hydratava la session dal `localStorage` SENZA controllare scadenza
+2. Se la session era scaduta (es. utente non apriva l'app da giorni), useEffect[session]
+   partiva con JWT stale → `auth.uid()` valutava null nelle RLS → query
+   `members.select('family_id, families(*)')` ritornava 0 risultati senza errore
+3. `setFamilies([])` + `setDataLoaded(true)` → App.jsx mostrava WelcomeScreen
+4. L'utente cliccava Salta → `skipToBoard` tentava INSERT in `families` ma con
+   `created_by = session.user.id` non valido per RLS → `fam` era null → `fam.id` crashava
+
+### Fix in 4 punti (App.jsx + WelcomeScreen.jsx)
+
+**(1) App.jsx — Hydration safe dal localStorage**
+Controllo `expires_at` prima di settare la session salvata. Se è scaduta,
+non hydratiamo: getSession() di Supabase si occuperà del refresh.
+
+**(2) App.jsx — Retry automatico della query members**
+Se la prima query `members → families` va in errore (RLS race, network), retry
+una volta dopo 800ms. Cattura anche `error` field (prima ignorato).
+
+**(3) App.jsx — Nuovo stato `loadError` + retry banner dedicato**
+Se la fetch ha fallito ma session esiste, NON mostrare WelcomeScreen
+(sarebbe un falso negativo che farebbe creare una famiglia duplicata).
+Mostriamo invece un banner amichevole "📡 Non riesco a recuperare le tue famiglie"
+con bottoni "🔄 Riprova" e "Esci e ri-accedi".
+
+**(4) WelcomeScreen — `skipToBoard` robusto + pre-check**
+- Pre-check: prima di creare una famiglia, ricontrolla se l'utente ha già members.
+  Se sì, fa solo `refresh` (evita la creazione duplicata).
+- Cattura `error` da entrambi gli insert (`families`, `members`) e lancia errore con
+  messaggio leggibile invece di crashare su `fam.id` null.
+
+### Feature richiesta dall'utente — Sync `auth.users.user_metadata.full_name`
+**Problema**: La Dashboard Supabase → Auth → Users mostrava colonna "Display name"
+vuota per gli utenti loggati con phone (OTP SMS), perché Supabase popola quel campo
+solo da `user_metadata.full_name` (mai settato per i phone signup).
+
+**Fix**: In `NamePromptModal.save()` e `ProfileTab.saveName()` aggiunto:
+```js
+await supabase.auth.updateUser({ data: { full_name: clean } });
+```
+Best-effort (non blocca il salvataggio profile se fallisce). Da ora in poi,
+quando un utente phone-only inserisce il nome nel NamePromptModal o lo cambia dal
+Profilo, il nome appare anche nella Dashboard Supabase.
+
+### File modificati
+- ✏️ `/app/frontend/src/App.jsx` — expires_at check, retry query, loadError + retry banner
+- ✏️ `/app/frontend/src/screens/WelcomeScreen.jsx` — pre-check membership + skipToBoard hardened
+- ✏️ `/app/frontend/src/components/NamePromptModal.jsx` — sync auth metadata
+- ✏️ `/app/frontend/src/screens/tabs/ProfileTab.jsx` — sync auth metadata in saveName
+
+### ⚠️ AZIONE UTENTE
+1. **Push Vercel** (Save to GitHub → auto-deploy)
+2. Sul tuo iPhone, dopo che il deploy è live, **chiudi completamente** la PWA
+   (swipe-up multitask + butta via la card FAMMY) e riapri. Se ancora vedi
+   "Da dove iniziamo?", premi il bottone "🔄 Riprova" che ora appare nel banner.
+3. Per i nomi nella Dashboard Supabase: cambiare il nome dal Profilo dell'app
+   (anche con lo stesso valore) → la colonna "Display name" si popolerà.
+
+### Testing
+- Lint: ✅ files modificati (2 errori pre-esistenti del codebase non introdotti dai fix)
+- Smoke screenshot: ✅ login screen carica regolarmente
+- ⚠️ Test reale flusso skipToBoard non automatizzabile (Google OAuth blocca headless)
+
+---
+
+
 ## Iterazione 16.5.35 (12 febbraio 2026) — Hotfix crash JS WelcomeScreen + SQL unified + lang switcher
 
 ### Bug fix #1 — Crash "null is not an object" sulla Welcome / boot dell'app

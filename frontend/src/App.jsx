@@ -121,8 +121,15 @@ export default function App() {
     const savedSession = localStorage.getItem('fammy_session');
     if (savedSession) {
       try {
-        const session = JSON.parse(savedSession);
-        setSession(session);
+        const parsed = JSON.parse(savedSession);
+        // Difesa: non hydratare una session scaduta. Se è scaduta, Supabase
+        // farà refresh in getSession() o restituirà null → flusso normale.
+        // Senza questo check, fetch members partirebbe con JWT scaduto e
+        // RLS valuterebbe auth.uid()=null → utente esistente trattato come nuovo.
+        const expiresAt = parsed?.expires_at ? parsed.expires_at * 1000 : 0;
+        if (parsed?.user?.id && (!expiresAt || expiresAt > Date.now())) {
+          setSession(parsed);
+        }
       } catch (e) { /* ignore */ }
     }
 
@@ -153,30 +160,67 @@ export default function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // loadError: true se l'ultima fetch di profile/families ha avuto un errore
+  // di rete o RLS. In tal caso NON mostriamo WelcomeScreen anche con
+  // `families.length === 0`, perché potrebbe essere un falso negativo
+  // (utente già iscritto, ma query bloccata da auth.uid() not ready).
+  const [loadError, setLoadError] = useState(false);
+
   useEffect(() => {
     // Difesa: durante l'hydration da localStorage la session potrebbe esistere
     // senza `user` popolato → non basta `if (!session)`, serve verificare user.id
     // per evitare il crash "null is not an object" su session.user.id.
     const userId = session?.user?.id;
-    if (!userId) { setProfile(null); setFamilies([]); setDataLoaded(false); return; }
+    if (!userId) { setProfile(null); setFamilies([]); setDataLoaded(false); setLoadError(false); return; }
     let cancelled = false;
     (async () => {
+      let hadError = false;
       try {
-        const { data: p } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+        const { data: p, error: pErr } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
         if (cancelled) return;
-        setProfile(p);
+        if (pErr) {
+          console.warn('Errore fetch profilo:', pErr);
+          hadError = true;
+        } else {
+          setProfile(p);
+        }
 
-        const { data: m } = await supabase
+        // Retry helper: se la prima query members va in errore (es. token
+        // appena ruotato dopo login OAuth, RLS che valuta auth.uid()=null),
+        // ritentiamo una volta dopo 800ms.
+        const fetchMembers = async () => supabase
           .from('members')
           .select('family_id, families(*)')
           .eq('user_id', userId);
+
+        let { data: m, error: mErr } = await fetchMembers();
+        if (mErr) {
+          console.warn('Errore primo fetch members, retry tra 800ms:', mErr);
+          await new Promise((r) => setTimeout(r, 800));
+          if (cancelled) return;
+          const retry = await fetchMembers();
+          m = retry.data;
+          mErr = retry.error;
+        }
+
         if (cancelled) return;
-        const fams = (m || []).map((row) => row.families).filter(Boolean);
-        setFamilies(fams);
+        if (mErr) {
+          console.warn('Errore definitivo fetch members:', mErr);
+          hadError = true;
+          // Non sovrascriviamo families a [] se avevamo già dati caricati
+          // (es. da un refresh): manteniamo lo stato precedente.
+        } else {
+          const fams = (m || []).map((row) => row.families).filter(Boolean);
+          setFamilies(fams);
+        }
       } catch (err) {
-        console.warn('Errore caricando profile/families:', err);
+        console.warn('Eccezione caricando profile/families:', err);
+        hadError = true;
       } finally {
-        if (!cancelled) setDataLoaded(true);
+        if (!cancelled) {
+          setLoadError(hadError);
+          setDataLoaded(true);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -288,6 +332,39 @@ export default function App() {
     } else {
       content = <div className="app-shell"><LoginScreen /></div>;
     }
+  } else if (families.length === 0 && loadError) {
+    // 🚨 Caso critico: ho session ma la fetch di members ha fallito.
+    // NON mostriamo WelcomeScreen (che farebbe credere all'utente di
+    // essere un nuovo account e gli farebbe creare una famiglia duplicata).
+    // Mostriamo un retry banner amichevole.
+    content = (
+      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
+        <div style={{ maxWidth: 380, textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📡</div>
+          <h2 style={{ fontFamily: 'var(--fs)', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+            Non riesco a recuperare le tue famiglie
+          </h2>
+          <p style={{ color: 'var(--km)', fontSize: 14, lineHeight: 1.5, marginBottom: 20 }}>
+            Sembra esserci un problema di rete o di sessione.
+            Le tue famiglie e i tuoi dati sono al sicuro: prova a riprovare.
+          </p>
+          <button
+            className="btn full"
+            data-testid="reload-families-btn"
+            onClick={refresh}
+            style={{ marginBottom: 12 }}>
+            🔄 Riprova
+          </button>
+          <button
+            className="link-btn"
+            data-testid="signout-fallback-btn"
+            onClick={() => supabase.auth.signOut()}
+            style={{ color: 'var(--km)' }}>
+            Esci e ri-accedi
+          </button>
+        </div>
+      </div>
+    );
   } else if (families.length === 0) {
     content = <div className="app-shell"><WelcomeScreen session={session} profile={profile} onCreated={refresh} /></div>;
   } else {
