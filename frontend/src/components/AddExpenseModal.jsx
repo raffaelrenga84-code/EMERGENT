@@ -2,10 +2,12 @@ import { useMemo, useState } from 'react';
 import { toLocalYMD } from '../lib/dateUtils.js';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { useAndroidBack } from '../lib/useAndroidBack.js';
 import { EXPENSE_CATEGORIES } from '../lib/expenseCategories.js';
 
 export default function AddExpenseModal({ familyId, families = [], members, defaultPaidBy, authorMemberId, prefilledTask = null, prefilledExpense = null, onClose, onCreated }) {
   const { t } = useT();
+  useAndroidBack(true, onClose);
   const [selectedFamily, setSelectedFamily] = useState(prefilledTask?.family_id || prefilledExpense?.family_id || familyId || (families.length > 0 ? families[0].id : ''));
   const [amount, setAmount] = useState(prefilledExpense?.amount ? String(prefilledExpense.amount) : '');
   const [description, setDescription] = useState(
@@ -371,16 +373,27 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
             <input type="file" id="expense-file-input" multiple accept="image/*"
               onChange={handleFileSelect}
               style={{ display: 'none' }} />
-            <button type="button" onClick={() => document.getElementById('expense-file-input').click()}
-              style={{
-                width: '100%', padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
-                background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
-                color: 'var(--ac)', transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => e.target.style.borderColor = 'var(--ac)'}
-              onMouseLeave={(e) => e.target.style.borderColor = 'var(--sm)'}>
-              {t('take_or_attach_photo')}
-            </button>
+            <input type="file" id="expense-file-input-camera" multiple accept="image/*" capture="environment"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={() => document.getElementById('expense-file-input-camera').click()}
+                style={{
+                  flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                  background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                  color: 'var(--ac)',
+                }}>
+                📷 {t('take_photo') || 'Foto'}
+              </button>
+              <button type="button" onClick={() => document.getElementById('expense-file-input').click()}
+                style={{
+                  flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                  background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                  color: 'var(--ac)',
+                }}>
+                🖼️ {t('from_gallery') || 'Galleria'}
+              </button>
+            </div>
 
             {attachments.length > 0 && (
               <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8 }}>

@@ -253,17 +253,20 @@ function FamilyThenItem({ mode, session, profile, onCreated, onBack }) {
     if (!familyName.trim()) return;
     setBusy(true); setErr('');
     try {
-      const { data: fam, error: e1 } = await supabase
-        .from('families').insert({ name: familyName.trim(), emoji, created_by: session.user.id })
-        .select().single();
-      if (e1) throw e1;
+      // Usa RPC SECURITY DEFINER (atomic + bypass RLS controllato)
       const displayName = fallbackDisplayName(profile, session);
-      const { data: mem, error: e2 } = await supabase.from('members').insert({
-        family_id: fam.id, user_id: session.user.id, name: displayName,
-        role: 'tu', avatar_letter: displayName.charAt(0).toUpperCase(), status: 'active',
-      }).select().single();
-      if (e2) throw e2;
-      setFamilyId(fam.id); setMemberId(mem.id);
+      const { data: famId, error: e1 } = await supabase.rpc('create_family_with_owner', {
+        p_name: familyName.trim(),
+        p_emoji: emoji,
+        p_display_name: displayName,
+      });
+      if (e1) throw e1;
+      const newFamilyId = typeof famId === 'string' ? famId : (Array.isArray(famId) ? famId[0] : famId?.id);
+      if (!newFamilyId) throw new Error('Creazione famiglia fallita.');
+      // Recupera l'id del nuovo member (creato dalla RPC) per gli step successivi
+      const { data: mem } = await supabase.from('members')
+        .select('id').eq('family_id', newFamilyId).eq('user_id', session.user.id).single();
+      setFamilyId(newFamilyId); setMemberId(mem?.id);
       setStep(mode);
       setBusy(false);
     } catch (e) { setErr(e.message); setBusy(false); }
@@ -417,29 +420,32 @@ function DemoCreator({ session, profile, onCreated, onBack }) {
   const create = async () => {
     setBusy(true); setErr('');
     try {
-      const { data: fam, error: e1 } = await supabase
-        .from('families').insert({ name: 'Famiglia Demo', emoji: '🏡', created_by: session.user.id })
-        .select().single();
-      if (e1) throw e1;
-
+      // Crea famiglia + primo membro via RPC SECURITY DEFINER
       const displayName = fallbackDisplayName(profile, session);
+      const { data: famId, error: e1 } = await supabase.rpc('create_family_with_owner', {
+        p_name: 'Famiglia Demo',
+        p_emoji: '🏡',
+        p_display_name: displayName,
+      });
+      if (e1) throw e1;
+      const newFamilyId = typeof famId === 'string' ? famId : (Array.isArray(famId) ? famId[0] : famId?.id);
+      if (!newFamilyId) throw new Error('Creazione famiglia demo fallita.');
+
+      // Aggiungi i membri demo (la RPC ha già creato il primo)
       await supabase.from('members').insert([
-        { family_id: fam.id, user_id: session.user.id, name: displayName,
-          role: 'tu', avatar_letter: displayName.charAt(0).toUpperCase(),
-          avatar_color: '#1C1611', status: 'active' },
-        { family_id: fam.id, name: 'Nonno Francesco', role: 'nonno', avatar_letter: 'F', avatar_color: '#5A4A3A', status: 'active' },
-        { family_id: fam.id, name: 'Mamma Maria', role: 'mamma', avatar_letter: 'M', avatar_color: '#E91E8C', status: 'active' },
+        { family_id: newFamilyId, name: 'Nonno Francesco', role: 'nonno', avatar_letter: 'F', avatar_color: '#5A4A3A', status: 'active' },
+        { family_id: newFamilyId, name: 'Mamma Maria', role: 'mamma', avatar_letter: 'M', avatar_color: '#E91E8C', status: 'active' },
       ]);
 
       const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
       const inThreeDays = new Date(); inThreeDays.setDate(inThreeDays.getDate() + 3);
       await supabase.from('tasks').insert([
-        { family_id: fam.id, title: 'Comprare il pane', category: 'home', status: 'todo' },
-        { family_id: fam.id, title: 'Portare nonno dal cardiologo', category: 'health', status: 'todo', due_date: tomorrow.toISOString().slice(0,10) },
-        { family_id: fam.id, title: 'Pagare bolletta luce', category: 'admin', status: 'to_pay' },
+        { family_id: newFamilyId, title: 'Comprare il pane', category: 'home', status: 'todo' },
+        { family_id: newFamilyId, title: 'Portare nonno dal cardiologo', category: 'health', status: 'todo', due_date: tomorrow.toISOString().slice(0,10) },
+        { family_id: newFamilyId, title: 'Pagare bolletta luce', category: 'admin', status: 'to_pay' },
       ]);
       await supabase.from('events').insert([
-        { family_id: fam.id, title: 'Cena di compleanno mamma', starts_at: inThreeDays.toISOString(), location: 'Casa' },
+        { family_id: newFamilyId, title: 'Cena di compleanno mamma', starts_at: inThreeDays.toISOString(), location: 'Casa' },
       ]);
 
       onCreated && onCreated();

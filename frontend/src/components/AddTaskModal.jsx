@@ -3,6 +3,7 @@ import { toLocalYMD } from '../lib/dateUtils.js';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
+import { useAndroidBack } from '../lib/useAndroidBack.js';
 import { findAbsenceOverlap, absenceLabel, fmtAbsenceRange } from '../lib/useAbsences.js';
 import AISmartTaskHint from './AISmartTaskHint.jsx';
 import NativeDateInput from './NativeDateInput.jsx';
@@ -79,6 +80,7 @@ export default function AddTaskModal({
   const [assigneesFlash, setAssigneesFlash] = useState(false);
   const [showAssigneeAlert, setShowAssigneeAlert] = useState(false);
   useKeyboardSafeModal(scrollableRef);
+  useAndroidBack(true, onClose);
 
   // Carica gli assegnatari attuali in modo edit
   useEffect(() => {
@@ -792,15 +794,29 @@ export default function AddTaskModal({
               <input type="file" id="file-input" multiple accept="image/*"
                 data-testid="add-task-file-input"
                 onChange={handleFileSelect} style={{ display: 'none' }} />
-              <button type="button" onClick={() => document.getElementById('file-input').click()}
-                data-testid="add-task-attach-photo-btn"
-                style={{
-                  width: '100%', padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
-                  background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
-                  color: 'var(--ac)', transition: 'all 0.2s ease',
-                }}>
-                {t('take_or_attach_photo')}
-              </button>
+              <input type="file" id="file-input-camera" multiple accept="image/*" capture="environment"
+                data-testid="add-task-file-input-camera"
+                onChange={handleFileSelect} style={{ display: 'none' }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" onClick={() => document.getElementById('file-input-camera').click()}
+                  data-testid="add-task-camera-btn"
+                  style={{
+                    flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                    background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                    color: 'var(--ac)',
+                  }}>
+                  📷 {t('take_photo') || 'Foto'}
+                </button>
+                <button type="button" onClick={() => document.getElementById('file-input').click()}
+                  data-testid="add-task-attach-photo-btn"
+                  style={{
+                    flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                    background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                    color: 'var(--ac)',
+                  }}>
+                  🖼️ {t('from_gallery') || 'Galleria'}
+                </button>
+              </div>
               {attachments.length > 0 && (
                 <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8 }}>
                   {attachments.map((att, idx) => (

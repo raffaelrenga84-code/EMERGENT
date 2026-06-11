@@ -1,5 +1,54 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.39 (12 febbraio 2026) — Multi-fix UX: i18n banner, Android camera/album, back button, audit DB
+
+### Problemi affrontati (4)
+
+#### 1) Banner errore i18n
+**Fix**: il banner "Non riesco a recuperare le tue famiglie" in `App.jsx` ora è tradotto in IT/EN/FR/DE via dict locale (pattern come `ErrorBoundary.jsx`).
+Utenti inglesi non vedranno più stringhe in italiano sul banner di errore.
+
+#### 2) Android: dialog Camera/Album
+**Fix**: invece di un singolo bottone "Scatta o allega Foto" che su Android Chrome apriva direttamente l'album, ora 2 bottoni separati:
+- **📷 Scatta foto** → input con `capture="environment"` → apre fotocamera direttamente
+- **🖼️ Galleria** → input senza capture → apre album
+
+Applicato a: `AddTaskModal.jsx`, `AddEventModal.jsx`, `AddExpenseModal.jsx`
+Nuove i18n keys: `take_photo`, `from_gallery` (IT/EN/FR/DE)
+
+#### 3) Android back button hardware
+**Fix**: nuovo hook `useAndroidBack(isOpen, onBack)` in `/app/frontend/src/lib/useAndroidBack.js`
+- All'apertura del modal: `window.history.pushState({ __fammyModal: true })`
+- Al press di Back: `popstate` triggera `onBack()` invece di uscire dall'app
+- Al close manuale: consuma la entry pushata con `history.back()`
+
+Applicato a: `AddTaskModal`, `AddEventModal`, `AddExpenseModal`, `TaskDetailModal`.
+
+#### 4) Audit DB — altri insert vulnerabili al bug RLS
+Trovati e migrati a `create_family_with_owner` RPC (gli stessi sintomi avrebbero portato a errore "violates row-level security policy"):
+- `WelcomeScreen.FamilyCreateForm.createFamily` (riga 257)
+- `WelcomeScreen.DemoCreator.create` (riga 421)
+
+Ora tutti i flow di creazione famiglia usano la stessa RPC SECURITY DEFINER.
+
+### File modificati
+- ✏️ `src/App.jsx` — banner errore multilingua
+- ➕ `src/lib/useAndroidBack.js` — nuovo hook
+- ✏️ `src/components/AddTaskModal.jsx` — 2 bottoni foto + back hook
+- ✏️ `src/components/AddEventModal.jsx` — 2 bottoni foto + back hook
+- ✏️ `src/components/AddExpenseModal.jsx` — 2 bottoni foto + back hook
+- ✏️ `src/components/TaskDetailModal.jsx` — back hook
+- ✏️ `src/lib/i18n.jsx` — 8 nuove chiavi (4 lingue x 2 keys)
+- ✏️ `src/screens/WelcomeScreen.jsx` — migrazione completa a RPC
+
+### Testing
+- Smoke screenshot: ✅ pendente (no testing automatico questa iter, troppi changes UI)
+- ⚠️ Test reali su Android richiesti per validare camera/album + back button
+- Validato dall'utente: creazione famiglia funziona ✅ (post RPC v2)
+
+---
+
+
 ## Iterazione 16.5.38 (12 febbraio 2026) — Disaster Recovery + Master Restore Script
 
 ### 🚨 Confermato: DB completamente wipato per rerun accidentale di `fammy-schema.sql`

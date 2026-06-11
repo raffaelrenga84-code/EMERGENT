@@ -371,31 +371,38 @@ export default function App() {
     // 🚨 Caso critico: ho session ma la fetch di members ha fallito.
     // NON mostriamo WelcomeScreen (che farebbe credere all'utente di
     // essere un nuovo account e gli farebbe creare una famiglia duplicata).
-    // Mostriamo un retry banner amichevole.
+    // Mostriamo un retry banner amichevole in lingua del device.
+    const _t = ({
+      it: { title: 'Non riesco a recuperare le tue famiglie', desc: 'Sembra esserci un problema di rete o di sessione. Le tue famiglie e i tuoi dati sono al sicuro: prova a riprovare.', retry: '🔄 Riprova', signout: 'Esci e ri-accedi' },
+      en: { title: "Can't load your families", desc: "There's a network or session issue. Your families and data are safe — just try again.", retry: '🔄 Retry', signout: 'Sign out and log back in' },
+      fr: { title: 'Impossible de charger vos familles', desc: 'Problème de réseau ou de session. Vos familles et vos données sont en sécurité : réessayez.', retry: '🔄 Réessayer', signout: 'Se déconnecter et se reconnecter' },
+      de: { title: 'Familien können nicht geladen werden', desc: 'Es gibt ein Netzwerk- oder Sitzungsproblem. Deine Familien und Daten sind sicher — versuche es erneut.', retry: '🔄 Erneut versuchen', signout: 'Abmelden und wieder anmelden' },
+    })[browserLang] || ({
+      title: "Can't load your families", desc: "Network or session issue. Your data is safe — try again.", retry: '🔄 Retry', signout: 'Sign out',
+    });
     content = (
       <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
         <div style={{ maxWidth: 380, textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📡</div>
           <h2 style={{ fontFamily: 'var(--fs)', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-            Non riesco a recuperare le tue famiglie
+            {_t.title}
           </h2>
           <p style={{ color: 'var(--km)', fontSize: 14, lineHeight: 1.5, marginBottom: 20 }}>
-            Sembra esserci un problema di rete o di sessione.
-            Le tue famiglie e i tuoi dati sono al sicuro: prova a riprovare.
+            {_t.desc}
           </p>
           <button
             className="btn full"
             data-testid="reload-families-btn"
             onClick={refresh}
             style={{ marginBottom: 12 }}>
-            🔄 Riprova
+            {_t.retry}
           </button>
           <button
             className="link-btn"
             data-testid="signout-fallback-btn"
             onClick={() => supabase.auth.signOut()}
             style={{ color: 'var(--km)' }}>
-            Esci e ri-accedi
+            {_t.signout}
           </button>
         </div>
       </div>

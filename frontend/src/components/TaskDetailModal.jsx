@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { sendPush, memberIdsToUserIds } from '../lib/pushClient.js';
 import { useT } from '../lib/i18n.jsx';
+import { useAndroidBack } from '../lib/useAndroidBack.js';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
 import DetailTabs from './DetailTabs.jsx';
 import MessageReactions from './MessageReactions.jsx';
@@ -20,6 +21,7 @@ export default function TaskDetailModal({
   onOpenExpense,       // (task) => void  -> switch a Spese + apri spesa per task
 }) {
   const { t } = useT();
+  useAndroidBack(true, onClose);
   // Solo 3 stati cliccabili. 'taken' viene impostato automaticamente
   // quando si fa "Me ne occupo io".
   const STATUS = [
