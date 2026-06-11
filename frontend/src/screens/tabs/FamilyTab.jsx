@@ -661,19 +661,24 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
           </div>
         )}
 
-        {/* Riga 3b: Indirizzo (se presente) */}
+        {/* Riga 3b: Indirizzo (se presente) — link a Google Maps */}
         {member.address && (
-          <div
+          <a
             data-testid={`member-address-${member.id}`}
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(member.address)}`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
             style={{
               color: 'var(--km)', fontSize: 11,
               display: 'inline-flex', alignItems: 'center', gap: 4,
               maxWidth: '100%',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              textDecoration: 'none',
             }}
             title={member.address}>
             📍 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.address}</span>
-          </div>
+          </a>
         )}
 
         {/* Riga 4: Assenza badge (in stato visivo distinto) */}

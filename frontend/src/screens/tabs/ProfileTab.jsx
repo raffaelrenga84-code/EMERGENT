@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useT, LANGS } from '../../lib/i18n.jsx';
 import Avatar from '../../components/Avatar.jsx';
+import AddressAutocomplete from '../../components/AddressAutocomplete.jsx';
 import FamilyMemoriesCard from '../../components/FamilyMemoriesCard.jsx';
 import InviteStatsCard from '../../components/InviteStatsCard.jsx';
 import OnboardingTour from '../../components/OnboardingTour.jsx';
@@ -39,6 +40,8 @@ export default function ProfileTab({ session, profile, families = [], members = 
   // Indirizzo (opzionale, condiviso ai membri delle proprie famiglie)
   const [editingAddress, setEditingAddress] = useState(false);
   const [address, setAddress] = useState(profile?.address || '');
+  const [addressLat, setAddressLat] = useState(profile?.address_lat || null);
+  const [addressLng, setAddressLng] = useState(profile?.address_lng || null);
   const [editingColor, setEditingColor] = useState(false);
   const [color, setColor] = useState(profile?.avatar_color || '#1C1611');
   const [busy, setBusy] = useState(false);
@@ -192,8 +195,15 @@ export default function ProfileTab({ session, profile, families = [], members = 
       return;
     }
     setBusy(true);
-    // Il trigger DB propaga a tutti i `members` con quel user_id
-    await supabase.from('profiles').update({ address: next || null }).eq('id', session.user.id);
+    // Il trigger DB propaga a tutti i `members` con quel user_id.
+    // Salviamo anche le coordinate (lat/lng) per integrazione Google Maps:
+    // permette di mostrare la posizione precisa + aprire le indicazioni
+    // stradali dirette agli altri membri famiglia.
+    await supabase.from('profiles').update({
+      address: next || null,
+      address_lat: next ? addressLat : null,
+      address_lng: next ? addressLng : null,
+    }).eq('id', session.user.id);
     onChanged && onChanged();
     setBusy(false);
     setEditingAddress(false);
@@ -348,18 +358,33 @@ export default function ProfileTab({ session, profile, families = [], members = 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="profile-label">📍 {t('profile_address') || 'Indirizzo'}</div>
             {editingAddress ? (
-              <input className="input" autoFocus
-                placeholder={t('profile_address_ph') || 'Via, città'}
+              <AddressAutocomplete
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveAddress();
-                  if (e.key === 'Escape') { setAddress(profile?.address || ''); setEditingAddress(false); }
+                onChange={setAddress}
+                onSelect={({ formattedAddress, lat, lng }) => {
+                  setAddress(formattedAddress);
+                  setAddressLat(lat);
+                  setAddressLng(lng);
                 }}
-                data-testid="profile-address-input" />
+                placeholder={t('profile_address_ph') || 'Via, città'}
+                testid="profile-address-input"
+              />
             ) : (
               <div className="profile-value" style={profile?.address ? {} : { color: 'var(--km)', fontStyle: 'italic' }}>
-                {profile?.address || (t('profile_address_empty') || 'Non impostato')}
+                {profile?.address ? (
+                  profile?.address_lat && profile?.address_lng ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.address)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      data-testid="profile-address-open-maps"
+                      style={{ color: 'var(--ac)', textDecoration: 'none' }}>
+                      📍 {profile.address}
+                    </a>
+                  ) : (
+                    <>{profile.address}</>
+                  )
+                ) : (t('profile_address_empty') || 'Non impostato')}
               </div>
             )}
             <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 4, lineHeight: 1.4 }}>

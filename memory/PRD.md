@@ -1,5 +1,35 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.43 (12 febbraio 2026) — Google Maps Places Autocomplete
+
+### Feature
+Integrazione Google Maps Places Autocomplete per il campo indirizzo del Profilo.
+- Quando l'utente clicca "Modifica" sull'indirizzo, vede suggerimenti reali via Google Places
+- Selezionando un suggerimento, salva sia `address` (testo) sia `address_lat` + `address_lng` (coordinate)
+- L'indirizzo nei FamilyTab member cards è ora un LINK cliccabile a Google Maps (apre app maps su mobile)
+- Lazy load dello script Maps JS: zero overhead per gli utenti che non aprono il form indirizzo
+- Graceful degradation: se `VITE_GOOGLE_MAPS_API_KEY` non è configurata, fallback a `<input>` semplice
+
+### File creati/modificati
+- ➕ `src/components/AddressAutocomplete.jsx` — componente input con suggerimenti Places
+- ➕ `fammy-add-address-coordinates.sql` — alter table profiles + members + sync trigger
+- ✏️ `src/screens/tabs/ProfileTab.jsx` — usa AddressAutocomplete + link Google Maps in view mode
+- ✏️ `src/screens/tabs/FamilyTab.jsx` — indirizzo membro come link Google Maps
+
+### Costi
+Google Places API (New) ha free tier di 28.500 lookup/mese. Per FAMMY con 8-100 utenti, gratuito.
+Google Maps JavaScript API: $7/1000 carichi mappa, ma noi NON renderizziamo mappa (solo autocomplete), quindi free tier abbondante.
+
+### ⚠️ AZIONE UTENTE
+1. **Google Cloud Console** → Libreria → abilita: Places API (New), Maps JavaScript API
+2. Credenziali → Crea Chiave API → restrizioni HTTP referrer + restrizioni API
+3. **Vercel** → Add Environment Variable: `VITE_GOOGLE_MAPS_API_KEY = AIzaSyB...`
+4. **Redeploy senza cache** (VITE_* è build-time)
+5. **Esegui** `fammy-add-address-coordinates.sql` su Supabase SQL Editor
+
+---
+
+
 ## Iterazione 16.5.42 (12 febbraio 2026) — iOS detect su TUTTI i modal + bottone "📎 File"
 
 ### iOS detect esteso a 5 modal restanti
