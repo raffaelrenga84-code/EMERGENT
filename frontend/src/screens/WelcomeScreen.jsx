@@ -59,14 +59,14 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
 
       // Crea famiglia + primo membro via RPC SECURITY DEFINER
       // (bypassa RLS in modo controllato, atomico, garantisce profile FK)
-      const { data: rows, error: rpcErr } = await supabase.rpc('create_family_with_owner', {
+      const { data: famId, error: rpcErr } = await supabase.rpc('create_family_with_owner', {
         p_name: defaultFamilyName,
         p_emoji: '🏡',
         p_display_name: displayName,
       });
       if (rpcErr) throw new Error(rpcErr.message);
-      const fam = Array.isArray(rows) ? rows[0] : rows;
-      if (!fam || !fam.id) throw new Error('Creazione famiglia fallita.');
+      const newFamilyId = typeof famId === 'string' ? famId : (Array.isArray(famId) ? famId[0] : famId?.id);
+      if (!newFamilyId) throw new Error('Creazione famiglia fallita.');
       onCreated && onCreated();
     } catch (e) {
       alert(e.message || 'Errore imprevisto. Riprova tra poco.');

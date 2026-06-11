@@ -62,23 +62,25 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
         || (session?.user?.email ? session.user.email.split('@')[0] : null)
         || session?.user?.phone
         || 'Membro';
-      const { data: rows, error: e1 } = await supabase.rpc('create_family_with_owner', {
+      const { data: famId, error: e1 } = await supabase.rpc('create_family_with_owner', {
         p_name: name.trim(),
         p_emoji: emoji,
         p_display_name: displayName,
       });
       if (e1) throw e1;
-      const fam = Array.isArray(rows) ? rows[0] : rows;
-      if (!fam || !fam.id) throw new Error('Creazione famiglia fallita (risposta vuota).');
+      // RPC ritorna l'UUID (stringa). Se serve l'oggetto famiglia, lo recuperiamo
+      // con una select successiva (sotto, per la foto).
+      const newFamilyId = typeof famId === 'string' ? famId : (Array.isArray(famId) ? famId[0] : famId?.id);
+      if (!newFamilyId) throw new Error('Creazione famiglia fallita (risposta vuota).');
 
       // 2) Carica la foto (best-effort: se fallisce la famiglia resta creata)
       if (photoFile) {
         try {
-          const photoUrl = await uploadPhoto(fam.id);
+          const photoUrl = await uploadPhoto(newFamilyId);
           if (photoUrl) {
             await supabase.from('families')
               .update({ photo_url: photoUrl })
-              .eq('id', fam.id);
+              .eq('id', newFamilyId);
           }
         } catch (upErr) {
           // Foto fallita ma famiglia creata: warning non-bloccante
