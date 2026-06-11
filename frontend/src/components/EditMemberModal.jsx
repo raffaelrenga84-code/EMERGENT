@@ -228,8 +228,25 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
                 fontSize: 14, cursor: 'pointer',
                 border: '2px solid white',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.18)',
-              }}>
+              }}
+              title={t('take_photo')}>
                 📷
+                <input type="file" accept="image/*" capture="environment" hidden
+                  data-testid="editmember-avatar-input-camera"
+                  onChange={(e) => handleAvatarUpload(e.target.files?.[0])} />
+              </label>
+              {/* Pulsante album (galleria) sull'altro lato dell'avatar */}
+              <label style={{
+                position: 'absolute', bottom: -2, left: -2,
+                width: 28, height: 28, borderRadius: '50%',
+                background: 'var(--k)', color: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, cursor: 'pointer',
+                border: '2px solid white',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.18)',
+              }}
+              title={t('from_gallery')}>
+                🖼️
                 <input type="file" accept="image/*" hidden
                   data-testid="editmember-avatar-input"
                   onChange={(e) => handleAvatarUpload(e.target.files?.[0])} />

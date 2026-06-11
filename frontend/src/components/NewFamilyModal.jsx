@@ -18,6 +18,7 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const fileInputRef = useRef(null);
+  const fileInputCameraRef = useRef(null);
 
   const handlePhotoSelect = (e) => {
     const file = e.target.files?.[0];
@@ -141,18 +142,32 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
               )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                data-testid="new-family-photo-upload-btn"
-                style={{
-                  padding: '8px 14px', borderRadius: 100,
-                  border: '1.5px solid var(--ac)', background: 'white',
-                  color: 'var(--ac)', fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer',
-                }}>
-                📸 {photoPreview ? 'Cambia foto' : 'Carica foto'}
-              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => fileInputCameraRef.current?.click()}
+                  data-testid="new-family-photo-camera-btn"
+                  style={{
+                    padding: '8px 12px', borderRadius: 100,
+                    border: '1.5px solid var(--ac)', background: 'white',
+                    color: 'var(--ac)', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', flex: 1,
+                  }}>
+                  📷 {photoPreview ? '' : 'Foto'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="new-family-photo-upload-btn"
+                  style={{
+                    padding: '8px 12px', borderRadius: 100,
+                    border: '1.5px solid var(--ac)', background: 'white',
+                    color: 'var(--ac)', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', flex: 1,
+                  }}>
+                  🖼️ Galleria
+                </button>
+              </div>
               <p style={{ fontSize: 11, color: 'var(--km)', margin: '6px 0 0', lineHeight: 1.4 }}>
                 Una foto rende la famiglia più riconoscibile. Senza foto, viene mostrata l'emoji.
               </p>
@@ -162,6 +177,12 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
               onChange={handlePhotoSelect}
               style={{ display: 'none' }}
               data-testid="new-family-photo-input"
+            />
+            <input
+              ref={fileInputCameraRef} type="file" accept="image/*" capture="environment"
+              onChange={handlePhotoSelect}
+              style={{ display: 'none' }}
+              data-testid="new-family-photo-input-camera"
             />
           </div>
 

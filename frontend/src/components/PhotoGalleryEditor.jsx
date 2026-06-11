@@ -27,6 +27,7 @@ export default function PhotoGalleryEditor({
 }) {
   const { t } = useT();
   const fileRef = useRef(null);
+  const fileCameraRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,6 +39,10 @@ export default function PhotoGalleryEditor({
   const handlePick = () => {
     setError('');
     fileRef.current?.click();
+  };
+  const handlePickCamera = () => {
+    setError('');
+    fileCameraRef.current?.click();
   };
 
   const handleFiles = async (e) => {
@@ -100,11 +105,17 @@ export default function PhotoGalleryEditor({
         onChange={handleFiles}
         style={{ display: 'none' }}
       />
+      <input
+        ref={fileCameraRef} type="file" accept="image/*" capture="environment"
+        data-testid={`photo-gallery-input-camera-${kind}`}
+        onChange={handleFiles}
+        style={{ display: 'none' }}
+      />
 
-      {/* Header con count + bottone aggiungi */}
+      {/* Header con count + bottoni aggiungi (camera + gallery) */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 10,
+        marginBottom: 10, gap: 6,
       }}>
         <div style={{
           fontSize: 11, fontWeight: 700, color: 'var(--km)',
@@ -113,19 +124,22 @@ export default function PhotoGalleryEditor({
           📸 {t('td_attach_photos') || 'Foto'}{hasPhotos ? ` (${attachments.length})` : ''}
         </div>
         {hasPhotos && (
-          <button
-            type="button"
-            onClick={handlePick}
-            disabled={uploading}
-            data-testid={`photo-gallery-add-btn-${kind}`}
-            style={{
-              padding: '6px 12px', borderRadius: 100,
-              background: 'var(--ac)', color: 'white',
-              border: 'none', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-            {uploading ? <span className="spin" /> : '+'} {t('td_add_photo') || 'Aggiungi'}
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" onClick={handlePickCamera} disabled={uploading}
+              data-testid={`photo-gallery-camera-btn-${kind}`}
+              style={{
+                padding: '6px 10px', borderRadius: 100, background: 'var(--ac)',
+                color: 'white', border: 'none', fontSize: 12, fontWeight: 700,
+                cursor: 'pointer',
+              }}>📷</button>
+            <button type="button" onClick={handlePick} disabled={uploading}
+              data-testid={`photo-gallery-add-btn-${kind}`}
+              style={{
+                padding: '6px 10px', borderRadius: 100, background: 'var(--ac)',
+                color: 'white', border: 'none', fontSize: 12, fontWeight: 700,
+                cursor: 'pointer',
+              }}>🖼️</button>
+          </div>
         )}
       </div>
 

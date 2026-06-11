@@ -1,5 +1,40 @@
 # FAMMY — Family Organization App (Iterazione 16)
 
+## Iterazione 16.5.40 (12 febbraio 2026) — Estensione Camera/Album ai modal minori
+
+### File modificati con pattern Camera/Album
+
+1. **NewFamilyModal.jsx** — bottone "Carica foto" sostituito da "📷 Foto" + "🖼️ Galleria"
+2. **EditFamilyModal.jsx** — stesso pattern del NewFamilyModal
+3. **EditMemberModal.jsx** — avatar membro: bottone "📷" (camera, in basso a destra) + "🖼️" (galleria, in basso a sinistra)
+4. **CareAttachments.jsx** — header con 2 bottoncini "📷" + "🖼️ File" (lascia accept PDF sul gallery)
+5. **PhotoGalleryEditor.jsx** — header con icone "📷" e "🖼️" piccole quando ci sono già foto. L'empty state resta singolo bottone per non rovinare il CTA "Aggiungi la prima foto"
+
+### File volutamente NON modificati
+- **ImportScheduleModal.jsx** — use case specifico (screenshot turno di lavoro). L'utente di solito ha già lo screenshot in galleria.
+- **TaskDetailModal.jsx (chat inline 📎)** — l'attachment di chat è un input complesso con effetti collaterali (reset value, sync con thread). Lascio per seconda iterazione per non rischiare regressioni. L'utente può comunque usare il PhotoGalleryEditor della tab Dettagli (già aggiornato).
+- **CareAttachments.jsx empty state tile "+"** — visiva compatta in dashboard, lascia singolo input.
+
+### Pattern usato
+```jsx
+<input ref={fileRef} type="file" accept="image/*" onChange={...} hidden />
+<input ref={fileCameraRef} type="file" accept="image/*" capture="environment" onChange={...} hidden />
+<button onClick={() => fileCameraRef.current?.click()}>📷 Foto</button>
+<button onClick={() => fileRef.current?.click()}>🖼️ Galleria</button>
+```
+
+### Testing
+- Lint pre-esistente segnalato in NewFamilyModal (apostrofo italiano "l'emoji"): non introdotto da me
+- Test reali su Android richiesti per validare la UX dei nuovi bottoni doppi
+
+### Backlog rimasto
+- 🟡 TaskDetailModal chat inline 📎: refactor + camera button
+- 🛡️ Doppia conferma "Cancella account", soft-delete, audit log
+- 💎 Upgrade Supabase Pro
+
+---
+
+
 ## Iterazione 16.5.39 (12 febbraio 2026) — Multi-fix UX: i18n banner, Android camera/album, back button, audit DB
 
 ### Problemi affrontati (4)

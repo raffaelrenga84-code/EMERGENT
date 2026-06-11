@@ -99,24 +99,47 @@ export default function CareAttachments({ memberId, kind, parentId = null, meId 
           }}>
             📎 {t('care_att_h') || 'Documenti & foto'} {items.length > 0 && `(${items.length})`}
           </div>
-          <label
-            data-testid={`care-att-upload-btn-${kind}`}
-            style={{
-              padding: '6px 12px', borderRadius: 100,
-              border: '1.5px solid var(--ac)', background: 'white',
-              color: 'var(--ac)', fontSize: 12, fontWeight: 700,
-              cursor: uploading ? 'wait' : 'pointer', whiteSpace: 'nowrap',
-              opacity: uploading ? 0.6 : 1,
-            }}>
-            {uploading ? (t('care_att_uploading') || 'Carico…') : `+ ${t('care_att_add') || 'Aggiungi'}`}
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={handleFile}
-              disabled={uploading}
-              style={{ display: 'none' }}
-            />
-          </label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <label
+              data-testid={`care-att-camera-btn-${kind}`}
+              title={t('take_photo')}
+              style={{
+                padding: '6px 10px', borderRadius: 100,
+                border: '1.5px solid var(--ac)', background: 'white',
+                color: 'var(--ac)', fontSize: 12, fontWeight: 700,
+                cursor: uploading ? 'wait' : 'pointer',
+                opacity: uploading ? 0.6 : 1,
+              }}>
+              📷
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFile}
+                disabled={uploading}
+                style={{ display: 'none' }}
+              />
+            </label>
+            <label
+              data-testid={`care-att-upload-btn-${kind}`}
+              title={t('from_gallery')}
+              style={{
+                padding: '6px 12px', borderRadius: 100,
+                border: '1.5px solid var(--ac)', background: 'white',
+                color: 'var(--ac)', fontSize: 12, fontWeight: 700,
+                cursor: uploading ? 'wait' : 'pointer', whiteSpace: 'nowrap',
+                opacity: uploading ? 0.6 : 1,
+              }}>
+              {uploading ? (t('care_att_uploading') || 'Carico…') : `🖼️ ${t('care_att_add') || 'File'}`}
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={handleFile}
+                disabled={uploading}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
         </div>
       )}
 
