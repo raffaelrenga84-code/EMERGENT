@@ -92,12 +92,12 @@ create policy "care_attachments uploader or owner manage"
         and m_me.user_id = auth.uid()
     )
     OR
-    -- owner della famiglia
+    -- creatore della famiglia (owner)
     exists (
       select 1 from public.members m_target
       join public.families f on f.id = m_target.family_id
       where m_target.id = care_attachments.member_id
-        and f.owner_user_id = auth.uid()
+        and f.created_by = auth.uid()
     )
   );
 
