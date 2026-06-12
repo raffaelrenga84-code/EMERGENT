@@ -55,6 +55,10 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const [addressLng, setAddressLng] = useState(profile?.address_lng || null);
   const [editingColor, setEditingColor] = useState(false);
   const [color, setColor] = useState(profile?.avatar_color || '#1C1611');
+  // Gestione foto profilo (upload / foto Google / rimuovi)
+  const [editingPhoto, setEditingPhoto] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [googlePhoto, setGooglePhoto] = useState(null);
   const [busy, setBusy] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [showImportSchedule, setShowImportSchedule] = useState(false);
@@ -223,9 +227,58 @@ export default function ProfileTab({ session, profile, families = [], members = 
   const saveColor = async (c) => {
     setColor(c);
     setBusy(true);
-    await supabase.from('profiles').update({ avatar_color: c }).eq('id', session.user.id);
-    onChanged && onChanged();
+    const { error } = await supabase.from('profiles')
+      .update({ avatar_color: c }).eq('id', session.user.id);
+    // Propaga anche ai member record dell'utente, così il colore cambia
+    // ovunque (Bacheca, Famiglia, chat) e non solo nel profilo.
+    if (!error) {
+      await supabase.from('members')
+        .update({ avatar_color: c }).eq('user_id', session.user.id);
+    }
     setBusy(false);
+    if (error) { alert(error.message); return; }
+    onChanged && onChanged();
+  };
+
+  // Foto Google dal metadata auth (per il bottone "Usa foto Google")
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const meta = data?.user?.user_metadata || {};
+      setGooglePhoto(meta.picture || meta.avatar_url || null);
+    }).catch(() => {});
+  }, []);
+
+  // Aggiorna avatar_url su profiles + tutti i members dell'utente
+  const updateAvatarEverywhere = async (url) => {
+    setBusy(true);
+    const { error } = await supabase.from('profiles')
+      .update({ avatar_url: url }).eq('id', session.user.id);
+    if (!error) {
+      await supabase.from('members')
+        .update({ avatar_url: url }).eq('user_id', session.user.id);
+    }
+    setBusy(false);
+    if (error) { alert(error.message); return; }
+    onChanged && onChanged();
+  };
+
+  const handlePhotoUpload = async (file) => {
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `profiles/${session.user.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('member-avatars')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage
+        .from('member-avatars').getPublicUrl(path);
+      await updateAvatarEverywhere(pub.publicUrl);
+    } catch (e) {
+      alert(e.message || 'Upload error');
+    }
+    setUploadingPhoto(false);
   };
 
   const changeLang = async (newLang) => {
@@ -260,13 +313,28 @@ export default function ProfileTab({ session, profile, families = [], members = 
     <div className="profile-section" style={{
       display: 'flex', alignItems: 'center', gap: 14, paddingTop: 4, paddingBottom: 16,
     }}>
-      <Avatar
-        name={profile?.display_name}
-        avatarUrl={profile?.avatar_url}
-        avatarLetter={initial}
-        avatarColor={color}
-        size={64}
-      />
+      <button type="button"
+        onClick={() => { setEditingPhoto(!editingPhoto); setEditingColor(false); }}
+        data-testid="profile-avatar-edit"
+        style={{
+          position: 'relative', border: 'none', background: 'transparent',
+          padding: 0, cursor: 'pointer', flexShrink: 0,
+        }}>
+        <Avatar
+          name={profile?.display_name}
+          avatarUrl={profile?.avatar_url}
+          avatarLetter={initial}
+          avatarColor={color}
+          size={64}
+        />
+        <span style={{
+          position: 'absolute', bottom: -5, right: -5,
+          width: 26, height: 26, borderRadius: 100,
+          background: 'white', border: '1px solid var(--sm)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 13, boxShadow: '0 1px 4px rgba(28,22,17,.15)',
+        }}>📷</span>
+      </button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--k)', lineHeight: 1.2 }}>
           {profile?.display_name || '—'}
@@ -275,7 +343,9 @@ export default function ProfileTab({ session, profile, families = [], members = 
           {session.user.email || profile?.phone || t('profile_email_empty') || ''}
         </div>
       </div>
-      <button className="profile-btn" onClick={() => setEditingColor(!editingColor)} data-testid="profile-toggle-color">
+      <button className="profile-btn"
+        onClick={() => { setEditingColor(!editingColor); setEditingPhoto(false); }}
+        data-testid="profile-toggle-color">
         🎨
       </button>
     </div>
@@ -301,6 +371,36 @@ export default function ProfileTab({ session, profile, families = [], members = 
       </div>
 
       {header}
+
+      {/* Opzioni foto profilo (tap sull'avatar) */}
+      {editingPhoto && (
+        <div className="profile-section" data-testid="profile-photo-options"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 0, paddingBottom: 14 }}>
+          <label className="profile-btn" data-testid="profile-photo-upload"
+            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {uploadingPhoto ? <span className="spin" /> : <>📷 {t('profile_photo_upload') || 'Carica foto'}</>}
+            <input type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={(e) => { handlePhotoUpload(e.target.files?.[0]); e.target.value = ''; }} />
+          </label>
+          {googlePhoto && googlePhoto !== profile?.avatar_url && (
+            <button className="profile-btn" disabled={busy}
+              onClick={() => updateAvatarEverywhere(googlePhoto)}
+              data-testid="profile-photo-google">
+              ✨ {t('profile_photo_google') || 'Usa foto Google'}
+            </button>
+          )}
+          {profile?.avatar_url && (
+            <button className="profile-btn" disabled={busy}
+              onClick={() => updateAvatarEverywhere(null)}
+              data-testid="profile-photo-remove">
+              🗑️ {t('profile_photo_remove') || 'Rimuovi foto'}
+            </button>
+          )}
+          <div style={{ width: '100%', fontSize: 11, color: 'var(--km)', lineHeight: 1.4 }}>
+            💡 {t('profile_photo_hint') || 'La foto e il colore si aggiornano in tutte le tue famiglie.'}
+          </div>
+        </div>
+      )}
 
       {/* Color picker inline (sotto l'header) */}
       {editingColor && (
@@ -994,21 +1094,10 @@ const profileRowInGroup = {
  * che dopo un reload l'utente ritrovi l'ultima configurazione.
  */
 function ProfileGroup({ icon, title, subtitle, defaultOpen = false, testid, children }) {
-  const storageKey = `fammy_profile_group_${testid}`;
-  const [open, setOpen] = useState(() => {
-    try {
-      const v = localStorage.getItem(storageKey);
-      if (v === '1') return true;
-      if (v === '0') return false;
-    } catch (_) { /* ignore */ }
-    return defaultOpen;
-  });
+  // Sempre chiusi all'apertura del tab (niente persistenza): schermata pulita.
+  const [open, setOpen] = useState(defaultOpen);
 
-  const toggle = () => {
-    const next = !open;
-    setOpen(next);
-    try { localStorage.setItem(storageKey, next ? '1' : '0'); } catch (_) { /* ignore */ }
-  };
+  const toggle = () => setOpen((o) => !o);
 
   return (
     <div className="profile-section" style={{ paddingTop: 0, paddingBottom: 0 }}>

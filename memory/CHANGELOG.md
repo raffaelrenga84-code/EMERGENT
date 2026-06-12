@@ -451,3 +451,22 @@ Richiesta: dalla Bacheca non si vedeva che un incarico avesse commenti/foto.
   - TaskCard: nuovo prop onOpenPhoto(index); thumbnails e label 📷 cliccabili.
 - Verificato con harness Playwright (poi rimosso): apertura lightbox,
   navigazione 2/2, chiusura, apertura chat dal badge — tutti OK. Build OK.
+
+## Iterazione 16.5.58 (giugno 2026) — Profilo: tendine chiuse + foto profilo + fix colore
+- `ProfileTab.jsx`:
+  - ProfileGroup: rimossa la persistenza localStorage → entrando in Profilo
+    le tendine sono SEMPRE tutte chiuse.
+  - Avatar header cliccabile (badge 📷) → opzioni foto: 📷 Carica foto
+    (upload su bucket member-avatars, path profiles/{uid}/...),
+    ✨ Usa foto Google (da user_metadata.picture, mostrato se diversa
+    dall'attuale), 🗑️ Rimuovi foto. testid: profile-avatar-edit,
+    profile-photo-options/-upload/-google/-remove.
+  - updateAvatarEverywhere + saveColor ora aggiornano `profiles` E TUTTI i
+    `members` dell'utente (foto/colore cambiano ovunque nell'app) e mostrano
+    alert in caso di errore (prima fallivano in silenzio).
+  - 🎨 e 📷 si chiudono a vicenda.
+- i18n: profile_photo_upload/google/remove/hint (it+en).
+- Verificato con harness: 7 gruppi chiusi di default, opzioni foto al tap
+  sull'avatar, palette/foto mutuamente esclusive, 0 errori JS. Build OK.
+- Nessun SQL nuovo (bucket member-avatars + policy già esistenti da
+  fammy-photo-permissions.sql).

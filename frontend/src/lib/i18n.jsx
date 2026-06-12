@@ -501,6 +501,10 @@ export const T = {
     profile_account: 'Account',
     profile_danger_zone: 'Operazioni',
     profile_modify: 'Modifica',
+    profile_photo_upload: 'Carica foto',
+    profile_photo_google: 'Usa foto Google',
+    profile_photo_remove: 'Rimuovi foto',
+    profile_photo_hint: 'La foto e il colore si aggiornano in tutte le tue famiglie.',
 
     // Invite
     invite_invalid_h: 'Invito non valido',
@@ -1652,6 +1656,10 @@ export const T = {
     profile_account: 'Account',
     profile_danger_zone: 'Actions',
     profile_modify: 'Edit',
+    profile_photo_upload: 'Upload photo',
+    profile_photo_google: 'Use Google photo',
+    profile_photo_remove: 'Remove photo',
+    profile_photo_hint: 'Your photo and color update across all your families.',
 
     invite_invalid_h: 'Invalid invite',
     invite_back_to_app: 'Back to FAMMY',
