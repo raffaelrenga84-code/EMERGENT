@@ -23,7 +23,7 @@ const REACTIONS = ['❤️', '👍', '🎉', '😂', '😮', '🙏'];
  */
 export default function MessageReactions({
   response, me, members, taskTitle, isMine,
-  pickerOpen, onPickerClose,
+  pickerOpen, onPickerClose, onReply,
 }) {
   const [reactions, setReactions] = useState(response?.reactions || {});
   const [internalOpen, setInternalOpen] = useState(false);
@@ -50,7 +50,8 @@ export default function MessageReactions({
     if (!open) { setPickerPos(null); return; }
     const r = anchorRef.current?.getBoundingClientRect();
     if (!r) return;
-    const PICKER_W = REACTIONS.length * 32 + (REACTIONS.length - 1) * 4 + 16;
+    const slots = REACTIONS.length + (onReply ? 1 : 0);
+    const PICKER_W = slots * 32 + (slots - 1) * 4 + 16 + (onReply ? 7 : 0);
     const PICKER_H = 44;
     const margin = 8;
     let left = isMine ? r.right - PICKER_W : r.left;
@@ -245,6 +246,25 @@ export default function MessageReactions({
               {emoji}
             </button>
           ))}
+          {/* ↩️ Rispondi (citazione stile WhatsApp) */}
+          {onReply && (
+            <>
+              <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--sm)', margin: '2px 3px' }} />
+              <button type="button"
+                onClick={() => { close(); onReply(response); }}
+                data-testid={`reaction-reply-${response.id}`}
+                aria-label="Rispondi"
+                style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'transparent', border: 'none',
+                  fontSize: 17, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: 0,
+                }}>
+                ↩️
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -794,3 +794,23 @@ Sintomi post-incidente (dati famiglie persi ieri):
 Su iOS i link d'invito si aprono per forza in Safari (le PWA non possono
 catturare i link): NON serve sloggarsi — login Google in Safari, accetta,
 poi riapri la PWA installata che vede la nuova famiglia dal server.
+
+## Iterazione 16.5.76 (giugno 2026) — ↩️ Risposta diretta (citazione WhatsApp)
+Feature richiesta da Jenna: rispondere a un messaggio specifico in chat.
+DB già pronto (task_responses.reply_to_id, da fammy-chat-enhancements.sql,
+verificato presente in prod via probe REST).
+### Implementazione
+- MessageReactions: nuova prop `onReply` → il picker long-press mostra
+  6 emoji + separatore + bottone ↩️ (PICKER_W ricalcolato con +1 slot).
+- TaskDetailModal:
+  • stato `replyTo` + banner sopra il composer (nome autore + estratto +
+    ✕ annulla, testid task-chat-reply-banner) + focus automatico input;
+  • addComment include `reply_to_id` e resetta replyTo;
+  • bubble con `c.reply_to_id` → blocchetto citazione (autore + estratto
+    2 righe, '📷 Foto' per i messaggi foto, 'Messaggio non disponibile'
+    se orfano) con stile adattato mio/altrui (testid task-chat-quote-*);
+  • tap sulla citazione → scrollToMessage: scrollIntoView center + flash
+    highlight 1.3s sul row (id DOM chat-msg-<id>).
+- i18n: td_reply, td_quoted_missing ×4 lingue.
+- Verifica: harness React — picker 7 bottoni in viewport, click ↩️
+  chiama onReply: PASS. Harness rimosso.

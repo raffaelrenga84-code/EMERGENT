@@ -68,6 +68,19 @@ export default function TaskDetailModal({
   // null = nessun picker via long-press attivo (i picker "uncontrolled" lavorano
   // con il loro internalOpen state, indipendente).
   const [longPressPickerId, setLongPressPickerId] = useState(null);
+  // Risposta diretta (citazione stile WhatsApp): commento a cui si risponde
+  const [replyTo, setReplyTo] = useState(null);
+  const [flashMsgId, setFlashMsgId] = useState(null);
+  const commentInputRef = useRef(null);
+
+  // Tap sulla citazione → scrolla al messaggio originale + flash highlight
+  const scrollToMessage = (msgId) => {
+    const el = document.getElementById(`chat-msg-${msgId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashMsgId(msgId);
+    setTimeout(() => setFlashMsgId(null), 1300);
+  };
   const longPressTimerRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
   const chatPhotoInputRef = useRef(null);
@@ -1082,10 +1095,13 @@ export default function TaskDetailModal({
                 }
 
                 return (
-                  <div key={c.id} style={{
+                  <div key={c.id} id={`chat-msg-${c.id}`} style={{
                     display: 'flex', gap: 8,
                     flexDirection: isMine ? 'row-reverse' : 'row',
                     alignItems: 'flex-end',
+                    borderRadius: 12,
+                    background: flashMsgId === c.id ? 'rgba(184,92,80,0.14)' : 'transparent',
+                    transition: 'background-color 0.4s ease',
                   }} data-testid={`task-chat-msg-${c.id}`}>
                     <div style={{
                       width: 26, height: 26, borderRadius: '50%',
@@ -1143,6 +1159,45 @@ export default function TaskDetailModal({
                             {authorName?.split(' ')[0] || t('td_someone')}
                           </div>
                         )}
+                        {/* Citazione (risposta diretta stile WhatsApp) */}
+                        {c.reply_to_id && (() => {
+                          const quoted = comments.find((x) => x.id === c.reply_to_id);
+                          const qAuthor = quoted
+                            ? (members.find((m) => m.id === quoted.author_id)?.name
+                               || quoted.author_name || '')
+                            : '';
+                          const qText = quoted
+                            ? (quoted.type === 'photo' ? '📷 Foto' : (quoted.text || ''))
+                            : (t('td_quoted_missing') || 'Messaggio non disponibile');
+                          return (
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (quoted) scrollToMessage(quoted.id);
+                              }}
+                              data-testid={`task-chat-quote-${c.id}`}
+                              style={{
+                                borderLeft: `3px solid ${isMine ? 'rgba(255,255,255,0.7)' : 'var(--ac)'}`,
+                                background: isMine ? 'rgba(255,255,255,0.16)' : 'var(--ab)',
+                                borderRadius: 8, padding: '4px 8px', marginBottom: 5,
+                                cursor: quoted ? 'pointer' : 'default',
+                              }}>
+                              {qAuthor && (
+                                <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.92 }}>
+                                  {qAuthor.split(' ')[0]}
+                                </div>
+                              )}
+                              <div style={{
+                                fontSize: 12, opacity: 0.85, wordBreak: 'break-word',
+                                overflow: 'hidden', textOverflow: 'ellipsis',
+                                display: '-webkit-box', WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                              }}>
+                                {qText.length > 120 ? qText.slice(0, 117) + '…' : qText}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {/* Anteprima foto se messaggio è di tipo photo
                             e abbiamo trovato l'attachment associato */}
                         {isPhoto && linkedPhoto && photoUrls[linkedPhoto.id] ? (
@@ -1200,6 +1255,11 @@ export default function TaskDetailModal({
                         isMine={isMine}
                         pickerOpen={longPressPickerId === c.id}
                         onPickerClose={() => setLongPressPickerId(null)}
+                        onReply={(resp) => {
+                          setReplyTo(resp);
+                          setLongPressPickerId(null);
+                          setTimeout(() => commentInputRef.current?.focus(), 50);
+                        }}
                       />
                     </div>
                   </div>
@@ -1230,6 +1290,39 @@ export default function TaskDetailModal({
                 </button>
               ))}
             </div>
+
+            {/* Banner "rispondi a..." sopra il composer */}
+            {replyTo && (
+              <div data-testid="task-chat-reply-banner" style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 10px', marginBottom: 6,
+                background: 'var(--ab)', border: '1px solid var(--sm)',
+                borderLeft: '3px solid var(--ac)', borderRadius: 10,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ac)' }}>
+                    ↩️ {(members.find((m) => m.id === replyTo.author_id)?.name
+                          || replyTo.author_name || '').split(' ')[0]
+                        || (t('td_reply') || 'Rispondi')}
+                  </div>
+                  <div style={{
+                    fontSize: 12, color: 'var(--km)',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {replyTo.type === 'photo' ? '📷 Foto' : replyTo.text}
+                  </div>
+                </div>
+                <button type="button"
+                  onClick={() => setReplyTo(null)}
+                  data-testid="task-chat-reply-cancel"
+                  aria-label="Annulla risposta"
+                  style={{
+                    border: 'none', background: 'transparent',
+                    color: 'var(--km)', fontSize: 14, cursor: 'pointer',
+                    flexShrink: 0, padding: 4,
+                  }}>✕</button>
+              </div>
+            )}
 
             {/* Composer chat: input rounded + bottone send circolare */}
             <div style={{
@@ -1312,6 +1405,7 @@ export default function TaskDetailModal({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>📎</button>
               <input
+                ref={commentInputRef}
                 style={{
                   flex: 1, border: 'none', outline: 'none',
                   background: 'transparent',
