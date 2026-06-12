@@ -144,44 +144,34 @@ export default function FamilyTab({ family, members, session, families, activeFa
                   background: 'transparent', border: 'none', cursor: 'pointer',
                   textAlign: 'left', boxSizing: 'border-box',
                 }}>
-                {/* Avatar famiglia: per l'owner è cliccabile (badge ✏️) e apre
-                    direttamente la modifica nome/foto — molto più intuitivo
-                    del solo ingranaggio. */}
-                {isFamilyOwner ? (
-                  <button type="button"
-                    onClick={(e) => { e.stopPropagation(); setEditingFamilyAll(f); }}
-                    data-testid={`family-avatar-edit-${f.id}`}
-                    title={t('family_edit_title')}
-                    style={{
-                      position: 'relative', border: 'none', background: 'transparent',
-                      padding: 0, cursor: 'pointer', flexShrink: 0,
-                    }}>
-                    {f.photo_url ? (
-                      <div style={{
-                        width: 40, height: 40, borderRadius: 12,
-                        background: `url(${f.photo_url}) center/cover no-repeat`,
-                        border: '1.5px solid var(--sm)',
-                      }} data-testid={`family-list-photo-${f.id}`} />
-                    ) : (
-                      <span style={{ fontSize: 28, display: 'block', lineHeight: '40px' }}>{f.emoji}</span>
-                    )}
-                    <span style={{
-                      position: 'absolute', bottom: -5, right: -7,
-                      width: 20, height: 20, borderRadius: 100,
-                      background: 'white', border: '1px solid var(--sm)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 10, boxShadow: '0 1px 3px rgba(28,22,17,.15)',
-                    }}>✏️</span>
-                  </button>
-                ) : f.photo_url ? (
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                    background: `url(${f.photo_url}) center/cover no-repeat`,
-                    border: '1.5px solid var(--sm)',
-                  }} data-testid={`family-list-photo-${f.id}`} />
-                ) : (
-                  <span style={{ fontSize: 28 }}>{f.emoji}</span>
-                )}
+                {/* Avatar famiglia: cliccabile per tutti (badge ✏️).
+                    Owner → modifica reale; membro → personalizzazione
+                    solo per sé (alias su members.custom_family_*). */}
+                <button type="button"
+                  onClick={(e) => { e.stopPropagation(); setEditingFamilyAll(f); }}
+                  data-testid={`family-avatar-edit-${f.id}`}
+                  title={isFamilyOwner ? t('family_edit_title') : (t('fam_personalize') || 'Personalizza')}
+                  style={{
+                    position: 'relative', border: 'none', background: 'transparent',
+                    padding: 0, cursor: 'pointer', flexShrink: 0,
+                  }}>
+                  {f.photo_url ? (
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 12,
+                      background: `url(${f.photo_url}) center/cover no-repeat`,
+                      border: '1.5px solid var(--sm)',
+                    }} data-testid={`family-list-photo-${f.id}`} />
+                  ) : (
+                    <span style={{ fontSize: 28, display: 'block', lineHeight: '40px' }}>{f.emoji}</span>
+                  )}
+                  <span style={{
+                    position: 'absolute', bottom: -5, right: -7,
+                    width: 20, height: 20, borderRadius: 100,
+                    background: 'white', border: '1px solid var(--sm)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, boxShadow: '0 1px 3px rgba(28,22,17,.15)',
+                  }}>✏️</span>
+                </button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{f.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>
@@ -211,20 +201,18 @@ export default function FamilyTab({ family, members, session, families, activeFa
                   title={t('invite_btn')}>
                   💌 {t('invite_btn')}
                 </button>
-                {isFamilyOwner && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setEditingFamilyAll(f); }}
-                    data-testid={`family-edit-btn-${f.id}`}
-                    style={{
-                      flex: 1, padding: '10px 12px', background: 'transparent',
-                      border: 'none', cursor: 'pointer', fontSize: 13,
-                      color: 'var(--k)', fontWeight: 600,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    }}
-                    title={t('family_edit_title')}>
-                    ✏️ {t('edit')}
-                  </button>
-                )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setEditingFamilyAll(f); }}
+                  data-testid={`family-edit-btn-${f.id}`}
+                  style={{
+                    flex: 1, padding: '10px 12px', background: 'transparent',
+                    border: 'none', cursor: 'pointer', fontSize: 13,
+                    color: 'var(--k)', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}
+                  title={isFamilyOwner ? t('family_edit_title') : (t('fam_personalize') || 'Personalizza')}>
+                  ✏️ {isFamilyOwner ? t('edit') : (t('fam_personalize') || 'Personalizza')}
+                </button>
               </div>
 
               {isExpanded && (
@@ -285,6 +273,8 @@ export default function FamilyTab({ family, members, session, families, activeFa
         {editingFamilyAll && (
           <EditFamilyModal
             family={editingFamilyAll}
+            personal={editingFamilyAll.created_by !== session.user.id}
+            session={session}
             onClose={() => setEditingFamilyAll(null)}
             onSaved={(updated) => {
               if (updated && onFamilyUpdated) onFamilyUpdated(updated);
@@ -365,58 +355,41 @@ export default function FamilyTab({ family, members, session, families, activeFa
         padding: '4px 22px 14px',
         display: 'flex', alignItems: 'center', gap: 14,
       }}>
-        {/* Avatar famiglia: per l'owner cliccabile (badge ✏️) → modifica */}
-        {isOwner ? (
-          <button type="button"
-            onClick={() => setEditingFamily(true)}
-            data-testid="family-hero-avatar-edit"
-            title={t('family_edit_title')}
-            style={{
-              position: 'relative', border: 'none', background: 'transparent',
-              padding: 0, cursor: 'pointer', flexShrink: 0,
-            }}>
-            {family.photo_url ? (
-              <div
-                data-testid="family-hero-photo"
-                style={{
-                  width: 56, height: 56,
-                  borderRadius: 16,
-                  background: `url(${family.photo_url}) center/cover no-repeat`,
-                  boxShadow: '0 4px 12px rgba(28,22,17,0.15)',
-                  border: '2px solid white',
-                }}
-              />
-            ) : (
-              <span style={{
-                fontSize: 40, lineHeight: 1, display: 'block',
-                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.08))',
-              }}>{family.emoji}</span>
-            )}
+        {/* Avatar famiglia: cliccabile per tutti (badge ✏️) → owner modifica,
+            membro personalizza solo per sé */}
+        <button type="button"
+          onClick={() => setEditingFamily(true)}
+          data-testid="family-hero-avatar-edit"
+          title={isOwner ? t('family_edit_title') : (t('fam_personalize') || 'Personalizza')}
+          style={{
+            position: 'relative', border: 'none', background: 'transparent',
+            padding: 0, cursor: 'pointer', flexShrink: 0,
+          }}>
+          {family.photo_url ? (
+            <div
+              data-testid="family-hero-photo"
+              style={{
+                width: 56, height: 56,
+                borderRadius: 16,
+                background: `url(${family.photo_url}) center/cover no-repeat`,
+                boxShadow: '0 4px 12px rgba(28,22,17,0.15)',
+                border: '2px solid white',
+              }}
+            />
+          ) : (
             <span style={{
-              position: 'absolute', bottom: -5, right: -7,
-              width: 22, height: 22, borderRadius: 100,
-              background: 'white', border: '1px solid var(--sm)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, boxShadow: '0 1px 4px rgba(28,22,17,.15)',
-            }}>✏️</span>
-          </button>
-        ) : family.photo_url ? (
-          <div
-            data-testid="family-hero-photo"
-            style={{
-              width: 56, height: 56, flexShrink: 0,
-              borderRadius: 16,
-              background: `url(${family.photo_url}) center/cover no-repeat`,
-              boxShadow: '0 4px 12px rgba(28,22,17,0.15)',
-              border: '2px solid white',
-            }}
-          />
-        ) : (
+              fontSize: 40, lineHeight: 1, display: 'block',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.08))',
+            }}>{family.emoji}</span>
+          )}
           <span style={{
-            fontSize: 40, lineHeight: 1, flexShrink: 0,
-            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.08))',
-          }}>{family.emoji}</span>
-        )}
+            position: 'absolute', bottom: -5, right: -7,
+            width: 22, height: 22, borderRadius: 100,
+            background: 'white', border: '1px solid var(--sm)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, boxShadow: '0 1px 4px rgba(28,22,17,.15)',
+          }}>✏️</span>
+        </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 style={{
             margin: 0, fontFamily: 'var(--fs)', fontSize: 22, fontWeight: 500,
@@ -433,20 +406,18 @@ export default function FamilyTab({ family, members, session, families, activeFa
             </span>
           </div>
         </div>
-        {isOwner && (
-          <button
-            className="link-btn"
-            onClick={() => setEditingFamily(true)}
-            data-testid="family-edit-btn"
-            style={{
-              padding: '8px 12px', borderRadius: 100,
-              background: 'var(--ab)', border: '1px solid var(--sm)',
-              fontSize: 12, fontWeight: 600, color: 'var(--km)',
-              flexShrink: 0,
-            }}>
-            ✏️ {t('edit')}
-          </button>
-        )}
+        <button
+          className="link-btn"
+          onClick={() => setEditingFamily(true)}
+          data-testid="family-edit-btn"
+          style={{
+            padding: '8px 12px', borderRadius: 100,
+            background: 'var(--ab)', border: '1px solid var(--sm)',
+            fontSize: 12, fontWeight: 600, color: 'var(--km)',
+            flexShrink: 0,
+          }}>
+          ✏️ {isOwner ? t('edit') : (t('fam_personalize') || 'Personalizza')}
+        </button>
         <TabHeaderActions
           onAI={onOpenAI}
           onAdd={onNewFamily}
@@ -588,6 +559,8 @@ export default function FamilyTab({ family, members, session, families, activeFa
       {editingFamily && (
         <EditFamilyModal
           family={family}
+          personal={!isOwner}
+          session={session}
           onClose={() => setEditingFamily(false)}
           onSaved={(updated) => {
             if (updated && onFamilyUpdated) onFamilyUpdated(updated);

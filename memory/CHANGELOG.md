@@ -486,3 +486,49 @@ serviva l'ingranaggio; toccavano la riga e si apriva la tendina membri.
 - Non-owner: nessun badge/bottone (comportamento invariato).
 - Verificato con harness: owner vs non-owner, tap avatar apre il modal
   (non la tendina), 0 errori JS. Build OK. Nessun SQL.
+
+## Iterazione 16.5.60 (giugno 2026) — Nuova famiglia: step 2 "aggiungi membri"
+Problema: dopo la creazione il modal si chiudeva e la famiglia restava vuota.
+- `NewFamilyModal.jsx`: dopo "Crea" non si chiude più; mostra lo step 2
+  🎉 "Famiglia creata!" con:
+  - 💌 Invita con un link → apre FamilyInviteModal sulla nuova famiglia;
+  - ➕ Aggiungi membro (es. nonni, bambini) → apre AddMemberModal
+    (contatore "✓ N membri aggiunti" dopo ogni aggiunta);
+  - "Più tardi"/"Fatto" → chiude.
+  testid: new-family-success-step / -invite-btn / -add-member-btn /
+  -later-btn / -added-count.
+- `HomeScreen.jsx`: onCreated ora fa solo refreshAll() (la chiusura la
+  gestisce il modal stesso con onClose).
+- i18n: chiavi nf_* (it+en, fr/de fallback automatico su it).
+- Verificato con harness + stub RPC: Crea → step 2 → AddMemberModal →
+  Più tardi chiude. 0 errori JS. Build OK. Nessun SQL.
+
+## Iterazione 16.5.61 (giugno 2026) — Onboarding invito + alias famiglia per membro
+### 1. Onboarding: invita il partner subito dopo la registrazione
+- `WelcomeScreen.jsx` → FamilyCreateForm: dopo la creazione mostra lo step
+  🎉 "Famiglia creata!" con 💌 "Invita con un link" (FamilyInviteModal) e
+  "Vai alla bacheca →" (testid onboarding-invite-step/-invite-btn/
+  -goto-board-btn). skipToBoard/FamilyThenItem/Demo invariati.
+
+### 2. Alias famiglia personale (nome/emoji/foto per membro)
+- SQL `fammy-family-alias.sql`: 3 colonne su members
+  (custom_family_name/emoji/photo_url). ⚠️ DA ESEGUIRE su Supabase.
+- `App.jsx`: select('*, families(*)') (resiliente pre-migrazione) + merge:
+  i campi display name/emoji/photo_url usano l'alias se presente; i reali
+  restano in real_name/real_emoji/real_photo_url. Tutta l'app a valle vede
+  la versione personalizzata automaticamente.
+- `EditFamilyModal.jsx`: prop personal + session. personal=true → titolo
+  "Personalizza famiglia", sub "Solo tu vedrai... gli altri vedono {reale}",
+  salva su members.custom_family_* (errore chiaro se SQL mancante), foto su
+  family-photos path alias-{uid}, bottone "↩️ Ripristina originale"
+  (family-personal-reset), niente Elimina. Owner-mode: parte dai valori
+  REALI e onSaved aggiorna anche real_*.
+- `FamilyTab.jsx`: avatar + bottone editabili per TUTTI i membri
+  (owner "✏️ Modifica" / membro "✏️ Personalizza") in lista e vista singola;
+  personal={created_by !== session.user.id} sui 2 call site del modal.
+- i18n: ob_invite_sub, ob_goto_board, fam_personalize, fam_personal_*.
+- FIX: rimosso blocco JSX orfano duplicato a fine FamilyTab.jsx (residuo di
+  un edit precedente) che rompeva la build.
+- Verificato con harness: alias "Casa" visibile, modal Personalizza con nome
+  reale + reset, onboarding step invito end-to-end. Build OK.
+⚠️ Ordine deploy: 1) fammy-family-alias.sql su Supabase, 2) Save to GitHub.

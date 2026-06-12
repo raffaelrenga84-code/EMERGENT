@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { isIOS } from '../lib/platformDetect.js';
+import { useT } from '../lib/i18n.jsx';
+import FamilyInviteModal from './FamilyInviteModal.jsx';
+import AddMemberModal from './AddMemberModal.jsx';
 
 const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '❤️', '🌟', '🍝', '🐾', '🚗'];
 
@@ -12,12 +15,18 @@ const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '�
  * viene comunque creata con la sola emoji come fallback.
  */
 export default function NewFamilyModal({ session, profile, onClose, onCreated }) {
+  const { t } = useT();
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('🏡');
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Step 2 (post-creazione): invita/aggiungi membri subito
+  const [created, setCreated] = useState(null);
+  const [showInvite, setShowInvite] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [addedCount, setAddedCount] = useState(0);
   const fileInputRef = useRef(null);
   const fileInputCameraRef = useRef(null);
 
@@ -76,9 +85,10 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
       if (!newFamilyId) throw new Error('Creazione famiglia fallita (risposta vuota).');
 
       // 2) Carica la foto (best-effort: se fallisce la famiglia resta creata)
+      let photoUrl = null;
       if (photoFile) {
         try {
-          const photoUrl = await uploadPhoto(newFamilyId);
+          photoUrl = await uploadPhoto(newFamilyId);
           if (photoUrl) {
             await supabase.from('families')
               .update({ photo_url: photoUrl })
@@ -90,11 +100,85 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
         }
       }
 
+      // 3) Step 2: invece di chiudere, proponi subito invito/aggiunta membri
+      //    (una famiglia vuota non serve a nulla). onCreated refresha le
+      //    famiglie nel parent senza chiudere il modal.
       onCreated && onCreated();
+      setBusy(false);
+      setCreated({
+        id: newFamilyId,
+        name: name.trim(),
+        emoji,
+        photo_url: photoUrl,
+        created_by: session?.user?.id,
+      });
     } catch (e) {
       setErr(e.message); setBusy(false);
     }
   };
+
+  // ====== STEP 2: famiglia creata → aggiungi subito i familiari ======
+  if (created) {
+    return (
+      <div className="modal-bg">
+        <div className="modal" onClick={(e) => e.stopPropagation()} data-testid="new-family-success-step">
+          <div style={{ textAlign: 'center', fontSize: 46, lineHeight: 1 }}>🎉</div>
+          <h2 style={{ textAlign: 'center' }}>{t('nf_created_h') || 'Famiglia creata!'}</h2>
+          <p className="modal-sub" style={{ textAlign: 'center' }}>
+            {t('nf_created_sub', { name: created.name })
+              || `"${created.name}" è pronta. Ora aggiungi i tuoi familiari:`}
+          </p>
+
+          <button type="button" className="btn full"
+            onClick={() => setShowInvite(true)}
+            data-testid="new-family-invite-btn">
+            💌 {t('nf_invite_btn') || 'Invita con un link'}
+          </button>
+          <button type="button" className="btn full secondary" style={{ marginTop: 8 }}
+            onClick={() => setShowAddMember(true)}
+            data-testid="new-family-add-member-btn">
+            ➕ {t('nf_add_member_btn') || 'Aggiungi membro (es. nonni, bambini)'}
+          </button>
+
+          {addedCount > 0 && (
+            <div style={{
+              marginTop: 12, padding: '8px 12px', borderRadius: 10,
+              background: 'var(--gnB, #EAF4EC)', color: 'var(--gn)',
+              fontSize: 13, fontWeight: 700, textAlign: 'center',
+            }} data-testid="new-family-added-count">
+              ✓ {addedCount} {t('nf_member_added') || 'membri aggiunti'}
+            </div>
+          )}
+
+          <button type="button" className="link-btn"
+            onClick={onClose}
+            data-testid="new-family-later-btn"
+            style={{ width: '100%', textAlign: 'center', marginTop: 14 }}>
+            {addedCount > 0 ? (t('nf_done_btn') || 'Fatto') : (t('nf_later_btn') || 'Più tardi')}
+          </button>
+        </div>
+
+        {showInvite && (
+          <FamilyInviteModal
+            family={created}
+            session={session}
+            onClose={() => setShowInvite(false)}
+          />
+        )}
+        {showAddMember && (
+          <AddMemberModal
+            familyId={created.id}
+            onClose={() => setShowAddMember(false)}
+            onCreated={() => {
+              setShowAddMember(false);
+              setAddedCount((c) => c + 1);
+              onCreated && onCreated();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="modal-bg" onClick={onClose}>

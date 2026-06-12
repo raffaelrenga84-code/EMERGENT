@@ -225,7 +225,7 @@ export default function App() {
         // ritentiamo una volta dopo 800ms.
         const fetchMembers = async () => supabase
           .from('members')
-          .select('family_id, families(*)')
+          .select('*, families(*)')
           .eq('user_id', userId);
 
         let { data: m, error: mErr } = await fetchMembers();
@@ -245,7 +245,23 @@ export default function App() {
           // Non sovrascriviamo families a [] se avevamo già dati caricati
           // (es. da un refresh): manteniamo lo stato precedente.
         } else {
-          const fams = (m || []).map((row) => row.families).filter(Boolean);
+          // Alias per-membro: se l'utente ha personalizzato nome/emoji/foto
+          // della famiglia (members.custom_family_*), qui li sostituiamo nei
+          // campi display. I valori reali restano in real_name/real_emoji/
+          // real_photo_url. Tutta l'app a valle vede la versione personale.
+          const fams = (m || []).map((row) => {
+            const f = row.families;
+            if (!f) return null;
+            return {
+              ...f,
+              real_name: f.name,
+              real_emoji: f.emoji,
+              real_photo_url: f.photo_url,
+              name: row.custom_family_name || f.name,
+              emoji: row.custom_family_emoji || f.emoji,
+              photo_url: row.custom_family_photo_url || f.photo_url,
+            };
+          }).filter(Boolean);
           setFamilies(fams);
         }
       } catch (err) {

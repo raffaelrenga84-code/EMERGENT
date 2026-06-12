@@ -1,22 +1,40 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { isIOS } from '../lib/platformDetect.js';
+import { useT } from '../lib/i18n.jsx';
 
 const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '❤️', '🌟', '🍝', '🐾', '🚗'];
 
 /**
  * EditFamilyModal — modifica nome / emoji / FOTO della famiglia.
  *
+ * Due modalità:
+ * - owner (default): modifica la famiglia REALE (`families`), visibile a tutti.
+ * - personal={true}: salva un ALIAS personale su `members.custom_family_*`
+ *   (solo l'utente corrente vede nome/emoji/foto personalizzati; richiede
+ *   lo script SQL fammy-family-alias.sql).
+ *
  * Foto: il file viene caricato nel bucket pubblico `family-photos` (path
- * `family-{id}/cover.{ext}`). La public URL viene salvata in
- * `families.photo_url`. L'emoji resta come fallback se la foto manca.
+ * `family-{id}/cover.{ext}`, o `family-{id}/alias-{uid}.{ext}` in modalità
+ * personale). L'emoji resta come fallback se la foto manca.
  */
-export default function EditFamilyModal({ family, onClose, onSaved, onDeleted }) {
-  const [name, setName] = useState(family.name);
-  const [emoji, setEmoji] = useState(family.emoji || '🏡');
-  const [photoUrl, setPhotoUrl] = useState(family.photo_url || null);
+export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, personal = false, session }) {
+  const { t } = useT();
+  // Valori reali (sempre presenti dopo il merge in App.jsx; fallback ai
+  // display se il modal riceve un oggetto famiglia "grezzo").
+  const realName = family.real_name !== undefined ? family.real_name : family.name;
+  const realEmoji = family.real_emoji !== undefined ? family.real_emoji : family.emoji;
+  const realPhotoUrl = family.real_photo_url !== undefined ? family.real_photo_url : family.photo_url;
+  // personal: parte dalla vista corrente (alias se già impostato);
+  // owner: parte dai valori REALI (per non salvare per sbaglio un alias).
+  const initName = personal ? family.name : realName;
+  const initEmoji = (personal ? family.emoji : realEmoji) || '🏡';
+  const initPhoto = (personal ? family.photo_url : realPhotoUrl) || null;
+  const [name, setName] = useState(initName);
+  const [emoji, setEmoji] = useState(initEmoji);
+  const [photoUrl, setPhotoUrl] = useState(initPhoto);
   const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(family.photo_url || null);
+  const [photoPreview, setPhotoPreview] = useState(initPhoto);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const fileInputRef = useRef(null);
@@ -45,7 +63,9 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted })
     if (!photoFile) return photoUrl; // se non e' cambiata
     const ext = photoFile.name.split('.').pop()?.toLowerCase() || 'jpg';
     const ts = Date.now(); // evita cache
-    const filePath = `family-${family.id}/cover-${ts}.${ext}`;
+    const filePath = personal
+      ? `family-${family.id}/alias-${session?.user?.id}-${ts}.${ext}`
+      : `family-${family.id}/cover-${ts}.${ext}`;
     const { error: upErr } = await supabase.storage
       .from('family-photos').upload(filePath, photoFile, {
         upsert: true, contentType: photoFile.type,
@@ -63,6 +83,30 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted })
       let finalPhotoUrl = photoUrl;
       if (photoFile) finalPhotoUrl = await uploadPhoto();
       if (!photoPreview && photoUrl) finalPhotoUrl = null; // rimossa esplicitamente
+
+      if (personal) {
+        // ALIAS personale: salva su members.custom_family_* (riga propria)
+        const { data, error } = await supabase.from('members')
+          .update({
+            custom_family_name: name.trim(),
+            custom_family_emoji: emoji,
+            custom_family_photo_url: finalPhotoUrl,
+          })
+          .eq('family_id', family.id)
+          .eq('user_id', session.user.id)
+          .select();
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Permesso negato o colonne mancanti. Esegui lo script SQL fammy-family-alias.sql su Supabase.');
+        }
+        window.dispatchEvent(new CustomEvent('fammy_toast', {
+          detail: { text: `✅ ${t('fam_personal_saved') || 'Personalizzazione salvata (solo per te)'}`, tone: 'success' },
+        }));
+        setBusy(false);
+        onSaved && onSaved({ ...family, name: name.trim(), emoji, photo_url: finalPhotoUrl });
+        return;
+      }
+
       // Usiamo .select() per ottenere le righe aggiornate. Se RLS blocca
       // l'update (es. il SQL `fammy-photo-permissions.sql` non è stato
       // ancora eseguito), riceviamo data=[] senza error → check esplicito.
@@ -78,11 +122,31 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted })
         detail: { text: '✅ Famiglia aggiornata', tone: 'success' },
       }));
       setBusy(false);
-      onSaved && onSaved({ ...family, name: name.trim(), emoji, photo_url: finalPhotoUrl });
+      onSaved && onSaved({
+        ...family,
+        name: name.trim(), emoji, photo_url: finalPhotoUrl,
+        real_name: name.trim(), real_emoji: emoji, real_photo_url: finalPhotoUrl,
+      });
     } catch (e2) {
       setErr(e2.message || 'Errore');
       setBusy(false);
     }
+  };
+
+  // Rimuove l'alias personale → torna a vedere i valori reali
+  const resetPersonal = async () => {
+    setBusy(true); setErr('');
+    const { error } = await supabase.from('members')
+      .update({
+        custom_family_name: null,
+        custom_family_emoji: null,
+        custom_family_photo_url: null,
+      })
+      .eq('family_id', family.id)
+      .eq('user_id', session.user.id);
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    onSaved && onSaved({ ...family, name: realName, emoji: realEmoji, photo_url: realPhotoUrl });
   };
 
   const remove = async () => {
@@ -96,8 +160,12 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted })
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Modifica famiglia</h2>
-        <p className="modal-sub">Cambia nome, foto o icona di questa famiglia.</p>
+        <h2>{personal ? (t('fam_personal_title') || 'Personalizza famiglia') : 'Modifica famiglia'}</h2>
+        <p className="modal-sub">
+          {personal
+            ? (t('fam_personal_sub', { name: realName }) || `Solo tu vedrai questo nome e questa foto. Gli altri vedono "${realName}".`)
+            : 'Cambia nome, foto o icona di questa famiglia.'}
+        </p>
 
         <form onSubmit={save}>
           {/* === FOTO === */}
@@ -224,14 +292,24 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted })
           </div>
         </form>
 
-        <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--sm)' }}>
-          <button className="btn full danger" onClick={remove} disabled={busy}>
-            Elimina famiglia
-          </button>
-          <p style={{ fontSize: 11, color: 'var(--km)', textAlign: 'center', marginTop: 8 }}>
-            ⚠️ Cancella tutti i dati collegati. Irreversibile.
-          </p>
-        </div>
+        {personal ? (
+          <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--sm)' }}>
+            <button type="button" className="link-btn" onClick={resetPersonal} disabled={busy}
+              data-testid="family-personal-reset"
+              style={{ width: '100%', textAlign: 'center' }}>
+              ↩️ {t('fam_personal_reset') || 'Ripristina originale'} ("{realName}")
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--sm)' }}>
+            <button className="btn full danger" onClick={remove} disabled={busy}>
+              Elimina famiglia
+            </button>
+            <p style={{ fontSize: 11, color: 'var(--km)', textAlign: 'center', marginTop: 8 }}>
+              ⚠️ Cancella tutti i dati collegati. Irreversibile.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

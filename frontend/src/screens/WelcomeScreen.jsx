@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT, LANGS } from '../lib/i18n.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import JoinFamilyByCodeModal from '../components/JoinFamilyByCodeModal.jsx';
+import FamilyInviteModal from '../components/FamilyInviteModal.jsx';
 
 const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '❤️', '🌟', '🍝'];
 
@@ -164,6 +165,9 @@ function FamilyCreateForm({ session, profile, onCreated, onBack }) {
   const [emoji, setEmoji] = useState('🏡');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Step 2 onboarding: famiglia creata → invita subito il partner
+  const [created, setCreated] = useState(null);
+  const [showInvite, setShowInvite] = useState(false);
 
   const create = async (e) => {
     e.preventDefault();
@@ -182,12 +186,48 @@ function FamilyCreateForm({ session, profile, onCreated, onBack }) {
         role: 'tu', avatar_letter: displayName.charAt(0).toUpperCase(), status: 'active',
       });
       if (e2) throw e2;
-      onCreated && onCreated();
+      // Niente onCreated qui: mostriamo prima lo step "invita il partner".
+      // FAMMY da soli serve a poco → questo è il momento migliore per
+      // portare dentro il resto della famiglia.
+      setBusy(false);
+      setCreated(fam);
     } catch (e) {
       setErr(e.message || 'Errore.');
       setBusy(false);
     }
   };
+
+  // ====== STEP 2: invita subito il partner ======
+  if (created) {
+    return (
+      <div style={{ padding: '32px 24px', maxWidth: 420, margin: '0 auto', textAlign: 'center' }}
+        data-testid="onboarding-invite-step">
+        <div style={{ fontSize: 56, marginBottom: 8 }}>🎉</div>
+        <h1 style={{ fontFamily: 'var(--fs)', fontSize: 28, fontWeight: 600, marginBottom: 8 }}>
+          {t('nf_created_h') || 'Famiglia creata!'}
+        </h1>
+        <p style={{ color: 'var(--km)', marginBottom: 28, lineHeight: 1.5 }}>
+          {t('ob_invite_sub') || 'FAMMY funziona meglio insieme: invita subito il tuo partner o un familiare.'}
+        </p>
+        <button className="btn full" onClick={() => setShowInvite(true)}
+          data-testid="onboarding-invite-btn">
+          💌 {t('nf_invite_btn') || 'Invita con un link'}
+        </button>
+        <button className="link-btn" onClick={() => onCreated && onCreated()}
+          data-testid="onboarding-goto-board-btn"
+          style={{ width: '100%', textAlign: 'center', marginTop: 16 }}>
+          {t('ob_goto_board') || 'Vai alla bacheca →'}
+        </button>
+        {showInvite && (
+          <FamilyInviteModal
+            family={created}
+            session={session}
+            onClose={() => setShowInvite(false)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '32px 24px', maxWidth: 420, margin: '0 auto' }}>

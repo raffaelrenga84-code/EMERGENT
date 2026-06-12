@@ -409,7 +409,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
           session={session}
           profile={profile}
           onClose={() => setShowNewFamily(false)}
-          onCreated={() => { setShowNewFamily(false); refreshAll(); }}
+          onCreated={() => { refreshAll(); }}
         />
       )}
 
