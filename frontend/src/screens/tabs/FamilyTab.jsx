@@ -135,14 +135,45 @@ export default function FamilyTab({ family, members, session, families, activeFa
               background: 'white', border: '1px solid var(--sm)',
               borderRadius: 12, overflow: 'hidden',
             }}>
-              <button
+              <div
                 onClick={() => toggleFamilyExpanded(f.id)}
+                role="button"
+                data-testid={`family-row-${f.id}`}
                 style={{
                   width: '100%', padding: '16px', display: 'flex', alignItems: 'center', gap: 12,
                   background: 'transparent', border: 'none', cursor: 'pointer',
-                  textAlign: 'left',
+                  textAlign: 'left', boxSizing: 'border-box',
                 }}>
-                {f.photo_url ? (
+                {/* Avatar famiglia: per l'owner è cliccabile (badge ✏️) e apre
+                    direttamente la modifica nome/foto — molto più intuitivo
+                    del solo ingranaggio. */}
+                {isFamilyOwner ? (
+                  <button type="button"
+                    onClick={(e) => { e.stopPropagation(); setEditingFamilyAll(f); }}
+                    data-testid={`family-avatar-edit-${f.id}`}
+                    title={t('family_edit_title')}
+                    style={{
+                      position: 'relative', border: 'none', background: 'transparent',
+                      padding: 0, cursor: 'pointer', flexShrink: 0,
+                    }}>
+                    {f.photo_url ? (
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 12,
+                        background: `url(${f.photo_url}) center/cover no-repeat`,
+                        border: '1.5px solid var(--sm)',
+                      }} data-testid={`family-list-photo-${f.id}`} />
+                    ) : (
+                      <span style={{ fontSize: 28, display: 'block', lineHeight: '40px' }}>{f.emoji}</span>
+                    )}
+                    <span style={{
+                      position: 'absolute', bottom: -5, right: -7,
+                      width: 20, height: 20, borderRadius: 100,
+                      background: 'white', border: '1px solid var(--sm)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, boxShadow: '0 1px 3px rgba(28,22,17,.15)',
+                    }}>✏️</span>
+                  </button>
+                ) : f.photo_url ? (
                   <div style={{
                     width: 40, height: 40, borderRadius: 12, flexShrink: 0,
                     background: `url(${f.photo_url}) center/cover no-repeat`,
@@ -161,7 +192,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
                   fontSize: 20, color: 'var(--km)', transition: 'transform 0.2s ease',
                   transform: isExpanded ? 'rotate(90deg)' : 'rotate(0)'
                 }}>›</span>
-              </button>
+              </div>
 
               <div style={{
                 display: 'flex', alignItems: 'stretch',
@@ -183,13 +214,15 @@ export default function FamilyTab({ family, members, session, families, activeFa
                 {isFamilyOwner && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setEditingFamilyAll(f); }}
+                    data-testid={`family-edit-btn-${f.id}`}
                     style={{
-                      width: 56, padding: '10px 12px', background: 'transparent',
-                      border: 'none', cursor: 'pointer', fontSize: 16,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flex: 1, padding: '10px 12px', background: 'transparent',
+                      border: 'none', cursor: 'pointer', fontSize: 13,
+                      color: 'var(--k)', fontWeight: 600,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                     }}
                     title={t('family_edit_title')}>
-                    ⚙️
+                    ✏️ {t('edit')}
                   </button>
                 )}
               </div>
@@ -332,7 +365,42 @@ export default function FamilyTab({ family, members, session, families, activeFa
         padding: '4px 22px 14px',
         display: 'flex', alignItems: 'center', gap: 14,
       }}>
-        {family.photo_url ? (
+        {/* Avatar famiglia: per l'owner cliccabile (badge ✏️) → modifica */}
+        {isOwner ? (
+          <button type="button"
+            onClick={() => setEditingFamily(true)}
+            data-testid="family-hero-avatar-edit"
+            title={t('family_edit_title')}
+            style={{
+              position: 'relative', border: 'none', background: 'transparent',
+              padding: 0, cursor: 'pointer', flexShrink: 0,
+            }}>
+            {family.photo_url ? (
+              <div
+                data-testid="family-hero-photo"
+                style={{
+                  width: 56, height: 56,
+                  borderRadius: 16,
+                  background: `url(${family.photo_url}) center/cover no-repeat`,
+                  boxShadow: '0 4px 12px rgba(28,22,17,0.15)',
+                  border: '2px solid white',
+                }}
+              />
+            ) : (
+              <span style={{
+                fontSize: 40, lineHeight: 1, display: 'block',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.08))',
+              }}>{family.emoji}</span>
+            )}
+            <span style={{
+              position: 'absolute', bottom: -5, right: -7,
+              width: 22, height: 22, borderRadius: 100,
+              background: 'white', border: '1px solid var(--sm)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, boxShadow: '0 1px 4px rgba(28,22,17,.15)',
+            }}>✏️</span>
+          </button>
+        ) : family.photo_url ? (
           <div
             data-testid="family-hero-photo"
             style={{
@@ -376,7 +444,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
               fontSize: 12, fontWeight: 600, color: 'var(--km)',
               flexShrink: 0,
             }}>
-            ⚙️ {t('edit')}
+            ✏️ {t('edit')}
           </button>
         )}
         <TabHeaderActions

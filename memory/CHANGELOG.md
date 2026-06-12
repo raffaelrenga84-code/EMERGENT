@@ -470,3 +470,19 @@ Richiesta: dalla Bacheca non si vedeva che un incarico avesse commenti/foto.
   sull'avatar, palette/foto mutuamente esclusive, 0 errori JS. Build OK.
 - Nessun SQL nuovo (bucket member-avatars + policy già esistenti da
   fammy-photo-permissions.sql).
+
+## Iterazione 16.5.59 (giugno 2026) — Famiglia: modifica più intuitiva (no ingranaggio nudo)
+Problema: gli utenti non capivano che per cambiare nome/foto famiglia
+serviva l'ingranaggio; toccavano la riga e si apriva la tendina membri.
+- `FamilyTab.jsx` (vista "Tutte"):
+  - avatar/emoji famiglia cliccabile per l'owner con badge ✏️ →
+    apre direttamente EditFamilyModal (testid family-avatar-edit-{id});
+  - ingranaggio ⚙️ sostituito da bottone etichettato "✏️ Modifica"
+    (flex, accanto a 💌 Invita; testid family-edit-btn-{id});
+  - header riga convertito da <button> a <div role=button> per permettere
+    il bottone avatar annidato (niente bottoni dentro bottoni).
+- Vista famiglia singola (hero): avatar cliccabile con badge ✏️
+  (family-hero-avatar-edit) + bottone "✏️ Modifica" (era ⚙️).
+- Non-owner: nessun badge/bottone (comportamento invariato).
+- Verificato con harness: owner vs non-owner, tap avatar apre il modal
+  (non la tendina), 0 errori JS. Build OK. Nessun SQL.
