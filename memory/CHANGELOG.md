@@ -741,3 +741,30 @@ più veniva clippato dal contenitore scrollabile della chat (overflow).
 - Verifica: harness React root HTML (Vite transform) con 12 messaggi —
   picker non-mio: PASS (left 60, right 290, 6 emoji visibili);
   picker mio: PASS (dentro viewport). Harness rimosso.
+
+## Iterazione 16.5.74 (giugno 2026) — 🔔 Push al creatore su azioni swipe + follow-up "Da seguire"
+Richiesta utente: 1) quando qualcuno usa le swipe actions (Me ne occupo /
+Fatto / Non posso) la notifica deve arrivare al CREATORE dell'incarico,
+mai a chi clicca; 2) se l'assegnatario non interagisce e la scadenza si
+avvicina, reminder al creatore ("X non ha interagito, vuoi incaricare
+qualcun altro / scrivergli in chat?").
+### 1. Push azioni (client)
+- BachecaTab: nuovo `notifyQuickAction(task, title)` → push a autore +
+  assegnatari correnti (pre-azione), chi clicca SEMPRE escluso (member +
+  user level). Hook su quickToggleDone (solo →done: "✅ X ha completato"),
+  quickAssignMe ("✋ X se ne occupa"), quickDecline ("🤚 X non può
+  occuparsene").
+- TaskDetailModal: updateStatus('done') → stessa push via
+  chatRecipientMemberIds (fire-and-forget, non ritarda la chiusura modale).
+- i18n: push_act_done/claim/decline ×4 lingue.
+- NOTA: la notifica locale al creatore (showAssignedToMyTaskNotification,
+  watcher realtime) esisteva già ma SOLO con app aperta; ora c'è la push.
+### 2. Follow-up creatore (server)
+- `_dashboard_standalone/task-reminder-push.ts`: nuova sezione C — alle
+  18:00 Europe/Rome (cron al minuto, match orario singolo): task con
+  due_date=DOMANI e status='todo' → push al creatore "👀 <title> scade
+  domani / X non ha ancora interagito...". Skip se gli unici assegnatari
+  sono il creatore stesso (promemoria personale). Test manuale: POST
+  body {"manual_followup": true}. Campo `followup_sent` nelle risposte.
+- ⚠️ RICHIEDE RIDEPLOY manuale della funzione su Supabase dashboard
+  (l'utente l'ha già fatto in passato; il PAT non è salvato nel repo).

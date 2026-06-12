@@ -16,6 +16,7 @@ import DonateModal from '../../components/DonateModal.jsx';
 import FeedbackModal from '../../components/FeedbackModal.jsx';
 import { markFirstTaskCreated } from '../../lib/installPrompt.js';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
+import { sendPush, memberIdsToUserIds } from '../../lib/pushClient.js';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
@@ -254,6 +255,30 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   };
 
   // === Swipe actions ===
+  // 🔔 Push al CREATORE del task (e agli altri assegnatari) quando qualcuno
+  // agisce con le swipe actions. Chi clicca è SEMPRE escluso: a lui non
+  // serve la notifica della propria azione.
+  const notifyQuickAction = async (task, title) => {
+    try {
+      const id = task._origId || task.id;
+      const recipients = new Set();
+      if (task.author_id) recipients.add(task.author_id);
+      for (const a of assigneesForTask(task.id)) if (a?.id) recipients.add(a.id);
+      if (me?.id) recipients.delete(me.id);
+      const userIds = await memberIdsToUserIds([...recipients]);
+      if (me?.user_id) userIds.delete(me.user_id);
+      if (userIds.size === 0) return;
+      sendPush({
+        userIds: [...userIds],
+        title,
+        body: task.title || '',
+        tag: `task-action-${id}`,
+        data: { task_id: id, kind: 'task' },
+      });
+    } catch (_) { /* push best-effort */ }
+  };
+  const myFirstName = () => (me?.name || '').split(' ')[0] || 'Qualcuno';
+
   const quickToggleDone = async (task) => {
     // Per le istanze ricorrenti, l'id reale è in _origId (le ricorrenze
     // sono soggette a un workflow speciale; per swipe veloce trattiamo
@@ -261,6 +286,9 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     const id = task._origId || task.id;
     const nextStatus = task.status === 'done' ? 'todo' : 'done';
     await supabase.from('tasks').update({ status: nextStatus }).eq('id', id);
+    if (nextStatus === 'done') {
+      notifyQuickAction(task, `✅ ${myFirstName()} ${t('push_act_done') || 'ha completato'}`);
+    }
     onChanged();
   };
 
@@ -274,6 +302,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
       status: 'taken', urgent: false, priority: 'normal',
       delegated_to: null,
     }).eq('id', id);
+    notifyQuickAction(task, `✋ ${myFirstName()} ${t('push_act_claim') || 'se ne occupa'}`);
     onChanged();
   };
 
@@ -294,6 +323,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
       await supabase.from('task_assignees').delete()
         .eq('task_id', id).eq('member_id', me.id);
     }
+    notifyQuickAction(task, `🤚 ${myFirstName()} ${t('push_act_decline') || 'non può occuparsene'}`);
     onChanged();
   };
 

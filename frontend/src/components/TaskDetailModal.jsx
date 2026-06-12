@@ -249,6 +249,24 @@ export default function TaskDetailModal({
     setBusy(true);
     await supabase.from('tasks').update({ status: s }).eq('id', realTaskId);
     setBusy(false);
+    // 🔔 "Fatto" → push al creatore e agli altri coinvolti (mai a chi clicca)
+    if (s === 'done') {
+      (async () => {
+        try {
+          const userIds = await memberIdsToUserIds(chatRecipientMemberIds());
+          if (me?.user_id) userIds.delete(me.user_id);
+          if (userIds.size === 0) return;
+          const name = (me?.name || '').split(' ')[0] || 'Qualcuno';
+          sendPush({
+            userIds: [...userIds],
+            title: `✅ ${name} ${t('push_act_done') || 'ha completato'}`,
+            body: task.title || '',
+            tag: `task-action-${realTaskId}`,
+            data: { task_id: realTaskId, kind: 'task' },
+          });
+        } catch (_) { /* best-effort */ }
+      })();
+    }
     onChanged();
     if (s === 'to_pay' && typeof onOpenExpense === 'function') {
       onOpenExpense(task);

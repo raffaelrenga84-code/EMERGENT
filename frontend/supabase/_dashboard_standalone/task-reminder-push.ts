@@ -127,6 +127,79 @@ serve(async (req) => {
     }
 
     // =====================================================================
+    // C) FOLLOW-UP AL CREATORE (una volta al giorno, ore 18:00 Rome)
+    //    Task che scadono DOMANI ancora status='todo' (nessuno se n'è preso
+    //    carico) → push al CREATORE: "X non ha ancora interagito. Vuoi
+    //    incaricare qualcun altro o scrivergli in chat?"
+    //    Test manuale: POST con body { "manual_followup": true }
+    // =====================================================================
+    let followupSent = 0;
+    let manualFollowup = false;
+    try {
+      const body = await req.json().catch(() => ({}));
+      manualFollowup = !!body?.manual_followup;
+    } catch (_) { /* no body (cron) */ }
+    if (nowRome === '18:00' || manualFollowup) {
+      try {
+        const tomorrowRome = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(new Date(Date.now() + 24 * 3600 * 1000));
+
+        const { data: pending } = await supabaseAdmin
+          .from('tasks')
+          .select('id, title, author_id, family_id')
+          .eq('due_date', tomorrowRome)
+          .eq('status', 'todo');
+
+        for (const t of pending || []) {
+          if (!t.author_id) continue;
+          // Creatore → user_id (serve un account per ricevere push)
+          const { data: author } = await supabaseAdmin
+            .from('members').select('id, user_id').eq('id', t.author_id).maybeSingle();
+          if (!author?.user_id) continue;
+
+          // Assegnatari ≠ creatore (per il testo "X non ha interagito").
+          const { data: asg } = await supabaseAdmin
+            .from('task_assignees').select('member_id').eq('task_id', t.id);
+          const allAsg = (asg || []).map((a) => a.member_id);
+          const otherAsg = allAsg.filter((id) => id !== t.author_id);
+          // Task assegnato SOLO al creatore stesso → è un suo promemoria
+          // personale, niente follow-up "incarica qualcun altro".
+          if (allAsg.length > 0 && otherAsg.length === 0) continue;
+
+          let who = '';
+          if (otherAsg.length > 0) {
+            const { data: ms } = await supabaseAdmin
+              .from('members').select('id, name').in('id', otherAsg);
+            who = (ms || []).map((m) => (m.name || '').split(' ')[0])
+              .filter(Boolean).join(', ');
+          }
+
+          await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              apikey: SUPABASE_SERVICE_ROLE_KEY,
+            },
+            body: JSON.stringify({
+              user_ids: [author.user_id],
+              title: `👀 "${t.title}" scade domani`,
+              body: who
+                ? `${who} non ha ancora interagito. Vuoi incaricare qualcun altro o scrivergli in chat?`
+                : `Nessuno se n'è ancora occupato. Vuoi incaricare qualcuno o scrivere in chat?`,
+              tag: `task-followup-${t.id}`,
+              data: { kind: 'task', task_id: t.id, url: `/?task=${t.id}` },
+            }),
+          }).catch(() => {});
+          followupSent++;
+        }
+      } catch (e) {
+        console.warn('followup creator error:', e);
+      }
+    }
+
+    // =====================================================================
     // B) PROMEMORIA A ORARIO (due_date = oggi, due_time = adesso)
     // =====================================================================
 
@@ -139,13 +212,13 @@ serve(async (req) => {
       .neq('status', 'done');
 
     if (!tasks || tasks.length === 0) {
-      return json({ queue_sent: queueSent, sent: 0, reason: 'no_tasks_today', now_rome: `${todayRome} ${nowRome}` });
+      return json({ queue_sent: queueSent, followup_sent: followupSent, sent: 0, reason: 'no_tasks_today', now_rome: `${todayRome} ${nowRome}` });
     }
 
     // Match sull'orario corrente (due_time può essere "HH:MM" o "HH:MM:SS")
     const dueNow = tasks.filter((t) => String(t.due_time).slice(0, 5) === nowRome);
     if (dueNow.length === 0) {
-      return json({ queue_sent: queueSent, sent: 0, reason: 'no_match_this_minute', now_rome: `${todayRome} ${nowRome}` });
+      return json({ queue_sent: queueSent, followup_sent: followupSent, sent: 0, reason: 'no_match_this_minute', now_rome: `${todayRome} ${nowRome}` });
     }
 
     let sentTotal = 0;
@@ -187,7 +260,7 @@ serve(async (req) => {
       } catch (_) { /* skip silent */ }
     }
 
-    return json({ queue_sent: queueSent, sent_total: sentTotal, matched_tasks: dueNow.length, details, now_rome: `${todayRome} ${nowRome}` });
+    return json({ queue_sent: queueSent, followup_sent: followupSent, sent_total: sentTotal, matched_tasks: dueNow.length, details, now_rome: `${todayRome} ${nowRome}` });
   } catch (err) {
     console.error('task-reminder-push error:', err);
     return json({ error: String(err) }, 500);
