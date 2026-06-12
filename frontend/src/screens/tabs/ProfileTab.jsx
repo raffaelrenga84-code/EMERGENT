@@ -33,6 +33,16 @@ const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C'
 export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, onNewFamily, onOpenAI, openInboxSignal = 0, notificationControl = {} }) {
   const { t, lang, setLang } = useT();
   const [view, setView] = useState('main'); // main | plans | theme | a11y | privacy
+  // Preferenza schermata iniziale (per-dispositivo, come il tema)
+  const [startTab, setStartTab] = useState(() => {
+    try {
+      return localStorage.getItem('fammy_start_tab') === 'agenda' ? 'agenda' : 'bacheca';
+    } catch (_) { return 'bacheca'; }
+  });
+  const changeStartTab = (id) => {
+    setStartTab(id);
+    try { localStorage.setItem('fammy_start_tab', id); } catch (_) { /* ignore */ }
+  };
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(profile?.display_name || '');
   const [editingBirthday, setEditingBirthday] = useState(false);
@@ -656,6 +666,29 @@ export default function ProfileTab({ session, profile, families = [], members = 
               <span style={{ fontSize: 16 }}>{l.flag}</span> {l.label}
             </button>
           ))}
+        </div>
+
+        {/* Schermata iniziale */}
+        <div className="profile-label" style={{ marginBottom: 8 }}>{t('profile_start_tab')}</div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+          {[
+            { id: 'bacheca', icon: '📋', label: t('nav_bacheca') },
+            { id: 'agenda', icon: '📅', label: t('nav_agenda') },
+          ].map((o) => (
+            <button key={o.id} onClick={() => changeStartTab(o.id)}
+              data-testid={`profile-start-tab-${o.id}`}
+              style={{
+                padding: '8px 14px', borderRadius: 100, border: '1.5px solid',
+                borderColor: startTab === o.id ? 'var(--k)' : 'var(--sm)',
+                background: startTab === o.id ? 'var(--sm)' : 'white',
+                fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+              <span style={{ fontSize: 16 }}>{o.icon}</span> {o.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 16 }}>
+          {t('profile_start_tab_hint')}
         </div>
 
         {/* Settings menu (Plans, Theme, A11y, Privacy) */}

@@ -30,7 +30,12 @@ import { useMedicationReminders } from '../lib/useMedicationReminders.js';
 export default function HomeScreen({ session, profile, families, onRefresh, onFamilyUpdated }) {
   const { t } = useT();
   const [activeFamily, setActiveFamily] = useState('all');
-  const [activeTab, setActiveTab] = useState('bacheca');
+  // Schermata iniziale: quale tab vedere all'apertura (preferenza per-dispositivo)
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      return localStorage.getItem('fammy_start_tab') === 'agenda' ? 'agenda' : 'bacheca';
+    } catch (_) { return 'bacheca'; }
+  });
   // Signal incrementale: cambia ogni volta che vogliamo aprire l'inbox
   // feedback nel ProfileTab (es. tap sul toast realtime).
   const [openFeedbackInboxSignal, setOpenFeedbackInboxSignal] = useState(0);

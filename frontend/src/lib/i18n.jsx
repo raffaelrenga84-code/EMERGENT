@@ -1617,6 +1617,8 @@ export const T = {
 
     profile_your_name: 'Your name',
     profile_language: 'Language',
+    profile_start_tab: 'Start screen',
+    profile_start_tab_hint: 'Which screen to show when you open FAMMY (on this device).',
     profile_signed_in_as: 'Signed in as',
     profile_app_info: 'FAMMY · v0.2 (MVP)\nYour data is stored on Supabase.',
     profile_h: 'Your profile',
@@ -2666,6 +2668,8 @@ export const T = {
 
     profile_your_name: 'Ton nom',
     profile_language: 'Langue',
+    profile_start_tab: 'Écran de démarrage',
+    profile_start_tab_hint: 'Quel écran afficher à l\'ouverture de FAMMY (sur cet appareil).',
     profile_signed_in_as: 'Connecté en tant que',
     profile_app_info: 'FAMMY · v0.2 (MVP)\nTes données sont stockées sur Supabase.',
     profile_h: 'Ton profil',
@@ -3551,6 +3555,8 @@ export const T = {
 
     profile_your_name: 'Dein Name',
     profile_language: 'Sprache',
+    profile_start_tab: 'Startbildschirm',
+    profile_start_tab_hint: 'Welcher Bildschirm beim Öffnen von FAMMY angezeigt wird (auf diesem Gerät).',
     profile_signed_in_as: 'Angemeldet als',
     profile_app_info: 'FAMMY · v0.2 (MVP)\nDeine Daten sind in Supabase gespeichert.',
     profile_h: 'Dein Profil',

@@ -2,6 +2,21 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 (ter) — Personalizzazione schermata iniziale (Bacheca o Agenda)
+
+### Feature (richiesta utente, priorità su condivisione foto)
+Nuova preferenza "Schermata iniziale" in Profilo → App & Lingua: pill
+📋 Bacheca / 📅 Agenda. Salvata in `localStorage('fammy_start_tab')`
+(per-dispositivo, stessa convenzione del tema). `HomeScreen.jsx` inizializza
+`activeTab` dalla preferenza. i18n in 4 lingue (`profile_start_tab[_hint]`).
+data-testid: `profile-start-tab-bacheca|agenda`. Build OK.
+
+### Nota
+La condivisione foto/ricordi via Web Share API (scelta d) è stata INIZIATA
+(esplorazione: FamilyMemoriesCard.jsx, pattern navigator.share già presente in
+FamilyInviteModal.jsx:140 e CareReportShare.jsx:123) ma MESSA IN PAUSA su
+richiesta utente. È il prossimo task in coda.
+
 ## 2026-06-12 (bis) — ROOT CAUSE push iPhone: VAPID_PUBLIC_KEY errata su Supabase
 
 ### ✅ VERIFICATO DALL'UTENTE (12 giu, 09:14)

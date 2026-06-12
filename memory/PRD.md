@@ -2,6 +2,11 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.48 (12 giugno 2026) — Schermata iniziale personalizzabile
+- Preferenza Bacheca/Agenda all'apertura (Profilo → App & Lingua, localStorage).
+- Push iPhone VERIFICATE funzionanti (rotazione VAPID completata dall'utente).
+- IN CODA: condivisione foto/ricordi via Web Share API (iniziata, in pausa).
+
 ## Iterazione 16.5.47 (12 giugno 2026) — Push non consegnate: visibilità per-dispositivo
 - `send-push.ts` ora ritorna esiti per subscription e rimuove anche i 403;
   diagnostica con elenco dispositivi registrati (+rimozione) e bottone
