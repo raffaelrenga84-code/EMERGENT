@@ -22,9 +22,19 @@ export function bpDailyAvg(row) {
   return { sys: avg('sys'), dia: avg('dia') };
 }
 
-// "08:15 120/80 · 20:30 135/82" — usata da storico e report.
+// Soglia ipertensione (linee guida: ≥140 sistolica oppure ≥90 diastolica)
+export const BP_SYS_LIMIT = 140;
+export const BP_DIA_LIMIT = 90;
+export function isBpHigh(r) {
+  return r != null
+    && (Number(r.sys) >= BP_SYS_LIMIT || Number(r.dia) >= BP_DIA_LIMIT);
+}
+
+// "08:15 120/80 · 20:30 150/95⚠️" — usata da storico e report testuale.
 export function formatBpReadings(row) {
   const rs = getBpReadings(row);
   if (rs.length === 0) return null;
-  return rs.map((r) => `${r.t ? `${r.t} ` : ''}${r.sys}/${r.dia}`).join(' · ');
+  return rs
+    .map((r) => `${r.t ? `${r.t} ` : ''}${r.sys}/${r.dia}${isBpHigh(r) ? '⚠️' : ''}`)
+    .join(' · ');
 }

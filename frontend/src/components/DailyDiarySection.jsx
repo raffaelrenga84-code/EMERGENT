@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { toLocalYMD } from '../lib/dateUtils.js';
 import CareAttachments from './CareAttachments.jsx';
-import { getBpReadings, formatBpReadings } from '../lib/bp.js';
+import { getBpReadings, formatBpReadings, isBpHigh } from '../lib/bp.js';
 
 /**
  * DailyDiarySection — diario giornaliero del membro assistito.
@@ -189,24 +189,27 @@ export default function DailyDiarySection({ member, me }) {
         {getBpReadings(todayEntry).length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}
             data-testid="dd-bp-list">
-            {getBpReadings(todayEntry).map((r, i) => (
-              <span key={`${r.t}-${i}`} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '6px 10px', background: 'white',
-                border: '1px solid var(--sm)', borderRadius: 100,
-                fontSize: 13, fontWeight: 700, color: 'var(--k)',
-              }}>
-                {r.t && <span style={{ color: 'var(--km)', fontWeight: 600, fontSize: 11 }}>🕒 {r.t}</span>}
-                {r.sys}/{r.dia}
-                <button type="button" onClick={() => removeReading(i)}
-                  disabled={bpSaving}
-                  data-testid={`dd-bp-remove-${i}`}
-                  style={{
-                    border: 'none', background: 'var(--ab)', borderRadius: 100,
-                    padding: '1px 7px', fontSize: 11, color: 'var(--km)', cursor: 'pointer',
-                  }}>✕</button>
-              </span>
-            ))}
+            {getBpReadings(todayEntry).map((r, i) => {
+              const high = isBpHigh(r);
+              return (
+                <span key={`${r.t}-${i}`} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 10px', background: high ? '#FDF0EE' : 'white',
+                  border: `1px solid ${high ? '#E8B0A8' : 'var(--sm)'}`, borderRadius: 100,
+                  fontSize: 13, fontWeight: 700, color: high ? '#C0392B' : 'var(--k)',
+                }}>
+                  {r.t && <span style={{ color: high ? '#C0392B' : 'var(--km)', fontWeight: 600, fontSize: 11 }}>🕒 {r.t}</span>}
+                  {r.sys}/{r.dia}{high ? ' ⚠️' : ''}
+                  <button type="button" onClick={() => removeReading(i)}
+                    disabled={bpSaving}
+                    data-testid={`dd-bp-remove-${i}`}
+                    style={{
+                      border: 'none', background: 'var(--ab)', borderRadius: 100,
+                      padding: '1px 7px', fontSize: 11, color: 'var(--km)', cursor: 'pointer',
+                    }}>✕</button>
+                </span>
+              );
+            })}
           </div>
         )}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>

@@ -8,7 +8,7 @@
 import QRCode from 'qrcode';
 import { activeTimesForToday } from './medSchedule.js';
 import { toLocalYMD } from './dateUtils.js';
-import { bpDailyAvg, formatBpReadings } from './bp.js';
+import { bpDailyAvg, getBpReadings, isBpHigh, BP_SYS_LIMIT, BP_DIA_LIMIT } from './bp.js';
 
 const W = 1240;        // larghezza canvas (A4-ish @150dpi)
 const M = 70;          // margine
@@ -17,6 +17,7 @@ const MUTED = '#6E7269';
 const ACCENT = '#C1624B';
 const LINE = '#E5E1D8';
 const SOFT = '#F7F5F0';
+const ALERT = '#C0392B';   // rosso per valori pressione fuori soglia
 
 const FONT = (size, weight = 400) =>
   `${weight} ${size}px -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif`;
@@ -60,6 +61,22 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
     wrapText(`${label}: ${value}`, M, W - 2 * M, 34, FONT(24), INK);
     y += 4;
   };
+  // Come wrapText, ma con segmenti colorati (per evidenziare valori anomali)
+  const wrapSegments = (segs, x, maxW, lineH) => {
+    let cx = x;
+    for (const seg of segs) {
+      ctx.font = seg.font || FONT(23);
+      ctx.fillStyle = seg.color || INK;
+      for (const w of String(seg.text).split(/\s+/).filter(Boolean)) {
+        const pw = ctx.measureText(w).width;
+        const sp = ctx.measureText(' ').width;
+        if (cx > x && cx + pw > x + maxW) { y += lineH; cx = x; }
+        ctx.fillText(w, cx, y);
+        cx += pw + sp;
+      }
+    }
+    y += lineH;
+  };
 
   // ---------- HEADER ----------
   ctx.fillStyle = ACCENT; ctx.font = FONT(36, 800);
@@ -90,8 +107,8 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
     const cy = y;
     if (bpData.length >= 2) {
       drawChart(ctx, M, cy, chartW, chartH, t('ht_bp') || 'Pressione (mmHg)', [
-        { color: '#C1624B', pts: bpData.map((p) => ({ x: p.x, v: p.avg.sys })) },
-        { color: '#4A7B9D', pts: bpData.map((p) => ({ x: p.x, v: p.avg.dia })) },
+        { color: '#C1624B', limit: BP_SYS_LIMIT, pts: bpData.map((p) => ({ x: p.x, v: p.avg.sys })) },
+        { color: '#4A7B9D', limit: BP_DIA_LIMIT, pts: bpData.map((p) => ({ x: p.x, v: p.avg.dia })) },
       ]);
     }
     if (wData.length >= 2) {
@@ -149,18 +166,35 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
     section(`📓 ${t('crs_section_diary') || 'Diario recente'}`);
     const moodEmoji = (v) => (['', '😢', '😕', '😐', '🙂', '😄'][v] || '');
     const appLabel = (v) => (['', t('dd_appetite_low') || 'poco', t('dd_appetite_med') || 'normale', t('dd_appetite_high') || 'tanto'][v] || '');
+    let anyHigh = false;
     for (const d of recent) {
-      const parts = [
-        new Date(d.diary_date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }),
-        d.mood != null && moodEmoji(d.mood),
-        formatBpReadings(d) && `🩺 ${formatBpReadings(d)}`,
-        d.sleep_hours != null && `💤 ${d.sleep_hours}h`,
-        d.appetite != null && `🍽️ ${appLabel(d.appetite)}`,
-        d.weight_kg != null && `⚖️ ${d.weight_kg}kg`,
-      ].filter(Boolean);
-      wrapText(parts.join('   ·   '), M, W - 2 * M, 34, FONT(23), INK);
+      const segs = [];
+      const pushSeg = (text, color = INK, font = FONT(23)) => {
+        if (segs.length) segs.push({ text: '·', color: MUTED });
+        segs.push({ text, color, font });
+      };
+      pushSeg(new Date(d.diary_date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }));
+      if (d.mood != null && moodEmoji(d.mood)) pushSeg(moodEmoji(d.mood));
+      getBpReadings(d).forEach((r, i) => {
+        const high = isBpHigh(r);
+        if (high) anyHigh = true;
+        pushSeg(
+          `${i === 0 ? '🩺 ' : ''}${r.t ? `${r.t} ` : ''}${r.sys}/${r.dia}${high ? ' ⚠️' : ''}`,
+          high ? ALERT : INK,
+          high ? FONT(23, 800) : FONT(23),
+        );
+      });
+      if (d.sleep_hours != null) pushSeg(`💤 ${d.sleep_hours}h`);
+      if (d.appetite != null) pushSeg(`🍽️ ${appLabel(d.appetite)}`);
+      if (d.weight_kg != null) pushSeg(`⚖️ ${d.weight_kg}kg`);
+      wrapSegments(segs, M, W - 2 * M, 34);
       if (d.notes) wrapText(`   ${d.notes}`, M, W - 2 * M, 30, FONT(21), MUTED);
       y += 6;
+    }
+    if (anyHigh) {
+      y += 4;
+      wrapText(t('dr_bp_alert_legend') || `⚠️ In rosso: pressione ≥ ${BP_SYS_LIMIT}/${BP_DIA_LIMIT} mmHg`,
+        M, W - 2 * M, 30, FONT(20, 700), ALERT);
     }
   }
 
@@ -222,6 +256,19 @@ function drawChart(ctx, x, y0, w, h, title, series) {
   const px = (d) => x + 20 + (ix.get(d) / n) * (w - 40);
   const py = (v) => y0 + h - 24 - ((v - min) / (max - min)) * (h - 76);
 
+  // Linee soglia tratteggiate (es. ipertensione) — solo se nel range visibile
+  for (const s of series) {
+    if (s.limit == null || s.limit < min || s.limit > max) continue;
+    ctx.save();
+    ctx.strokeStyle = ALERT; ctx.lineWidth = 2; ctx.setLineDash([9, 7]);
+    ctx.beginPath();
+    ctx.moveTo(x + 14, py(s.limit)); ctx.lineTo(x + w - 14, py(s.limit));
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = ALERT; ctx.font = FONT(15, 700);
+    ctx.fillText(String(s.limit), x + 16, py(s.limit) - 5);
+  }
+
   for (const s of series) {
     const pts = [...s.pts].sort((a, b) => a.x.localeCompare(b.x));
     ctx.strokeStyle = s.color; ctx.lineWidth = 3.5;
@@ -231,8 +278,9 @@ function drawChart(ctx, x, y0, w, h, title, series) {
       else ctx.lineTo(px(p.x), py(p.v));
     });
     ctx.stroke();
-    ctx.fillStyle = s.color;
     for (const p of pts) {
+      // Punto rosso quando la media del giorno supera la soglia
+      ctx.fillStyle = (s.limit != null && p.v >= s.limit) ? ALERT : s.color;
       ctx.beginPath(); ctx.arc(px(p.x), py(p.v), 4.5, 0, Math.PI * 2); ctx.fill();
     }
     // ultimo valore

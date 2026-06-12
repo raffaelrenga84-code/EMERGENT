@@ -411,3 +411,18 @@ fallback/cancellazione), smoke screenshot OK. Il tab Diario è dietro OAuth
 Google → verifica visiva finale a carico dell'utente dopo deploy.
 ⚠️ Ordine deploy: 1) esegui fammy-bp-readings.sql su Supabase, 2) Save to
 GitHub → Vercel.
+
+## Iterazione 16.5.55 (giugno 2026) — Report medico: pressione fuori soglia in rosso
+- `bp.js`: soglie BP_SYS_LIMIT=140 / BP_DIA_LIMIT=90 + isBpHigh();
+  formatBpReadings aggiunge ⚠️ ai valori alti (storico diario + report testo).
+- `doctorReport.js` (PNG):
+  - grafico pressione: linee soglia tratteggiate rosse a 140 e 90 (etichette
+    a sinistra), punti rossi sui giorni con media oltre soglia;
+  - diario recente: nuovo renderer wrapSegments multi-colore — ogni
+    misurazione fuori soglia in rosso grassetto + ⚠️; legenda finale
+    "⚠️ In rosso: pressione ≥ 140/90 mmHg" (i18n dr_bp_alert_legend it+en).
+- `DailyDiarySection.jsx`: chips delle misurazioni di oggi in rosso
+  (testo+bordo+sfondo) quando fuori soglia.
+- Verifica: harness visivo temporaneo (poi rimosso) — grafico e diario
+  controllati a schermo, build Vite OK, unit test soglie OK.
+- Nessun nuovo SQL richiesto (usa bp_readings dell'iterazione 16.5.54).
