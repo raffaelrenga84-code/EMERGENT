@@ -101,7 +101,7 @@ serve(async (req) => {
   let expired: string[] = [];
   // Esito per ogni subscription (per la diagnostica frontend):
   // ok=true → il push service ha accettato. removed=true → endpoint morto, eliminato.
-  const results: Array<{ id: string; ua: string | null; ok: boolean; status: number | string; removed?: boolean }> = [];
+  const results: Array<{ id: string; ua: string | null; ok: boolean; status: number | string; removed?: boolean; detail?: string }> = [];
 
   await Promise.all(subs.map(async (s) => {
     const subscription = {
