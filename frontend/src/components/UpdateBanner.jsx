@@ -32,6 +32,21 @@ export default function UpdateBanner({ onDismiss }) {
 
     let refreshing = false;
     let registration = null;
+    const loadedAt = Date.now();
+
+    // Auto-reload silenzioso se l'update arriva nei primi secondi dall'avvio
+    // (nessun lavoro in corso da perdere). Banner solo per update mid-session.
+    // Guard anti-loop: max 1 auto-reload per minuto.
+    const maybeAutoReload = () => {
+      if (Date.now() - loadedAt > 15000) return false;
+      try {
+        const last = Number(sessionStorage.getItem('fammy_auto_reload_at') || 0);
+        if (Date.now() - last < 60000) return false;
+        sessionStorage.setItem('fammy_auto_reload_at', String(Date.now()));
+      } catch (_) { /* sessionStorage non disponibile: meglio non rischiare loop */ return false; }
+      window.location.reload();
+      return true;
+    };
 
     const checkInterval = setInterval(async () => {
       try {
@@ -56,7 +71,9 @@ export default function UpdateBanner({ onDismiss }) {
     document.addEventListener('visibilitychange', onVisible);
 
     const onControllerChange = () => {
-      if (!refreshing) { refreshing = true; setShowBanner(true); }
+      if (refreshing) return;
+      refreshing = true;
+      if (!maybeAutoReload()) setShowBanner(true);
     };
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
 
@@ -66,14 +83,15 @@ export default function UpdateBanner({ onDismiss }) {
         if (r) {
           registration = r;
           if (r.waiting) {
-            setShowBanner(true);
+            // Update già pronto all'avvio: attivalo; il controllerchange
+            // farà l'auto-reload silenzioso (o mostrerà il banner se tardi).
             r.waiting.postMessage({ type: 'SKIP_WAITING' });
           }
           r.addEventListener('updatefound', () => {
             const newWorker = r.installing;
             newWorker?.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                setShowBanner(true);
+                if (!maybeAutoReload()) setShowBanner(true);
               }
             });
           });

@@ -2,6 +2,19 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 (nonies) — Update banner: auto-reload silenzioso all'avvio
+
+Domanda utente: "ogni volta che apro l'app mi dice ricarica". Causa: ~6 deploy
+nello stesso giorno → ogni apertura trovava una nuova versione (comportamento
+by design del banner). Miglioria UX in `UpdateBanner.jsx`:
+- Se l'update viene rilevato nei primi 15s dall'avvio → `location.reload()`
+  silenzioso (nessun lavoro da perdere), guard anti-loop via sessionStorage
+  (max 1 auto-reload/minuto).
+- Banner mostrato SOLO per update che arrivano a sessione in corso.
+
+Risposta data: le medicine pre-esistenti ricevono comunque le notifiche
+(il cron legge tutte le medicine attive dal DB ogni minuto).
+
 ## 2026-06-12 (octies) — Fix i18n schermata iniziale + overflow form medicine
 
 ### Bug 1: chiavi raw "PROFILE_START_TAB" visibili nel Profilo
