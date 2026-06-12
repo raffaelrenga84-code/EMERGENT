@@ -532,3 +532,18 @@ Problema: dopo la creazione il modal si chiudeva e la famiglia restava vuota.
 - Verificato con harness: alias "Casa" visibile, modal Personalizza con nome
   reale + reset, onboarding step invito end-to-end. Build OK.
 ⚠️ Ordine deploy: 1) fammy-family-alias.sql su Supabase, 2) Save to GitHub.
+
+## Iterazione 16.5.62 (giugno 2026) — Fix: orario medicina non salvato
+Bug: l'orario scelto nel time-picker veniva salvato SOLO premendo
+"+ Aggiungi"; chi salvava direttamente perdeva l'orario → "Al bisogno".
+(Non c'entrava la data di fine: vuota = per sempre, già corretto.)
+- `MedicationsModal.jsx` (MedForm):
+  - nuovo flag newTimeTouched: se l'utente ha toccato il picker senza
+    premere "+ Aggiungi", l'orario viene incluso comunque al submit;
+  - default 08:00 NON toccato → resta "al bisogno" (niente falsi orari);
+  - stesso auto-include per gli orari delle fasi di frequenza (_touched).
+- Verificato con harness + stub supabase (payload catturato):
+  1) picker 15:20 senza Aggiungi → ['15:20'] ✓
+  2) picker non toccato → [] al bisogno ✓
+  3) chip 08:30 + picker 20:00 → entrambi ✓
+- Build OK. Nessun SQL.

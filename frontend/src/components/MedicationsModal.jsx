@@ -421,6 +421,10 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
   const [notes, setNotes] = useState(med?.notes || '');
   const [times, setTimes] = useState(med?.times_of_day || []);
   const [newTime, setNewTime] = useState('08:00');
+  // true se l'utente ha toccato il time-picker senza premere "+ Aggiungi":
+  // in quel caso l'orario viene incluso comunque al salvataggio (bug fix:
+  // "imposto l'ora, salvo, ma l'ora non viene salvata").
+  const [newTimeTouched, setNewTimeTouched] = useState(false);
   const [startDate, setStartDate] = useState(med?.start_date || toLocalYMD(new Date()));
   const [endDate, setEndDate] = useState(med?.end_date || '');
   // Fasi di frequenza variabile: [{ from: 'YYYY-MM-DD', times: ['08:00'], _newTime: '08:00' }]
@@ -461,16 +465,26 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
     }
     setBusy(true);
     setErr('');
+    // Auto-include: orario scelto nel picker ma mai aggiunto con "+ Aggiungi"
+    let finalTimes = times;
+    if (newTimeTouched && newTime && !times.includes(newTime)) {
+      finalTimes = [...times, newTime].sort();
+    }
     const cleanPhases = phases
-      .filter((p) => p.from && (p.times || []).length > 0)
-      .map((p) => ({ from: p.from, times: [...p.times].sort() }))
+      .map((p) => {
+        // Stesso auto-include per gli orari delle fasi di frequenza
+        const ts = [...(p.times || [])];
+        if (p._touched && p._newTime && !ts.includes(p._newTime)) ts.push(p._newTime);
+        return { from: p.from, times: ts.sort() };
+      })
+      .filter((p) => p.from && p.times.length > 0)
       .sort((a, b) => a.from.localeCompare(b.from));
     const payload = {
       member_id: member.id,
       name: name.trim(),
       dose: dose.trim() || null,
       notes: notes.trim() || null,
-      times_of_day: times,
+      times_of_day: finalTimes,
       start_date: startDate || null,
       end_date: endDate || null,
       schedule_phases: cleanPhases.length > 0 ? cleanPhases : null,
@@ -521,7 +535,8 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
         ))}
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
-        <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)}
+        <input type="time" value={newTime}
+          onChange={(e) => { setNewTime(e.target.value); setNewTimeTouched(true); }}
           className="input" style={{ flex: 1, minWidth: 0 }}
           data-testid="med-form-time-picker" />
         <button type="button" onClick={addTime} className="profile-btn"
@@ -599,7 +614,7 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <input type="time" value={p._newTime || '08:00'}
-              onChange={(e) => updatePhase(idx, { _newTime: e.target.value })}
+              onChange={(e) => updatePhase(idx, { _newTime: e.target.value, _touched: true })}
               className="input" style={{ flex: 1, minWidth: 0 }} />
             <button type="button" onClick={() => addPhaseTime(idx)} className="profile-btn"
               style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
