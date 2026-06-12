@@ -691,3 +691,17 @@ quando Jenna scriveva, l'autore riceveva regolarmente il push.
 Nota: send-push edge function verificata OK (nessun filtro lato server).
 Verifica: esbuild OK, smoke OK. Test push reale richiesto dall'utente
 (2 dispositivi con account Google).
+
+## Iterazione 16.5.71 (giugno 2026) — 🐛 Crash Profilo (React error #300)
+Segnalazione: "Qualcosa è andato storto / Minified React error #300"
+aprendo Tema / Piani e prezzi / Accessibilità / Privacy & dati dal Profilo.
+### Root cause
+Il useEffect "Foto Google dal metadata auth" (aggiunto con il sync avatar
+Google) era posizionato DOPO gli early-return `if (view === 'plans') return
+<PricingScreen/>` ecc. in ProfileTab.jsx. Cambiando `view`, React
+renderizzava meno hook del render precedente → error #300 → error boundary.
+### Fix
+Spostato il useEffect nella sezione hook in alto (prima degli early
+return), con commento ⚠️ per evitare regressioni. Verificato che nessun
+altro hook resti dopo i return condizionali nel componente principale
+(i hook a riga 1098+ appartengono a SettingRow/ProfileGroup, ok).

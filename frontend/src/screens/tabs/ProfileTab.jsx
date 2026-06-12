@@ -85,6 +85,17 @@ export default function ProfileTab({ session, profile, families = [], members = 
   useEffect(() => {
     if (openInboxSignal > 0) setShowFeedbackInbox(true);
   }, [openInboxSignal]);
+  // Foto Google dal metadata auth (per il bottone "Usa foto Google").
+  // ⚠️ DEVE stare QUI, PRIMA degli early-return `if (view === ...)`:
+  // un hook dopo un return condizionale causa React error #300
+  // ("Rendered fewer hooks than expected") e crasha l'app quando si
+  // apre Tema/Piani/Accessibilità/Privacy.
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const meta = data?.user?.user_metadata || {};
+      setGooglePhoto(meta.picture || meta.avatar_url || null);
+    }).catch(() => {});
+  }, []);
   // Admin (whitelist hard-coded lato client per nascondere/mostrare il menu;
   // la sicurezza vera è lato DB via RLS su feedback_log).
   const isFammyAdmin = (() => {
@@ -239,14 +250,6 @@ export default function ProfileTab({ session, profile, families = [], members = 
     if (error) { alert(error.message); return; }
     onChanged && onChanged();
   };
-
-  // Foto Google dal metadata auth (per il bottone "Usa foto Google")
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      const meta = data?.user?.user_metadata || {};
-      setGooglePhoto(meta.picture || meta.avatar_url || null);
-    }).catch(() => {});
-  }, []);
 
   // Aggiorna avatar_url su profiles + tutti i members dell'utente
   const updateAvatarEverywhere = async (url) => {
