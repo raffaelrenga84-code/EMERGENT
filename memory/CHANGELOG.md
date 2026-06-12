@@ -768,3 +768,29 @@ qualcun altro / scrivergli in chat?").
   body {"manual_followup": true}. Campo `followup_sent` nelle risposte.
 - ⚠️ RICHIEDE RIDEPLOY manuale della funzione su Supabase dashboard
   (l'utente l'ha già fatto in passato; il PAT non è salvato nel repo).
+
+## Iterazione 16.5.75 (giugno 2026) — 🚨 Incidente DB: riparazione RLS + inviti
+Sintomi post-incidente (dati famiglie persi ieri):
+1. "new row violates row-level security policy for table families"
+2. Inviti: "record \"mem\" is not assigned yet"
+### Diagnosi (via REST anon, senza accesso al DB)
+- Schema dati COMPLETO (expense_attachments, custom_family_name, bp_readings,
+  schedule_phases, reply_to_id, medical_profiles... tutti presenti).
+- create_family_with_owner RPC presente e funzionante (NOT_AUTHENTICATED da
+  anon). list_claimable_placeholders ok.
+- MANCANO: policy families_insert/update/delete (+ presumibilmente
+  members_insert/profiles_insert) e get_invitation è la versione VECCHIA
+  buggata (`mem record` non assegnato per inviti generici).
+### Fix
+- CLIENT (subito attivo): WelcomeScreen FamilyCreateForm ora usa la RPC
+  `create_family_with_owner` (SECURITY DEFINER, bypassa RLS) invece del
+  doppio INSERT diretto families+members. setCreated({id,name,emoji}).
+  NB: NewFamilyModal usava già la RPC.
+- SQL: nuovo `fammy-REPAIR-incidente-db-giugno.sql` (idempotente) =
+  rls-hotfix (families/members/profiles insert) + get_invitation fixed +
+  accept_invitation v2 + list_claimable_placeholders. L'UTENTE deve
+  eseguirlo nel SQL Editor.
+### Nota UX (domanda utente)
+Su iOS i link d'invito si aprono per forza in Safari (le PWA non possono
+catturare i link): NON serve sloggarsi — login Google in Safari, accetta,
+poi riapri la PWA installata che vede la nuova famiglia dal server.

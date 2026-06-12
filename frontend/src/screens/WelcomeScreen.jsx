@@ -174,23 +174,20 @@ function FamilyCreateForm({ session, profile, onCreated, onBack }) {
     if (!name.trim()) return;
     setBusy(true); setErr('');
     try {
-      const { data: fam, error: e1 } = await supabase
-        .from('families')
-        .insert({ name: name.trim(), emoji, created_by: session.user.id })
-        .select().single();
-      if (e1) throw e1;
-
+      // RPC SECURITY DEFINER: crea famiglia + primo membro in un colpo solo.
+      // (Niente INSERT diretto su `families`: se le policy RLS del DB sono
+      // incomplete — com'è successo dopo l'incidente DB — l'insert fallisce
+      // con "new row violates row-level security policy". La RPC bypassa.)
       const displayName = fallbackDisplayName(profile, session);
-      const { error: e2 } = await supabase.from('members').insert({
-        family_id: fam.id, user_id: session.user.id, name: displayName,
-        role: 'tu', avatar_letter: displayName.charAt(0).toUpperCase(), status: 'active',
+      const { data: famId, error: e1 } = await supabase.rpc('create_family_with_owner', {
+        p_name: name.trim(), p_emoji: emoji, p_display_name: displayName,
       });
-      if (e2) throw e2;
+      if (e1) throw e1;
       // Niente onCreated qui: mostriamo prima lo step "invita il partner".
       // FAMMY da soli serve a poco → questo è il momento migliore per
       // portare dentro il resto della famiglia.
       setBusy(false);
-      setCreated(fam);
+      setCreated({ id: famId, name: name.trim(), emoji });
     } catch (e) {
       setErr(e.message || 'Errore.');
       setBusy(false);
