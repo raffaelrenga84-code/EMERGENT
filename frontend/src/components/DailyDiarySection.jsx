@@ -69,7 +69,28 @@ export default function DailyDiarySection({ member, me }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [member.id]);
 
+  // Campi non compilati → avviso prima di salvare (l'utente può continuare)
+  const getMissingFields = () => {
+    const missing = [];
+    if (mood == null) missing.push(t('dd_mood_label') || 'Umore');
+    if (!sleepHours) missing.push(t('dd_sleep_label') || 'Sonno');
+    if (!weight) missing.push(t('dd_weight_label') || 'Peso');
+    const hasBp = getBpReadings(todayEntry).length > 0 ||
+      (parseInt(newSys, 10) && parseInt(newDia, 10));
+    if (!hasBp) missing.push(t('dd_bp_label') || 'Pressione');
+    if (appetite == null) missing.push(t('dd_appetite_label') || 'Appetito');
+    if (!notes.trim()) missing.push(t('dd_notes_label') || 'Note');
+    return missing;
+  };
+
   const save = async () => {
+    const missing = getMissingFields();
+    if (missing.length > 0) {
+      const ok = window.confirm(
+        `${t('dd_incomplete_warn') || 'Alcuni campi non sono compilati:'}\n\n• ${missing.join('\n• ')}\n\n${t('dd_incomplete_continue') || 'Vuoi salvare comunque?'}`
+      );
+      if (!ok) return;
+    }
     setSaving(true);
     // Auto-include: misurazione pressione digitata ma non aggiunta col "+"
     const pSys = parseInt(newSys, 10);

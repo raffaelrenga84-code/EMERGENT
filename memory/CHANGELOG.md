@@ -625,3 +625,14 @@ bottone File.
 - Verifica: harness su entrambi i modal (bottone 📎 + chip PDF con
   set_input_files reale), build OK. expense_attachments table/bucket già
   presenti nel MASTER sql — nessun nuovo SQL.
+
+## Iterazione 16.5.67 (giugno 2026) — ⚠️ Avviso campi incompleti Diario medico
+- `DailyDiarySection.jsx`: nuova `getMissingFields()` — prima del salvataggio
+  controlla Umore, Sonno, Peso, Pressione (conta sia misurazioni già salvate
+  sia quelle digitate non ancora aggiunte col "+"), Appetito, Note.
+- Se mancano campi → `window.confirm` con elenco puntato dei campi vuoti +
+  "Vuoi salvare comunque?". Annulla = non salva; OK = salva normale.
+- i18n: dd_incomplete_warn, dd_incomplete_continue (it+en).
+- Convenzione window.confirm coerente col resto dell'app (EditFamilyModal,
+  TaskDetailModal, ecc.). Verifica: esbuild OK, HMR OK, smoke screenshot OK.
+  Test e2e manuale richiesto (sezione dietro Google OAuth).
