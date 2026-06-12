@@ -9,6 +9,7 @@ import DetailTabs from './DetailTabs.jsx';
 import MessageReactions from './MessageReactions.jsx';
 import PhotoGalleryEditor from './PhotoGalleryEditor.jsx';
 import SubtaskList from './SubtaskList.jsx';
+import { isImageFile } from '../lib/fileKind.js';
 import { markTaskRead } from '../lib/useUnreadTaskCount.js';
 
 const CAT_EMOJI = {
@@ -459,24 +460,11 @@ export default function TaskDetailModal({
     setComments(data || []);
     setBusy(false);
 
-    // 🔔 Push: notifica gli altri membri coinvolti nella conversazione.
-    // Destinatari: autore originale del task + tutti gli attuali assignees
-    //              + delegated_from (chi era stato originariamente assegnato).
-    // Escludi: me stesso (autore del commento).
+    // 🔔 Push: notifica gli altri membri coinvolti nella conversazione
+    // (autore, assegnatari, partecipanti al thread; tutta la famiglia se
+    // il task non ha assegnatari). Vedi chatRecipientMemberIds.
     try {
-      const recipientMemberIds = new Set();
-      if (task.author_id && task.author_id !== me?.id) {
-        recipientMemberIds.add(task.author_id);
-      }
-      for (const a of assignees) {
-        if (a?.id && a.id !== me?.id) recipientMemberIds.add(a.id);
-      }
-      if (Array.isArray(task.delegated_from)) {
-        for (const mid of task.delegated_from) {
-          if (mid && mid !== me?.id) recipientMemberIds.add(mid);
-        }
-      }
-      const userIds = await memberIdsToUserIds([...recipientMemberIds]);
+      const userIds = await memberIdsToUserIds(chatRecipientMemberIds(data));
       // Escludi anche il MIO user_id (nel caso fossi sia author che assegnee)
       if (me?.user_id) userIds.delete(me.user_id);
       if (userIds.size > 0) {
@@ -500,6 +488,30 @@ export default function TaskDetailModal({
   const otherMembers = members.filter(
     (m) => m.id !== me?.id && m.family_id === task.family_id
   );
+
+  // 🔔 Destinatari push della chat (stile gruppo WhatsApp):
+  // autore del task + assegnatari + delegated_from + CHIUNQUE abbia già
+  // scritto nel thread (partecipanti). Se il task non ha assegnatari
+  // (task "di bacheca" aperto a tutti) → notifica tutta la famiglia.
+  // Chi invia viene escluso a livello utente dopo la risoluzione.
+  // BUGFIX: prima i partecipanti NON assegnatari (es. chi rispondeva in
+  // chat senza essere assegnato) non ricevevano MAI le notifiche.
+  const chatRecipientMemberIds = (threadComments) => {
+    const ids = new Set();
+    if (task.author_id) ids.add(task.author_id);
+    for (const a of assignees) if (a?.id) ids.add(a.id);
+    if (Array.isArray(task.delegated_from)) {
+      for (const mid of task.delegated_from) if (mid) ids.add(mid);
+    }
+    for (const c of (threadComments || comments)) {
+      if (c?.author_id) ids.add(c.author_id);
+    }
+    if (assignees.length === 0) {
+      for (const m of otherMembers) if (m?.id) ids.add(m.id);
+    }
+    if (me?.id) ids.delete(me.id);
+    return [...ids];
+  };
   const hasOriginalGroup = task.delegated_from && task.delegated_from.length > 1;
 
   return (
@@ -785,7 +797,38 @@ export default function TaskDetailModal({
             meId={me?.id}
             attachments={attachments}
             photoUrls={photoUrls}
-            onAdded={(att) => setAttachments((prev) => [...prev, att])}
+            onAdded={async (att) => {
+              setAttachments((prev) => [...prev, att]);
+              // Come l'upload 📎 dalla chat: crea un messaggio nel thread
+              // (così scatta anche il badge non letti) + push ai membri.
+              // BUGFIX: prima l'upload dalla tab Dettagli non notificava
+              // NESSUNO (né push né messaggio in chat).
+              try {
+                const isImg = isImageFile(att.file_name || att.file_path);
+                await supabase.from('task_responses').insert({
+                  task_id: realTaskId,
+                  author_id: me?.id || null,
+                  text: isImg
+                    ? `📷 ${t('td_chat_photo_shared') || 'ha condiviso una foto'}`
+                    : `📎 ${att.file_name}`,
+                  type: isImg ? 'photo' : 'comment',
+                });
+                const userIds = await memberIdsToUserIds(chatRecipientMemberIds());
+                if (me?.user_id) userIds.delete(me.user_id);
+                if (userIds.size > 0) {
+                  const authorName = (me?.name || '').split(' ')[0] || 'Qualcuno';
+                  sendPush({
+                    userIds: [...userIds],
+                    title: isImg
+                      ? `📷 ${authorName} ha condiviso una foto`
+                      : `📎 ${authorName} ha condiviso un file`,
+                    body: task.title || '',
+                    tag: `task-photo-${realTaskId}`,
+                    data: { task_id: realTaskId, kind: 'task' },
+                  });
+                }
+              } catch (_) { /* push best-effort */ }
+            }}
             onRemoved={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
             onOpenLightbox={setLightbox}
           />
@@ -1216,12 +1259,9 @@ export default function TaskDetailModal({
                       text: `📷 ${t('td_chat_photo_shared') || 'ha condiviso una foto'}`,
                       type: 'photo',
                     });
-                    // Push agli altri membri
+                    // Push agli altri membri (stessi destinatari della chat)
                     try {
-                      const recipientMemberIds = new Set();
-                      if (task.author_id && task.author_id !== me?.id) recipientMemberIds.add(task.author_id);
-                      for (const a of assignees) if (a?.id && a.id !== me?.id) recipientMemberIds.add(a.id);
-                      const userIds = await memberIdsToUserIds([...recipientMemberIds]);
+                      const userIds = await memberIdsToUserIds(chatRecipientMemberIds());
                       if (me?.user_id) userIds.delete(me.user_id);
                       if (userIds.size > 0) {
                         const authorName = (me?.name || '').split(' ')[0] || 'Qualcuno';

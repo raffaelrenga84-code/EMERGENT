@@ -666,3 +666,28 @@ auto-scroll (mancava del tutto); AbsenceCommentsThread usa `.chat-scroll`.
 Verifica: harness HTML con 30 messaggi su viewport 390x700 — auto-scroll
 PASS (gap 0px, ultimo msg visibile, composer in viewport), scroll-to-top
 mostra action bar con composer sempre fisso. Harness rimosso.
+
+## Iterazione 16.5.70 (giugno 2026) — 🔔 Fix push chat: partecipanti esclusi
+Segnalazione: "Jenna non riceve più le notifiche se le scrivo in chat o
+inserisco una foto". Dai log Supabase: ZERO invocazioni send-push per i
+messaggi incriminati → il client risolveva una lista destinatari VUOTA.
+### Root cause
+I push della chat andavano SOLO a autore del task + assegnatari +
+delegated_from. Chi partecipava alla conversazione senza essere
+autore/assegnatario (caso Jenna) non veniva MAI notificato. Conferma:
+quando Jenna scriveva, l'autore riceveva regolarmente il push.
+### Fix (`TaskDetailModal.jsx`)
+- Nuovo helper `chatRecipientMemberIds(threadComments?)`: autore +
+  assegnatari + delegated_from + TUTTI i partecipanti al thread
+  (author_id dei task_responses); se il task non ha assegnatari (task di
+  bacheca aperto) → tutta la famiglia del task. Sender escluso a livello
+  user dopo la risoluzione member→user.
+- Usato in: addComment (con i comments freschi), upload 📎 dalla chat.
+- BONUS BUGFIX: l'upload foto/file dalla tab DETTAGLI (PhotoGalleryEditor
+  onAdded) non notificava nessuno → ora crea anche un messaggio nel thread
+  (📷 foto → type photo con thumbnail; 📎 doc → comment col nome file,
+  così scatta pure il badge non letti) + push agli stessi destinatari.
+- Import isImageFile da lib/fileKind.js.
+Nota: send-push edge function verificata OK (nessun filtro lato server).
+Verifica: esbuild OK, smoke OK. Test push reale richiesto dall'utente
+(2 dispositivi con account Google).
