@@ -365,3 +365,21 @@ Script: `/app/frontend/fammy-hotfix-400.sql` (idempotente, v2 con cast `attname:
   vinceva già). Verificato con confronto Node: oggetto `T` identico al 100%
   prima/dopo. Build Vite: 0 warning "Duplicate key".
   ⚠️ Richiede "Save to GitHub" per andare live su Vercel.
+
+## Iterazione 16.5.53 (giugno 2026) — Fix auto-zoom iOS sugli input (globale)
+Problema: aprendo qualsiasi finestra/modale (Famiglia, nuovi incarichi,
+medicine, assenze…) e toccando un campo di testo, iOS zoomava la pagina
+spostando la vista fuori schermo. Causa: font-size degli input < 16px.
+
+### Fix (3 livelli)
+- `index.html`: meta viewport con `maximum-scale=1.0` → blocca lo zoom
+  automatico al focus (il pinch-zoom manuale resta possibile, iOS 10+).
+- `styles.css`: `.input` portato da 15px a 16px; textarea AI drawer 14→16px.
+- `styles.css`: guardia solo-iOS `@supports (-webkit-touch-callout: none)`
+  che forza `font-size: max(16px, 1em) !important` su input/textarea/select
+  (copre anche gli stili inline nei componenti tipo CountryCodeSelect,
+  QuietHoursControl, MergeAccountModal). Esclusi checkbox/radio/range.
+
+Verificato via screenshot (viewport iPhone): meta corretto, `.input`=16px,
+regola iOS presente nel bundle. ⚠️ Richiede "Save to GitHub" → Vercel,
+poi test sull'iPhone dell'utente.

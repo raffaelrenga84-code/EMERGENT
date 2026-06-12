@@ -72,6 +72,13 @@ body { min-height: 100vh; overflow-x: hidden; max-width: 100vw; }
 .app-shell img { max-width: 100%; height: auto; }
 
 input, textarea, select { font-family: var(--fn); direction: ltr; }
+/* iOS Safari: auto-zoom sugli input con font < 16px → forziamo il minimo
+   solo su iOS (il selettore @supports -webkit-touch-callout vale solo lì).
+   !important serve a coprire anche gli stili inline nei componenti. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea, select { font-size: max(16px, 1em) !important; }
+}
 button { font-family: var(--fn); cursor: pointer; }
 
 /* Layout: pagina centrata su mobile, bordi morbidi su desktop */
@@ -106,7 +113,7 @@ button { font-family: var(--fn); cursor: pointer; }
 
 /* Inputs */
 .input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--sm); border-radius: 13px;
-  background: white; font-size: 15px; color: var(--k); transition: border-color .15s; }
+  background: white; font-size: 16px; color: var(--k); transition: border-color .15s; }
 .input:focus { outline: none; border-color: var(--ac); }
 label { display: block; font-size: 13px; font-weight: 600; color: var(--km); margin-bottom: 6px; }
 
@@ -732,7 +739,7 @@ html[data-theme="dark"] .ai-suggestion-chip { background: var(--sm); }
 }
 .ai-drawer-input textarea {
   flex: 1; resize: none; border: 1.5px solid var(--sd); border-radius: 18px;
-  padding: 10px 14px; font-family: var(--fn); font-size: 14px; min-height: 42px; max-height: 120px;
+  padding: 10px 14px; font-family: var(--fn); font-size: 16px; min-height: 42px; max-height: 120px;
   background: white; color: var(--k);
 }
 .ai-drawer-input textarea:focus { outline: none; border-color: var(--ac); }
