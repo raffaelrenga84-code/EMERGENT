@@ -2,6 +2,11 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.46 (12 giugno 2026) — Fix schermo bianco autocomplete indirizzo
+- Sostituito `<gmp-place-autocomplete>` con API programmatica `AutocompleteSuggestion`
+  + dropdown custom ancorato al campo (`AddressAutocomplete.jsx` riscritto).
+  Testato con harness standalone (mock Google) su viewport mobile: PASS.
+
 ## Iterazione 16.5.45 (11 giugno 2026) — Digest del mattino ☀️
 - Push alle 8:00 con incarichi/eventi di OGGI per tutta la famiglia.
 - `cron-digest.ts` ora supporta `kind:"morning"`; nuovo `fammy-morning-digest.sql`

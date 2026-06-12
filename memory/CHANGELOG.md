@@ -2,6 +2,41 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 — Fix schermo bianco su autocomplete indirizzo (mobile)
+
+### Bug (segnalato con screenshot iPhone)
+Digitando nel campo Indirizzo (Profilo), il dropdown dei suggerimenti del
+web component `<gmp-place-autocomplete>` si staccava dal campo: schermo
+bianco, suggerimenti renderizzati in cima al documento, utente costretto
+a scrollare su per ritrovare il campo. Causa: il dropdown vive nello
+shadow DOM del componente Google con posizionamento proprio che va in
+conflitto con lo scroll/resize del viewport mobile a tastiera aperta.
+
+### Fix — riscrittura `AddressAutocomplete.jsx`
+- Rimosso il web component; ora usa l'**API programmatica
+  `AutocompleteSuggestion.fetchAutocompleteSuggestions`** (sempre Places
+  API New, stessa chiave/SKU) con **dropdown custom** renderizzato da noi:
+  `position:absolute` ancorato al wrapper del campo → scorre con la
+  pagina, zero salti di layout.
+- Dettagli: debounce 250ms, min 3 caratteri, max 5 suggerimenti,
+  `AutocompleteSessionToken` per billing (reset dopo selezione),
+  scarto risposte stale, `scrollIntoView({block:'center'})` al focus
+  (spazio per il dropdown sopra la tastiera), `onMouseDown.preventDefault`
+  sul dropdown (il tap non fa perdere il focus), Escape/blur per chiudere,
+  attribution "powered by Google" (richiesta ToS senza mappa), tema
+  dark-ready via CSS vars (`--s`, `--sd`, `--k`, `--km`), estrazione
+  lat/lng robusta (metodo `lat()` o proprietà `latitude`).
+- Graceful degradation invariata: senza chiave/script il campo resta un
+  input normale e il Salva funziona.
+- data-testid: `profile-address-input`, `-dropdown`, `-suggestion-{i}`.
+
+### Testing
+Harness standalone con mock di `window.google` montando il componente
+REALE (esbuild + playwright, viewport mobile 390px): dropdown visibile e
+ancorato, 3 suggerimenti, selezione → `onSelect {formattedAddress, lat,
+lng, placeId}` corretti, input aggiornato, dropdown chiuso. Build Vite OK.
+⚠️ Va testato dall'utente su Vercel (chiave Maps ristretta ai suoi domini).
+
 ## 2026-06-11 — Digest del mattino (push ☀️ alle 8:00)
 
 ### Feature
