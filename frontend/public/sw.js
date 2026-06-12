@@ -190,6 +190,14 @@ self.addEventListener('message', event => {
       if ('clearAppBadge' in self.navigator) self.navigator.clearAppBadge();
       else if ('setAppBadge' in self.navigator) self.navigator.setAppBadge(0);
     } catch (e) { /* silent */ }
+    // Rimuovi anche le notifiche già consegnate: se restano nel centro
+    // notifiche, il prossimo push le riconta e il badge riparte dal totale.
+    try {
+      const p = self.registration.getNotifications()
+        .then((ns) => (ns || []).forEach((n) => n.close()))
+        .catch(() => {});
+      if (event.waitUntil) event.waitUntil(p);
+    } catch (e) { /* silent */ }
   }
 });
 

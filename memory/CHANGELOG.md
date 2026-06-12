@@ -566,3 +566,18 @@ Bug: l'orario scelto nel time-picker veniva salvato SOLO premendo
   l'urgente risale. 0 errori JS. Build OK. Nessun SQL.
 - NOTA: il "visto" è per dispositivo (localStorage); sync cross-device
   richiederebbe una tabella task_reads (eventuale evoluzione futura).
+
+## Iterazione 16.5.64 (giugno 2026) — Badge icona iOS: azzeramento stile WhatsApp
+Bug: il numerino rosso sull'icona PWA era incrementale (es. 16) e non si
+azzerava aprendo l'app. Causa: il clear del badge c'era già, ma le notifiche
+CONSEGNATE restavano nel centro notifiche iOS → al push successivo il SW le
+ricontava tutte (getNotifications().length) e il badge ripartiva dal totale.
+- `lib/useAppBadge.js`: clearBadge ora (1) azzera il badge, (2) CHIUDE tutte
+  le notifiche consegnate (reg.getNotifications().close — come WhatsApp),
+  (3) postMessage CLEAR_BADGE al SW (controller || reg.active). Aggiunto
+  listener pageshow (resume iOS PWA da standby).
+- `public/sw.js`: handler CLEAR_BADGE ora chiude anche le notifiche
+  consegnate (waitUntil su ExtendableMessageEvent).
+- Sintassi sw.js verificata + build OK. Da testare su iPhone reale dopo
+  deploy (push non simulabile in preview): apri l'app col badge attivo →
+  badge sparisce e notifiche rimosse; il push successivo riparte da 1.
