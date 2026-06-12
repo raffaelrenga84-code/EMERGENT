@@ -46,6 +46,24 @@ export function usePushSubscription(session) {
           subscription = null;
         }
 
+        // SAFETY 2: se la subscription è legata a una applicationServerKey
+        // DIVERSA dalla VAPID corrente (succede quando si ruotano le chiavi),
+        // il server non potrà mai consegnarle (Apple: 400 BadJwtToken).
+        // La rigeneriamo, eliminando anche la riga DB del vecchio endpoint.
+        if (subscription) {
+          try {
+            const boundKey = subscription.options?.applicationServerKey;
+            if (boundKey && arrayBufferToBase64Url(boundKey) !== VAPID_PUBLIC_KEY) {
+              await supabase.from('push_subscriptions')
+                .delete()
+                .eq('user_id', session.user.id)
+                .eq('endpoint', subscription.endpoint);
+              try { await subscription.unsubscribe(); } catch (_) {}
+              subscription = null;
+            }
+          } catch (_) { /* options non leggibili: lascia com'è */ }
+        }
+
         if (!subscription) {
           // Nuova subscription
           subscription = await registration.pushManager.subscribe({
@@ -122,4 +140,12 @@ export function urlBase64ToUint8Array(base64String) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+}
+
+// Helper: ArrayBuffer → base64-url (per confrontare applicationServerKey)
+function arrayBufferToBase64Url(buf) {
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }

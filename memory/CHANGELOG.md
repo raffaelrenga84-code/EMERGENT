@@ -2,6 +2,37 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 (bis) — ROOT CAUSE push iPhone: VAPID_PUBLIC_KEY errata su Supabase
+
+### Diagnosi (via confronto digest SHA256 dei Secrets!)
+Il test push restituiva 400 da Apple anche con subscription appena rigenerata.
+Supabase non mostra i valori dei secret ma il loro digest SHA256 → calcolati
+i digest dei valori attesi e confrontati con gli screenshot:
+- `VAPID_SUBJECT` digest = sha256('mailto:raffael.renga84@gmail.com') ✓ corretto
+- `VAPID_PUBLIC_KEY` digest ≠ sha256 della chiave usata dal frontend ✗ MISMATCH
+→ Il server firmava con una coppia VAPID diversa da quella delle subscription
+→ Apple risponde 400 BadJwtToken (Google storicamente più permissivo).
+
+### Fix — rotazione completa coppia VAPID
+Nuova coppia generata e validata (web-push accetta e firma):
+- PUBLIC: BJK76d3zk8AqYX5mDakExRQ2sh8frQqoDUgJwgxCSqgJH8BSWo18GzvhkwxWylH53y5U0zJfBqjSNa24vNyk-nI
+- PRIVATE: consegnata all'utente per i Supabase Secrets (non in repo)
+1. `usePushSubscription.js`: **auto-rotazione** — se la subscription locale è
+   legata a una `applicationServerKey` diversa dalla VAPID corrente, elimina
+   la riga DB del vecchio endpoint, `unsubscribe()` e re-subscribe fresca.
+   Così TUTTI i dispositivi (anche Jenna) si auto-riparano al primo avvio.
+2. `send-push.ts`: elimina la subscription anche su 400 con
+   `BadJwtToken|VapidPkHashMismatch` nel body (oltre a 403/404/410);
+   campo `detail` con il motivo del push service nei results.
+3. `NotificationsHealthCheck.jsx`: mostra `detail` negli esiti per device.
+4. `.env` locale aggiornato con la nuova public key.
+
+### Azioni utente richieste
+1. Supabase Secrets: aggiornare VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY (nuova coppia)
+2. Vercel env: VITE_VAPID_PUBLIC_KEY = nuova public → Redeploy
+3. Re-deploy edge function send-push (v3 con detail + delete BadJwtToken)
+4. Save to GitHub; poi su ogni device riaprire l'app (auto-fix) e test push
+
 ## 2026-06-12 — Push non consegnate: diagnostica per-dispositivo + reset subscription
 
 ### Problema riportato

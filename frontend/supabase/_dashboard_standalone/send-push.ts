@@ -120,9 +120,12 @@ serve(async (req) => {
       const detail = typeof rawBody === 'string' && rawBody.trim()
         ? rawBody.trim().slice(0, 140)
         : undefined;
-      // 404/410 = endpoint scaduto/revocato. 403 = VAPID mismatch (subscription
-      // creata con un'altra coppia di chiavi): inutilizzabile, va rimossa.
-      if (code === 404 || code === 410 || code === 403) {
+      // 404/410 = endpoint scaduto/revocato. 403 = VAPID mismatch.
+      // 400 con BadJwtToken (Apple) = subscription legata a chiavi VAPID
+      // diverse da quelle del server: inutilizzabile, va rimossa.
+      const vapidIssue = typeof rawBody === 'string' &&
+        /BadJwtToken|VapidPkHashMismatch/i.test(rawBody);
+      if (code === 404 || code === 410 || code === 403 || (code === 400 && vapidIssue)) {
         expired.push(s.id);
         results.push({ id: s.id, ua: s.user_agent || null, ok: false, status: code, removed: true, detail });
       } else {
