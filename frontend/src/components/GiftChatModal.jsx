@@ -122,7 +122,7 @@ export default function GiftChatModal({ member, members, familyId, currentUserId
                       {msg.message}
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--km)', marginTop: 3 }}>
-                      {new Date(msg.created_at).toLocaleDateString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(msg.created_at).toLocaleDateString(undefined, { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 </div>

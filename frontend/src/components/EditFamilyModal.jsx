@@ -160,7 +160,7 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{personal ? (t('fam_personal_title') || 'Personalizza famiglia') : 'Modifica famiglia'}</h2>
+        <h2>{personal ? (t('fam_personal_title') || 'Personalizza famiglia') : (t('fam_edit_h') || 'Modifica famiglia')}</h2>
         <p className="modal-sub">
           {personal
             ? (t('fam_personal_sub', { name: realName }) || `Solo tu vedrai questo nome e questa foto. Gli altri vedono "${realName}".`)

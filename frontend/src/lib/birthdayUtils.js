@@ -63,7 +63,7 @@ export function getNextBirthdayDate(birthDate) {
 export function formatBirthday(birthDate) {
   if (!birthDate) return '';
   const date = new Date(birthDate + 'T00:00:00Z');
-  return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
 }
 
 /**

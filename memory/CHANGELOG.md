@@ -705,3 +705,22 @@ Spostato il useEffect nella sezione hook in alto (prima degli early
 return), con commento ⚠️ per evitare regressioni. Verificato che nessun
 altro hook resti dopo i return condizionali nel componente principale
 (i hook a riga 1098+ appartengono a SettingRow/ProfileGroup, ok).
+
+## Iterazione 16.5.72 (giugno 2026) — 🌍 Allineamento completo i18n (en/fr/de)
+Segnalazione: "Personalizza" appariva in italiano nella UI inglese
+(FamilyTab). Causa: t() fa fallback su T.it per le chiavi mancanti, e i
+dizionari erano disallineati: EN −12 chiavi, FR −261, DE −270 (tutte le
+feature recenti: Care Hub, medicine, diario, feedback, inviti, push help,
+A2HS, alias famiglia, foto task...).
+### Fix
+- Script una-tantum: inserite TUTTE le chiavi mancanti con traduzioni
+  native in en (12), fr (261), de (270) → ora 1066 chiavi identiche in
+  tutte e 4 le lingue (validato: 0 mancanti, 0 duplicate, build OK).
+- Nuova chiave `fam_edit_h` (titolo modale "Modifica famiglia",
+  prima hardcoded in italiano in EditFamilyModal).
+- Locale hardcoded 'it-IT' → undefined (locale browser) in FamilyTab
+  (compleanno), birthdayUtils, GiftChatModal.
+- Verifica runtime via import del modulo: PASS su 6 chiavi campione x4 lingue.
+### Debito noto (non bloccante)
+- AddTaskModal: weekday picker con etichette 'Dom/Lun/...' hardcoded.
+- useEventNotifications.jsx: testi notifiche locali in italiano hardcoded.

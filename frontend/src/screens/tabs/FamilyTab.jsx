@@ -698,7 +698,7 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
         {/* Riga 3: Compleanno (se presente) */}
         {member.birthday && (
           <div style={{ color: 'var(--km)', fontSize: 11 }}>
-            🎂 {new Date(member.birthday).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
+            🎂 {new Date(member.birthday).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}
           </div>
         )}
 
