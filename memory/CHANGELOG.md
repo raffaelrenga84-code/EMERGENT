@@ -2,6 +2,30 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 (septies) — Grafici salute 30gg + Report per il medico con QR
+
+### Feature 1: mini-grafici andamento (tab 🩺 Profilo del Care Hub)
+➕ `HealthTrendsCard.jsx`: SVG charts ultimi 30 giorni da daily_diary —
+pressione (SYS/DIA, due linee) e peso, con ultimo valore evidenziato.
+Si nasconde se < 2 rilevazioni. Montata sopra MedicalProfileSection.
+
+### Feature 2: Report per il medico (immagine condivisibile con QR FAMMY)
+➕ `src/lib/doctorReport.js`: genera PNG A4-style via canvas con:
+header FAMMY + data, grafici 30gg (pressione+peso), profilo medico,
+terapia (con periodo 📅 e cambi di frequenza 🔁), diario recente (14 voci),
+footer brandizzato con QR code → https://farxer.com (lib `qrcode` aggiunta
+via yarn). Bottone "🧑‍⚕️ Report per il medico (immagine)" in cima a
+CareReportShare: genera + `navigator.share({files})` (fallback download).
+
+### Testing
+Harness con dati mock (esbuild bundle reale + playwright): immagine
+generata correttamente, layout verificato visivamente (grafici, fasi
+terapia, QR in basso a destra). Build Vite OK.
+
+### Note
+- i18n: nuove chiavi crs_doctor_*, ht_*, dr_* (it/en, fr/de via fallback).
+- Richiede solo "Save to GitHub" (nessuna azione DB).
+
 ## 2026-06-12 (sexies) — Upgrade Assistenza: pressione + periodo/fasi medicine
 
 ### Richieste utente

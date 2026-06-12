@@ -2,6 +2,11 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.52 (12 giugno 2026) — Grafici salute + report medico con QR
+- HealthTrendsCard (SVG 30gg pressione/peso) nel tab Profilo del Care Hub.
+- doctorReport.js: PNG A4 condivisibile con grafici + branding FAMMY + QR
+  (farxer.com) — testato con harness visivo. Lib qrcode aggiunta.
+
 ## Iterazione 16.5.51 (12 giugno 2026) — Upgrade Assistenza
 - Diario: pressione sanguigna (sistolica/diastolica) + report.
 - Medicine: periodo dal/al + cambi di frequenza nel tempo (schedule_phases).

@@ -5,6 +5,7 @@ import MedicalProfileSection from './MedicalProfileSection.jsx';
 import DailyDiarySection from './DailyDiarySection.jsx';
 import CareAttachments from './CareAttachments.jsx';
 import CareReportShare from './CareReportShare.jsx';
+import HealthTrendsCard from './HealthTrendsCard.jsx';
 import { getCanonicalMember } from '../lib/personScope.js';
 import { toLocalYMD } from '../lib/dateUtils.js';
 import { activeTimesForToday } from '../lib/medSchedule.js';
@@ -186,7 +187,10 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
         <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
           {/* TAB: PROFILO MEDICO */}
           {activeTab === 'profile' && (
-            <MedicalProfileSection member={member} me={me} />
+            <>
+              <HealthTrendsCard member={member} />
+              <MedicalProfileSection member={member} me={me} />
+            </>
           )}
 
           {/* TAB: DIARIO */}

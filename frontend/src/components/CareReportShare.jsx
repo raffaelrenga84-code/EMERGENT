@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { toLocalYMD } from '../lib/dateUtils.js';
 import { openExternal } from '../lib/openExternal.js';
+import { generateDoctorReport } from '../lib/doctorReport.js';
 
 /**
  * CareReportShare — bottom-sheet che genera un report testuale del Care Hub
@@ -23,6 +24,40 @@ export default function CareReportShare({ member, onClose }) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState('');
   const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // Genera l'immagine A4-style per il medico (con grafici 30gg + QR FAMMY)
+  // e la condivide via share sheet (fallback: download).
+  const exportDoctorImage = async () => {
+    setGenerating(true);
+    try {
+      const since = new Date(); since.setDate(since.getDate() - 30);
+      const { data: diary30 } = await supabase
+        .from('daily_diary').select('*').eq('member_id', member.id)
+        .gte('diary_date', toLocalYMD(since))
+        .order('diary_date', { ascending: true });
+      const blob = await generateDoctorReport({
+        member, profile, meds, diary: diary30 || [], t,
+      });
+      const fileName = `fammy-report-${(member.name || 'report').toLowerCase().replace(/\s+/g, '-')}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: t('crs_title') || 'Report sanitario FAMMY',
+        }).catch(() => {});
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = fileName;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+    } catch (e) {
+      console.warn('[doctorReport] export error:', e);
+    }
+    setGenerating(false);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +217,28 @@ export default function CareReportShare({ member, onClose }) {
           </div>
         ) : (
           <>
+            {/* Report per il medico: immagine A4 con grafici + QR FAMMY */}
+            <button
+              type="button"
+              onClick={exportDoctorImage}
+              disabled={generating}
+              data-testid="care-report-doctor-btn"
+              style={{
+                width: '100%', marginBottom: 12,
+                padding: '14px', borderRadius: 12,
+                border: 'none', background: 'var(--k)', color: 'white',
+                fontSize: 14, fontWeight: 800,
+                cursor: generating ? 'wait' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+              }}>
+              {generating
+                ? (t('crs_doctor_generating') || 'Genero il report…')
+                : <>🧑‍⚕️ {t('crs_doctor_btn') || 'Report per il medico (immagine)'}</>}
+            </button>
+            <p style={{ margin: '-6px 0 14px', fontSize: 11, color: 'var(--km)', textAlign: 'center' }}>
+              {t('crs_doctor_hint') || 'Documento con grafici degli ultimi 30 giorni, pronto da inviare al dottore.'}
+            </p>
             <textarea
               readOnly
               value={report}
