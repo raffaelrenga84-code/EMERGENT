@@ -2,6 +2,30 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 (decies) — Fix doppia push "Nuovo incarico"+"Assegnato a te"
+
+### Problema
+Famiglia da 2: l'assegnatario riceveva 2 push per lo stesso task. Causa:
+trigger `notify_task_created` (su tasks INSERT) non può escludere gli
+assegnatari perché vengono inseriti DOPO il task (transazioni separate).
+
+### Soluzione — coda con debounce
+- SQL `fammy-fix-double-push.sql` (DA ESEGUIRE): nuova tabella
+  `public.task_notify_queue` (RLS senza policy = solo service_role);
+  `notify_task_created` ora ACCODA invece di inviare.
+- `task-reminder-push.ts` (DA RIDEPLOYARE): nuova sezione A che processa
+  la coda dopo ~45s → invia "📌 X · Nuovo incarico" alla famiglia
+  ESCLUDENDO autore e assegnatari; campo `queue_sent` nelle risposte.
+  Il trigger "Assegnato a te" resta immediato e invariato.
+- Frontend: rimossa la notifica LOCALE "Nuovo incarico" dal watcher
+  realtime (era un ulteriore doppione del push server per chi ha l'app
+  aperta); rimossa la funzione `showNewTaskNotification` non più usata.
+
+### Risultato atteso
+- Assegnatario → SOLO "Assegnato a te" (immediata)
+- Altri familiari → SOLO "Nuovo incarico" (entro ~1-2 min)
+- Autore → niente
+
 ## 2026-06-12 (nonies) — Update banner: auto-reload silenzioso all'avvio
 
 Domanda utente: "ogni volta che apro l'app mi dice ricarica". Causa: ~6 deploy

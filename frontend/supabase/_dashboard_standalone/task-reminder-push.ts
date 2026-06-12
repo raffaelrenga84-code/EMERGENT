@@ -51,6 +51,77 @@ serve(async (req) => {
   try {
     const { date: todayRome, time: nowRome } = nowInRome();
 
+    // =====================================================================
+    // A) CODA "NUOVO INCARICO" (debounce ~45s per conoscere gli assegnatari)
+    //    Il trigger su tasks accoda in task_notify_queue; qui inviamo la
+    //    push alla famiglia ESCLUDENDO autore e assegnatari (che hanno già
+    //    ricevuto "Assegnato a te" dal trigger immediato).
+    // =====================================================================
+    let queueSent = 0;
+    try {
+      const cutoff = new Date(Date.now() - 45000).toISOString();
+      const { data: queued } = await supabaseAdmin
+        .from('task_notify_queue')
+        .select('task_id')
+        .lt('created_at', cutoff)
+        .limit(20);
+
+      for (const q of queued || []) {
+        const removeFromQueue = () =>
+          supabaseAdmin.from('task_notify_queue').delete().eq('task_id', q.task_id);
+
+        const { data: task } = await supabaseAdmin
+          .from('tasks')
+          .select('id, title, family_id, author_id')
+          .eq('id', q.task_id)
+          .maybeSingle();
+        if (!task) { await removeFromQueue(); continue; }
+
+        const { data: asg } = await supabaseAdmin
+          .from('task_assignees').select('member_id').eq('task_id', task.id);
+        const assigneeMemberIds = new Set((asg || []).map((a) => a.member_id));
+
+        const { data: fam } = await supabaseAdmin
+          .from('members').select('id, user_id, name').eq('family_id', task.family_id);
+
+        const author = (fam || []).find((m) => m.id === task.author_id);
+        const excluded = new Set<string>();
+        if (author?.user_id) excluded.add(author.user_id);
+        for (const m of fam || []) {
+          if (assigneeMemberIds.has(m.id) && m.user_id) excluded.add(m.user_id);
+        }
+        const recipients = [...new Set(
+          (fam || []).map((m) => m.user_id).filter(Boolean) as string[]
+        )].filter((u) => !excluded.has(u));
+
+        if (recipients.length > 0) {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              apikey: SUPABASE_SERVICE_ROLE_KEY,
+            },
+            body: JSON.stringify({
+              user_ids: recipients,
+              title: `📌 ${author?.name || 'FAMMY'} · Nuovo incarico`,
+              body: task.title || 'Nuovo incarico aggiunto',
+              tag: `task-new-${task.id}`,
+              data: { kind: 'task_new', task_id: task.id, family_id: task.family_id, url: `/?task=${task.id}` },
+            }),
+          }).catch(() => {});
+          queueSent += recipients.length;
+        }
+        await removeFromQueue();
+      }
+    } catch (e) {
+      console.warn('task_notify_queue error:', e);
+    }
+
+    // =====================================================================
+    // B) PROMEMORIA A ORARIO (due_date = oggi, due_time = adesso)
+    // =====================================================================
+
     // Task di OGGI con orario impostato e non ancora completati
     const { data: tasks } = await supabaseAdmin
       .from('tasks')
@@ -60,13 +131,13 @@ serve(async (req) => {
       .neq('status', 'done');
 
     if (!tasks || tasks.length === 0) {
-      return json({ sent: 0, reason: 'no_tasks_today', now_rome: `${todayRome} ${nowRome}` });
+      return json({ queue_sent: queueSent, sent: 0, reason: 'no_tasks_today', now_rome: `${todayRome} ${nowRome}` });
     }
 
     // Match sull'orario corrente (due_time può essere "HH:MM" o "HH:MM:SS")
     const dueNow = tasks.filter((t) => String(t.due_time).slice(0, 5) === nowRome);
     if (dueNow.length === 0) {
-      return json({ sent: 0, reason: 'no_match_this_minute', now_rome: `${todayRome} ${nowRome}` });
+      return json({ queue_sent: queueSent, sent: 0, reason: 'no_match_this_minute', now_rome: `${todayRome} ${nowRome}` });
     }
 
     let sentTotal = 0;
@@ -108,7 +179,7 @@ serve(async (req) => {
       } catch (_) { /* skip silent */ }
     }
 
-    return json({ sent_total: sentTotal, matched_tasks: dueNow.length, details, now_rome: `${todayRome} ${nowRome}` });
+    return json({ queue_sent: queueSent, sent_total: sentTotal, matched_tasks: dueNow.length, details, now_rome: `${todayRome} ${nowRome}` });
   } catch (err) {
     console.error('task-reminder-push error:', err);
     return json({ error: String(err) }, 500);

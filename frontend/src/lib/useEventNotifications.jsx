@@ -129,12 +129,11 @@ export function useEventNotifications(session, profile, families, events, taskAs
         if (notificationPermission !== 'granted' || !notificationsEnabled) return;
 
         if (payload.eventType === 'INSERT') {
-          const t = payload.new;
-          // ⛔️ Niente notifica al CREATORE per il proprio incarico:
-          // chi lo crea sa già di averlo creato.
-          if (t.author_id && myMemberIds.includes(t.author_id)) return;
-          const family = families.find((f) => f.id === t.family_id);
-          showNewTaskNotification(t, family);
+          // ⛔️ Nessuna notifica locale per i nuovi task: ci pensa il server
+          // (coda task_notify_queue → push "Nuovo incarico" alla famiglia,
+          // esclusi autore e assegnatari che ricevono "Assegnato a te").
+          // La doppia notifica locale+push era un doppione.
+          return;
         } else if (payload.eventType === 'UPDATE') {
           const oldT = payload.old;
           const newT = payload.new;
@@ -750,17 +749,6 @@ function showNewEventNotification(event, family) {
     body: `${event.title} - ${dateStr}`,
     icon: '/icon.png', badge: '/icon.png',
     tag: `new-event-${event.id}`, requireInteraction: false,
-  });
-  notification.addEventListener('click', () => { window.focus(); notification.close(); });
-}
-
-function showNewTaskNotification(task, family) {
-  if (typeof Notification === 'undefined' || !('Notification' in window)) return;
-  if (inQuietHours()) return; // do not disturb
-  const notification = new Notification(`📋 Nuovo incarico in ${family?.name || 'Famiglia'}`, {
-    body: task.title || 'Apri FAMMY per vederlo',
-    icon: '/icon.png', badge: '/icon.png',
-    tag: `new-task-${task.id}`, requireInteraction: false,
   });
   notification.addEventListener('click', () => { window.focus(); notification.close(); });
 }
