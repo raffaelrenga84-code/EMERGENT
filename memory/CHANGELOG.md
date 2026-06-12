@@ -636,3 +636,11 @@ bottone File.
 - Convenzione window.confirm coerente col resto dell'app (EditFamilyModal,
   TaskDetailModal, ecc.). Verifica: esbuild OK, HMR OK, smoke screenshot OK.
   Test e2e manuale richiesto (sezione dietro Google OAuth).
+
+## Iterazione 16.5.68 (giugno 2026) — Diario: chiusura automatica dopo salvataggio
+- L'utente segnalava che dopo "💾 Salva oggi" il modale Care restava aperto.
+- `DailyDiarySection.jsx`: nuova prop `onSaved` chiamata dopo salvataggio
+  riuscito (solo dal bottone principale, NON dal "+" pressione).
+- `MedicationsModal.jsx`: passa `onSaved={onClose}` → il Care Hub si chiude.
+- Il toast "✅ Diario salvato" è globale (ToastListener su window) → resta
+  visibile anche a modale chiuso. Verifica: esbuild + Vite serve OK.

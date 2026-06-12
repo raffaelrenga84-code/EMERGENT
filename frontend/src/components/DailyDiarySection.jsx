@@ -18,7 +18,7 @@ import { getBpReadings, formatBpReadings, isBpHigh } from '../lib/bp.js';
  * Layout: oggi in alto (sempre editabile) + storico ultimi 14 giorni
  * collassati come riepilogo (mood emoji + nota breve).
  */
-export default function DailyDiarySection({ member, me }) {
+export default function DailyDiarySection({ member, me, onSaved }) {
   const { t } = useT();
   const today = toLocalYMD(new Date());
   const [todayEntry, setTodayEntry] = useState(null);
@@ -120,6 +120,9 @@ export default function DailyDiarySection({ member, me }) {
     window.dispatchEvent(new CustomEvent('fammy_toast', {
       detail: { text: `✅ ${t('dd_saved') || 'Diario salvato'}`, tone: 'success' },
     }));
+    // Dopo il salvataggio chiudi il Care Hub (richiesta utente): il toast è
+    // globale quindi resta visibile anche a modale chiuso.
+    if (onSaved) { onSaved(); return; }
     await load();
   };
 

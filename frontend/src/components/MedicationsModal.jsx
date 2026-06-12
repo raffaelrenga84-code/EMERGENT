@@ -195,7 +195,7 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
 
           {/* TAB: DIARIO */}
           {activeTab === 'diary' && (
-            <DailyDiarySection member={member} me={me} />
+            <DailyDiarySection member={member} me={me} onSaved={onClose} />
           )}
 
           {/* TAB: MEDICINE */}
