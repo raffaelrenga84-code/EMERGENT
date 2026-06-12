@@ -19,7 +19,7 @@ import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
-export default function BachecaTab({ familyId, families, tasks, members, taskAssignees = [], absences = [], profile, me, session, isAll, onChanged, onOpenExpenseForTask, openTaskId, onTaskOpened }) {
+export default function BachecaTab({ familyId, families, tasks, members, taskAssignees = [], taskMeta = {}, absences = [], profile, me, session, isAll, onChanged, onOpenExpenseForTask, openTaskId, onTaskOpened }) {
   const allMembers = members;
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
@@ -29,6 +29,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const [showDonate, setShowDonate] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [selTask, setSelTask] = useState(null);
+  // Lightbox foto aperto direttamente dalla card: { photos: [{id,url}], index }
+  const [photoLightbox, setPhotoLightbox] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [openSections, setOpenSections] = useState({ mine: true, all: true, done: false });
   const [priorityMenuOpen, setPriorityMenuOpen] = useState(null);
@@ -423,6 +425,11 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           >
             <TaskCard
               task={task}
+              meta={taskMeta[task._origId || task.id]}
+              onOpenPhoto={(idx) => setPhotoLightbox({
+                photos: taskMeta[task._origId || task.id]?.photos || [],
+                index: idx,
+              })}
               family={isAll ? getFamily(task) : null}
               assignees={assigneesForTask(task.id)}
               statusLabel={ST_LABEL[task.status]}
@@ -629,6 +636,56 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         />
       )}
 
+      {/* Lightbox foto aperto dal tap sulla miniatura in card */}
+      {photoLightbox && (
+        <div onClick={() => setPhotoLightbox(null)} data-testid="bacheca-photo-lightbox"
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)',
+            zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16, cursor: 'zoom-out',
+          }}>
+          <img src={photoLightbox.photos[photoLightbox.index]?.url} alt=""
+            style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8 }} />
+          <button type="button" onClick={() => setPhotoLightbox(null)}
+            data-testid="bacheca-lightbox-close"
+            style={{
+              position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', right: 14,
+              width: 40, height: 40, borderRadius: 100, border: 'none',
+              background: 'rgba(255,255,255,0.16)', color: 'white', fontSize: 18, cursor: 'pointer',
+            }}>✕</button>
+          {photoLightbox.photos.length > 1 && (
+            <>
+              <button type="button" data-testid="bacheca-lightbox-prev"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPhotoLightbox((lb) => ({ ...lb, index: (lb.index - 1 + lb.photos.length) % lb.photos.length }));
+                }}
+                style={{
+                  position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                  width: 44, height: 44, borderRadius: 100, border: 'none',
+                  background: 'rgba(255,255,255,0.16)', color: 'white', fontSize: 22, cursor: 'pointer',
+                }}>‹</button>
+              <button type="button" data-testid="bacheca-lightbox-next"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPhotoLightbox((lb) => ({ ...lb, index: (lb.index + 1) % lb.photos.length }));
+                }}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  width: 44, height: 44, borderRadius: 100, border: 'none',
+                  background: 'rgba(255,255,255,0.16)', color: 'white', fontSize: 22, cursor: 'pointer',
+                }}>›</button>
+              <div style={{
+                position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
+                left: '50%', transform: 'translateX(-50%)',
+                color: 'white', fontSize: 13, fontWeight: 700,
+                background: 'rgba(255,255,255,0.16)', borderRadius: 100, padding: '4px 12px',
+              }}>{photoLightbox.index + 1} / {photoLightbox.photos.length}</div>
+            </>
+          )}
+        </div>
+      )}
+
       {editingTask && (
         <AddTaskModal
           familyId={editingTask.family_id}
@@ -825,7 +882,7 @@ function CollapsibleSection({ label, count, open, onToggle, children, empty, acc
   );
 }
 
-function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLabel, followUpHistory = [], members = [], onClick, onCheck, priorityMenu, onSetPriority, onClosePriorityMenu }) {
+function TaskCard({ task, meta, onOpenPhoto, family, assignees, statusLabel, isFollowUp, followUpLabel, followUpHistory = [], members = [], onClick, onCheck, priorityMenu, onSetPriority, onClosePriorityMenu }) {
   const priority = task.priority || (task.urgent ? 'high' : 'normal');
   const priorityColor = priority === 'high' ? 'var(--rd)'
                       : priority === 'medium' ? '#F39C12'
@@ -895,6 +952,18 @@ function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLa
               </span>
             )}
             {task.location && <span className="tc-meta" style={{ marginTop: 0 }}>📍 {task.location}</span>}
+            {(meta?.msgs || 0) > 0 && (
+              <span data-testid={`task-chat-badge-${task.id}`}
+                role="button"
+                onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  padding: '2px 8px', borderRadius: 100,
+                  background: 'var(--ab)', color: 'var(--ac)',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  border: '1px solid rgba(193, 98, 75, 0.25)',
+                }}>💬 {meta.msgs}</span>
+            )}
             {isFollowUp && (
               <span
                 data-testid={`task-followup-badge-${task.id}`}
@@ -908,6 +977,33 @@ function TaskCard({ task, family, assignees, statusLabel, isFollowUp, followUpLa
                 }}>{followUpLabel}</span>
             )}
           </div>
+          {/* Miniature foto allegate — tap = foto a schermo intero */}
+          {(meta?.photos?.length || 0) > 0 && (
+            <div data-testid={`task-photos-${task.id}`}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+              {meta.photos.slice(0, 3).map((p, i) => (p.url ? (
+                <img key={p.id} src={p.url} alt=""
+                  data-testid={`task-photo-thumb-${task.id}-${i}`}
+                  onClick={(e) => { e.stopPropagation(); onOpenPhoto && onOpenPhoto(i); }}
+                  style={{
+                    width: 46, height: 46, borderRadius: 10, objectFit: 'cover',
+                    border: '1.5px solid var(--sd)', cursor: 'zoom-in',
+                    boxShadow: '0 1px 4px rgba(28,22,17,.14)',
+                  }} />
+              ) : (
+                <span key={p.id} style={{
+                  width: 46, height: 46, borderRadius: 10, background: 'var(--sm)',
+                  display: 'inline-flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: 18,
+                }}>📷</span>
+              )))}
+              <span
+                onClick={(e) => { e.stopPropagation(); onOpenPhoto && onOpenPhoto(0); }}
+                style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', cursor: 'pointer' }}>
+                📷 {meta.photos.length}{meta.photos.length > 3 ? ` (+${meta.photos.length - 3})` : ''}
+              </span>
+            </div>
+          )}
         </div>
         <span className={`sp ${task.status}`}>{statusLabel}</span>
       </div>

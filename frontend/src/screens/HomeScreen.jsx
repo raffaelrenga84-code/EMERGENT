@@ -45,6 +45,8 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   const [events, setEvents] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [taskAssignees, setTaskAssignees] = useState([]);
+  // Meta per card Bacheca: { [taskId]: { msgs: n, photos: [{id, url}] } }
+  const [taskMeta, setTaskMeta] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [showNewFamily, setShowNewFamily] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -141,8 +143,31 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
 
       const taskIds = (tRes.data || []).map((t) => t.id);
       let aRes = { data: [] };
+      let rRes = { data: [] };
+      let atRes = { data: [] };
       if (taskIds.length > 0) {
-        aRes = await supabase.from('task_assignees').select('*').in('task_id', taskIds);
+        [aRes, rRes, atRes] = await Promise.all([
+          supabase.from('task_assignees').select('*').in('task_id', taskIds),
+          supabase.from('task_responses').select('task_id, type').in('task_id', taskIds),
+          supabase.from('task_attachments').select('id, task_id, file_path').in('task_id', taskIds),
+        ]);
+      }
+
+      // Conteggio messaggi chat reali (non system) + miniature foto per card.
+      const meta = {};
+      const metaFor = (id) => (meta[id] = meta[id] || { msgs: 0, photos: [] });
+      for (const r of rRes.data || []) {
+        if (r.type !== 'system') metaFor(r.task_id).msgs += 1;
+      }
+      const atts = atRes.data || [];
+      if (atts.length > 0) {
+        // Bucket privato → signed URLs in batch per le miniature
+        const { data: sigs } = await supabase.storage
+          .from('task-attachments')
+          .createSignedUrls(atts.map((a) => a.file_path), 60 * 60);
+        atts.forEach((a, i) => {
+          metaFor(a.task_id).photos.push({ id: a.id, url: sigs?.[i]?.signedUrl || null });
+        });
       }
 
       setTasks(tRes.data || []);
@@ -150,6 +175,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
       setEvents(eRes.data || []);
       setExpenses(exRes.data || []);
       setTaskAssignees(aRes.data || []);
+      setTaskMeta(meta);
     })();
     return () => { cancelled = true; };
   }, [activeFamily, refreshKey, families]);
@@ -302,6 +328,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             tasks={tasks}
             members={members}
             taskAssignees={taskAssignees}
+            taskMeta={taskMeta}
             absences={absences}
             profile={profile}
             me={me}

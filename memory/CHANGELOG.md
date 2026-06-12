@@ -426,3 +426,28 @@ GitHub → Vercel.
 - Verifica: harness visivo temporaneo (poi rimosso) — grafico e diario
   controllati a schermo, build Vite OK, unit test soglie OK.
 - Nessun nuovo SQL richiesto (usa bp_readings dell'iterazione 16.5.54).
+
+## Iterazione 16.5.56 (giugno 2026) — Card Bacheca: badge chat 💬 + miniature foto
+Richiesta: dalla Bacheca non si vedeva che un incarico avesse commenti/foto.
+- `HomeScreen.jsx`: dopo il load dei task, fetch in parallelo di
+  task_responses (task_id, type) e task_attachments; costruisce `taskMeta`
+  { taskId: { msgs: n. messaggi NON system, photos: [{id,url}] } } con
+  signed URLs in batch (createSignedUrls, bucket privato task-attachments).
+- `BachecaTab.jsx` → TaskCard: nuovo prop `meta` (lookup con
+  task._origId || task.id per le ricorrenze):
+  - badge 💬 N nella riga meta (testid task-chat-badge-{id});
+  - riga miniature foto 46px (max 3, bordo+ombra) + etichetta 📷 N
+    (testid task-photos-{id}); fallback icona se signed URL mancante.
+- Verificato con harness visivo temporaneo (poi rimosso): badge e
+  thumbnail visibili sulla card. Build Vite OK. Nessun SQL richiesto.
+
+## Iterazione 16.5.57 (giugno 2026) — Tap su miniatura → foto fullscreen + tap su 💬 → chat
+- `BachecaTab.jsx`:
+  - tap su una miniatura della card → lightbox a schermo intero direttamente
+    in Bacheca (testid bacheca-photo-lightbox) con ✕ chiudi, frecce ‹ ›
+    e contatore N/M quando le foto sono più di una; tap fuori chiude.
+  - tap sul badge 💬 → apre il TaskDetailModal che parte già sul tab Chat
+    (default 'thread'), con stopPropagation per non interferire con la card.
+  - TaskCard: nuovo prop onOpenPhoto(index); thumbnails e label 📷 cliccabili.
+- Verificato con harness Playwright (poi rimosso): apertura lightbox,
+  navigazione 2/2, chiusura, apertura chat dal badge — tutti OK. Build OK.
