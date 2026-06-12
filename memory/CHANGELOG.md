@@ -2,6 +2,33 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 (quater) — Fix schermo bianco al rientro + opzione Spese
+
+### Bug P0: schermo bianco al rientro nell'app (es. dopo invito WhatsApp)
+Causa doppia su iOS PWA standalone:
+1. `window.open('https://wa.me/...', '_blank')` può lasciare la PWA su una
+   pagina morta dopo il redirect wa.me → WhatsApp.
+2. Bug noto WebKit: al rientro da app esterne la pagina viene ripristinata
+   in stato "morto" (niente paint) → bianco fisso.
+
+### Fix
+1. ➕ `src/lib/openExternal.js` — apre URL esterni con anchor temporaneo
+   `target=_blank rel=noopener` (delegato all'OS, contesto PWA intatto).
+   Sostituito `window.open` nei 4 punti wa.me: `FamilyInviteModal.jsx` (x2),
+   `InviteShareModal.jsx`, `CareReportShare.jsx`.
+2. **Watchdog white-screen** in `main.jsx`:
+   - `pageshow` con `persisted=true` → reload
+   - `visibilitychange→visible`: se `#root` è vuoto → reload; altrimenti
+     nudge di repaint (`translateZ(0)` + rAF reset) per sbloccare il compositing.
+
+### Feature: 💶 Spese come schermata iniziale
+Terza opzione nel selettore "Schermata iniziale" (Profilo → App & Lingua).
+Icone allineate alla bottom nav (🏠 Bacheca, 📅 Agenda, 💶 Spese).
+Validazione aggiornata in `HomeScreen.jsx` e `ProfileTab.jsx`.
+
+Smoke test preview: boot OK con watchdog attivo. Build OK.
+⚠️ Da verificare dall'utente su iPhone reale (il white-screen è solo su device).
+
 ## 2026-06-12 (ter) — Personalizzazione schermata iniziale (Bacheca o Agenda)
 
 ### Feature (richiesta utente, priorità su condivisione foto)

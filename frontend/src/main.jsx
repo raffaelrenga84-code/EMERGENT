@@ -93,5 +93,31 @@ maybeHardReset().finally(() => {
       }, 250);
     };
     document.addEventListener('focusin', handleFocus, { passive: true });
+
+    // ------------------------------------------------------------------
+    // iOS PWA white-screen watchdog:
+    // al rientro da app esterne (share sheet, WhatsApp, fotocamera) WebKit
+    // a volte ripristina la pagina in stato "morto" → schermo bianco che
+    // costringe a chiudere l'app. Tre contromisure:
+    //  1) pageshow con persisted=true (bfcache) → reload pulito
+    //  2) al ritorno visibile, se il root React è vuoto → reload
+    //  3) nudge di repaint (iOS può congelare il compositing al rientro)
+    // ------------------------------------------------------------------
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) window.location.reload();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && root.childElementCount === 0) {
+          window.location.reload();
+          return;
+        }
+        // Forza un repaint del compositor
+        document.body.style.transform = 'translateZ(0)';
+        requestAnimationFrame(() => { document.body.style.transform = ''; });
+      }, 300);
+    });
   }
 });

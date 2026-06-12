@@ -36,7 +36,8 @@ export default function ProfileTab({ session, profile, families = [], members = 
   // Preferenza schermata iniziale (per-dispositivo, come il tema)
   const [startTab, setStartTab] = useState(() => {
     try {
-      return localStorage.getItem('fammy_start_tab') === 'agenda' ? 'agenda' : 'bacheca';
+      const v = localStorage.getItem('fammy_start_tab');
+      return (v === 'agenda' || v === 'spese') ? v : 'bacheca';
     } catch (_) { return 'bacheca'; }
   });
   const changeStartTab = (id) => {
@@ -672,8 +673,9 @@ export default function ProfileTab({ session, profile, families = [], members = 
         <div className="profile-label" style={{ marginBottom: 8 }}>{t('profile_start_tab')}</div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
           {[
-            { id: 'bacheca', icon: '📋', label: t('nav_bacheca') },
+            { id: 'bacheca', icon: '🏠', label: t('nav_bacheca') },
             { id: 'agenda', icon: '📅', label: t('nav_agenda') },
+            { id: 'spese', icon: '💶', label: t('nav_spese') },
           ].map((o) => (
             <button key={o.id} onClick={() => changeStartTab(o.id)}
               data-testid={`profile-start-tab-${o.id}`}

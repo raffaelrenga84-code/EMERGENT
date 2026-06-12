@@ -2,6 +2,11 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.49 (12 giugno 2026) — Fix schermo bianco + Spese come start
+- White-screen al rientro (iOS PWA): openExternal() per i link wa.me + watchdog
+  in main.jsx (pageshow/visibilitychange + repaint nudge). Da verificare su device.
+- Aggiunta 💶 Spese come terza opzione schermata iniziale.
+
 ## Iterazione 16.5.48 (12 giugno 2026) — Schermata iniziale personalizzabile
 - Preferenza Bacheca/Agenda all'apertura (Profilo → App & Lingua, localStorage).
 - Push iPhone VERIFICATE funzionanti (rotazione VAPID completata dall'utente).

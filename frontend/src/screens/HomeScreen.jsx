@@ -33,7 +33,8 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   // Schermata iniziale: quale tab vedere all'apertura (preferenza per-dispositivo)
   const [activeTab, setActiveTab] = useState(() => {
     try {
-      return localStorage.getItem('fammy_start_tab') === 'agenda' ? 'agenda' : 'bacheca';
+      const v = localStorage.getItem('fammy_start_tab');
+      return (v === 'agenda' || v === 'spese') ? v : 'bacheca';
     } catch (_) { return 'bacheca'; }
   });
   // Signal incrementale: cambia ogni volta che vogliamo aprire l'inbox

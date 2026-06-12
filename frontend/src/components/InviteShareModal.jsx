@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { openExternal } from '../lib/openExternal.js';
 
 export default function InviteShareModal({ familyId, familyName, member, session, onClose }) {
   const [token, setToken] = useState(null);
@@ -70,7 +71,7 @@ export default function InviteShareModal({ familyId, familyName, member, session
 
   const shareWhatsApp = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
-    window.open(url, '_blank');
+    openExternal(url);
   };
 
   return (

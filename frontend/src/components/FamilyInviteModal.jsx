@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { openExternal } from '../lib/openExternal.js';
 
 /**
  * Modal unificato per gestire gli inviti di una famiglia
@@ -156,7 +157,7 @@ export default function FamilyInviteModal({ family, session, onClose }) {
 
   const shareViaWhatsApp = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
-    window.open(url, '_blank');
+    openExternal(url);
   };
 
   const regenerateToken = async () => {
@@ -257,7 +258,7 @@ export default function FamilyInviteModal({ family, session, onClose }) {
     const msg =
       `Ciao ${placeholder.name}! Ti ho aggiunto alla famiglia "${family.name}" su FAMMY 🏡\n` +
       `Apri questo link e accederai direttamente al TUO profilo già pronto:\n${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    openExternal(`https://wa.me/?text=${encodeURIComponent(msg)}`);
   };
 
   return (

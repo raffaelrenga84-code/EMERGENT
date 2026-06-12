@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { toLocalYMD } from '../lib/dateUtils.js';
+import { openExternal } from '../lib/openExternal.js';
 
 /**
  * CareReportShare — bottom-sheet che genera un report testuale del Care Hub
@@ -131,7 +132,7 @@ export default function CareReportShare({ member, onClose }) {
 
   const shareWhatsApp = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(report)}`;
-    window.open(url, '_blank', 'noopener');
+    openExternal(url);
   };
 
   const shareEmail = () => {
