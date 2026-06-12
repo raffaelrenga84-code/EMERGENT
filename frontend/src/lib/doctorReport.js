@@ -8,6 +8,7 @@
 import QRCode from 'qrcode';
 import { activeTimesForToday } from './medSchedule.js';
 import { toLocalYMD } from './dateUtils.js';
+import { bpDailyAvg, formatBpReadings } from './bp.js';
 
 const W = 1240;        // larghezza canvas (A4-ish @150dpi)
 const M = 70;          // margine
@@ -77,7 +78,10 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
   y += 22; hr(8);
 
   // ---------- GRAFICI 30 GIORNI ----------
-  const bpData = diary.filter((d) => d.bp_systolic != null && d.bp_diastolic != null);
+  // Più misurazioni/giorno → il grafico usa la media giornaliera
+  const bpData = diary
+    .map((d) => ({ x: d.diary_date, avg: bpDailyAvg(d) }))
+    .filter((p) => p.avg);
   const wData = diary.filter((d) => d.weight_kg != null);
   if (bpData.length >= 2 || wData.length >= 2) {
     section(`📈 ${t('ht_title') || 'Andamento ultimi 30 giorni'}`);
@@ -86,8 +90,8 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
     const cy = y;
     if (bpData.length >= 2) {
       drawChart(ctx, M, cy, chartW, chartH, t('ht_bp') || 'Pressione (mmHg)', [
-        { color: '#C1624B', pts: bpData.map((d) => ({ x: d.diary_date, v: d.bp_systolic })) },
-        { color: '#4A7B9D', pts: bpData.map((d) => ({ x: d.diary_date, v: d.bp_diastolic })) },
+        { color: '#C1624B', pts: bpData.map((p) => ({ x: p.x, v: p.avg.sys })) },
+        { color: '#4A7B9D', pts: bpData.map((p) => ({ x: p.x, v: p.avg.dia })) },
       ]);
     }
     if (wData.length >= 2) {
@@ -149,7 +153,7 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
       const parts = [
         new Date(d.diary_date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }),
         d.mood != null && moodEmoji(d.mood),
-        d.bp_systolic != null && d.bp_diastolic != null && `🩺 ${d.bp_systolic}/${d.bp_diastolic}`,
+        formatBpReadings(d) && `🩺 ${formatBpReadings(d)}`,
         d.sleep_hours != null && `💤 ${d.sleep_hours}h`,
         d.appetite != null && `🍽️ ${appLabel(d.appetite)}`,
         d.weight_kg != null && `⚖️ ${d.weight_kg}kg`,

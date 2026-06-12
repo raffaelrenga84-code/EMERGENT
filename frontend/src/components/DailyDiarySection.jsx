@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { toLocalYMD } from '../lib/dateUtils.js';
 import CareAttachments from './CareAttachments.jsx';
+import { getBpReadings, formatBpReadings } from '../lib/bp.js';
 
 /**
  * DailyDiarySection — diario giornaliero del membro assistito.
@@ -31,8 +32,16 @@ export default function DailyDiarySection({ member, me }) {
   const [appetite, setAppetite] = useState(null);
   const [weight, setWeight] = useState('');
   const [notes, setNotes] = useState('');
-  const [bpSys, setBpSys] = useState('');
-  const [bpDia, setBpDia] = useState('');
+
+  // Pressione — misurazioni multiple al giorno (salvate subito)
+  const nowHM = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  const [newTime, setNewTime] = useState(nowHM());
+  const [newSys, setNewSys] = useState('');
+  const [newDia, setNewDia] = useState('');
+  const [bpSaving, setBpSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -51,8 +60,6 @@ export default function DailyDiarySection({ member, me }) {
     setAppetite(t0?.appetite ?? null);
     setWeight(t0?.weight_kg != null ? String(t0.weight_kg) : '');
     setNotes(t0?.notes || '');
-    setBpSys(t0?.bp_systolic != null ? String(t0.bp_systolic) : '');
-    setBpDia(t0?.bp_diastolic != null ? String(t0.bp_diastolic) : '');
     setHistory(rows.filter((r) => r.diary_date !== today));
     setLoading(false);
   };
@@ -79,6 +86,38 @@ export default function DailyDiarySection({ member, me }) {
     setSaving(false);
     if (error) { alert(error.message); return; }
     await load();
+  };
+
+  // Salva l'array di misurazioni (upsert immediato, non tocca gli altri
+  // campi del giorno né gli input ancora non salvati).
+  const saveReadings = async (next) => {
+    setBpSaving(true);
+    const { data, error } = await supabase
+      .from('daily_diary')
+      .upsert({
+        member_id: member.id, diary_date: today,
+        bp_readings: next, recorded_by: me?.id || null,
+      }, { onConflict: 'member_id,diary_date' })
+      .select().single();
+    setBpSaving(false);
+    if (error) { alert(error.message); return false; }
+    setTodayEntry(data);
+    return true;
+  };
+
+  const addReading = async () => {
+    const sys = parseInt(newSys, 10);
+    const dia = parseInt(newDia, 10);
+    if (!sys || !dia) return;
+    const next = [...getBpReadings(todayEntry), { t: newTime || null, sys, dia }];
+    if (await saveReadings(next)) {
+      setNewSys(''); setNewDia(''); setNewTime(nowHM());
+    }
+  };
+
+  const removeReading = async (idx) => {
+    const next = getBpReadings(todayEntry).filter((_, i) => i !== idx);
+    await saveReadings(next);
   };
 
   if (loading) {
@@ -145,16 +184,55 @@ export default function DailyDiarySection({ member, me }) {
           </div>
         </div>
 
-        {/* Pressione sanguigna */}
+        {/* Pressione sanguigna — più misurazioni al giorno */}
         <Label style={{ marginTop: 10 }}>🩺 {t('dd_bp_label') || 'Pressione (mmHg)'}</Label>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {getBpReadings(todayEntry).length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}
+            data-testid="dd-bp-list">
+            {getBpReadings(todayEntry).map((r, i) => (
+              <span key={`${r.t}-${i}`} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 10px', background: 'white',
+                border: '1px solid var(--sm)', borderRadius: 100,
+                fontSize: 13, fontWeight: 700, color: 'var(--k)',
+              }}>
+                {r.t && <span style={{ color: 'var(--km)', fontWeight: 600, fontSize: 11 }}>🕒 {r.t}</span>}
+                {r.sys}/{r.dia}
+                <button type="button" onClick={() => removeReading(i)}
+                  disabled={bpSaving}
+                  data-testid={`dd-bp-remove-${i}`}
+                  style={{
+                    border: 'none', background: 'var(--ab)', borderRadius: 100,
+                    padding: '1px 7px', fontSize: 11, color: 'var(--km)', cursor: 'pointer',
+                  }}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <input className="input" type="time"
+            value={newTime} onChange={(e) => setNewTime(e.target.value)}
+            data-testid="dd-bp-time"
+            style={{ width: 104, flexShrink: 0, padding: '14px 8px' }} />
           <input className="input" type="number" min="40" max="300" inputMode="numeric"
-            value={bpSys} onChange={(e) => setBpSys(e.target.value)}
-            data-testid="dd-bp-sys" placeholder="120" style={{ flex: 1 }} />
+            value={newSys} onChange={(e) => setNewSys(e.target.value)}
+            data-testid="dd-bp-sys" placeholder="120" style={{ flex: 1, minWidth: 0 }} />
           <span style={{ fontWeight: 800, color: 'var(--km)' }}>/</span>
           <input className="input" type="number" min="20" max="200" inputMode="numeric"
-            value={bpDia} onChange={(e) => setBpDia(e.target.value)}
-            data-testid="dd-bp-dia" placeholder="80" style={{ flex: 1 }} />
+            value={newDia} onChange={(e) => setNewDia(e.target.value)}
+            data-testid="dd-bp-dia" placeholder="80" style={{ flex: 1, minWidth: 0 }} />
+          <button type="button" onClick={addReading}
+            disabled={bpSaving || !newSys || !newDia}
+            aria-label={t('dd_bp_add') || 'Aggiungi misurazione'}
+            data-testid="dd-bp-add-btn"
+            style={{
+              width: 48, height: 48, flexShrink: 0, borderRadius: 13, border: 'none',
+              background: (!newSys || !newDia) ? 'var(--kl)' : 'var(--ac)',
+              color: 'white', fontSize: 22, fontWeight: 800, cursor: 'pointer',
+            }}>{bpSaving ? '…' : '+'}</button>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 4, marginBottom: 4 }}>
+          💡 {t('dd_bp_hint') || 'Puoi registrare più misurazioni al giorno · si salvano subito'}
         </div>
 
         {/* Appetito */}
@@ -227,8 +305,8 @@ export default function DailyDiarySection({ member, me }) {
                       weekday: 'short', day: 'numeric', month: 'short',
                     })}
                   </span>
-                  {h.bp_systolic != null && h.bp_diastolic != null && (
-                    <span style={{ fontSize: 11, color: 'var(--km)' }}>🩺 {h.bp_systolic}/{h.bp_diastolic}</span>
+                  {formatBpReadings(h) && (
+                    <span style={{ fontSize: 11, color: 'var(--km)' }}>🩺 {formatBpReadings(h)}</span>
                   )}
                   {h.sleep_hours != null && (
                     <span style={{ fontSize: 11, color: 'var(--km)' }}>💤 {h.sleep_hours}h</span>

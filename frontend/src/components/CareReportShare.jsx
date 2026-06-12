@@ -4,6 +4,7 @@ import { useT } from '../lib/i18n.jsx';
 import { toLocalYMD } from '../lib/dateUtils.js';
 import { openExternal } from '../lib/openExternal.js';
 import { generateDoctorReport } from '../lib/doctorReport.js';
+import { formatBpReadings } from '../lib/bp.js';
 
 /**
  * CareReportShare — bottom-sheet che genera un report testuale del Care Hub
@@ -133,7 +134,7 @@ export default function CareReportShare({ member, onClose }) {
         const parts = [
           new Date(d.diary_date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }),
           d.mood != null && moodEmoji(d.mood),
-          d.bp_systolic != null && d.bp_diastolic != null && `🩺 ${d.bp_systolic}/${d.bp_diastolic}`,
+          formatBpReadings(d) && `🩺 ${formatBpReadings(d)}`,
           d.sleep_hours != null && `💤 ${d.sleep_hours}h`,
           d.appetite != null && `🍽️ ${appetiteLabel(d.appetite)}`,
           d.weight_kg != null && `⚖️ ${d.weight_kg}kg`,

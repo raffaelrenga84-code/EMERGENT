@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { toLocalYMD } from '../lib/dateUtils.js';
+import { bpDailyAvg } from '../lib/bp.js';
 
 /**
  * HealthTrendsCard — mini-grafici SVG dell'andamento ultimi 30 giorni
@@ -19,7 +20,7 @@ export default function HealthTrendsCard({ member }) {
       since.setDate(since.getDate() - 30);
       const { data } = await supabase
         .from('daily_diary')
-        .select('diary_date, bp_systolic, bp_diastolic, weight_kg')
+        .select('*')
         .eq('member_id', member.id)
         .gte('diary_date', toLocalYMD(since))
         .order('diary_date', { ascending: true });
@@ -30,7 +31,10 @@ export default function HealthTrendsCard({ member }) {
 
   if (rows === null) return null;
 
-  const bp = rows.filter((r) => r.bp_systolic != null && r.bp_diastolic != null);
+  // Più misurazioni/giorno → il grafico usa la media giornaliera
+  const bp = rows
+    .map((r) => ({ x: r.diary_date, avg: bpDailyAvg(r) }))
+    .filter((p) => p.avg);
   const wt = rows.filter((r) => r.weight_kg != null);
   if (bp.length < 2 && wt.length < 2) return null; // niente da graficare
 
@@ -46,8 +50,8 @@ export default function HealthTrendsCard({ member }) {
         <MiniChart
           title={`🩺 ${t('ht_bp') || 'Pressione (mmHg)'}`}
           series={[
-            { color: '#C1624B', label: 'SYS', pts: bp.map((r) => ({ x: r.diary_date, v: r.bp_systolic })) },
-            { color: '#4A7B9D', label: 'DIA', pts: bp.map((r) => ({ x: r.diary_date, v: r.bp_diastolic })) },
+            { color: '#C1624B', label: 'SYS', pts: bp.map((p) => ({ x: p.x, v: p.avg.sys })) },
+            { color: '#4A7B9D', label: 'DIA', pts: bp.map((p) => ({ x: p.x, v: p.avg.dia })) },
           ]}
         />
       )}

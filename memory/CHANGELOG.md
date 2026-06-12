@@ -383,3 +383,31 @@ spostando la vista fuori schermo. Causa: font-size degli input < 16px.
 Verificato via screenshot (viewport iPhone): meta corretto, `.input`=16px,
 regola iOS presente nel bundle. ⚠️ Richiede "Save to GitHub" → Vercel,
 poi test sull'iPhone dell'utente.
+
+## Iterazione 16.5.54 (giugno 2026) — Pressione: misurazioni multiple al giorno
+Richiesta utente: "solitamente si misura la pressione più volte al giorno".
+
+### DB (richiede SQL manuale)
+- `fammy-bp-readings.sql`: nuova colonna `daily_diary.bp_readings` (jsonb)
+  formato `[{"t":"08:15","sys":120,"dia":80}, ...]` + migrazione dei vecchi
+  valori singoli. Colonne legacy bp_systolic/bp_diastolic restano (fallback).
+
+### Frontend
+- Nuovo helper `src/lib/bp.js`: getBpReadings (ordina per ora, fallback
+  legacy), bpDailyAvg (media giornaliera per i grafici), formatBpReadings.
+- `DailyDiarySection.jsx`: lista chips delle misurazioni di oggi (orario +
+  valori + ✕ elimina) + riga aggiunta (ora precompilata con adesso, sys/dia,
+  bottone +). Ogni misurazione si salva SUBITO via upsert dedicato che non
+  tocca gli altri campi del giorno né gli input non ancora salvati.
+- **Bug fix latente**: la pressione non veniva MAI salvata (mancava nel
+  payload di "Salva oggi") — ora risolto col salvataggio immediato.
+- `HealthTrendsCard.jsx` + `doctorReport.js`: grafici 30gg usano la media
+  giornaliera; diario nel report mostra tutte le misurazioni con orario.
+- `CareReportShare.jsx`: report testuale con tutte le misurazioni.
+- i18n: nuove chiavi dd_bp_add / dd_bp_hint (it+en).
+
+Verifica: build Vite OK, unit test logica bp.js OK (ordinamento/media/
+fallback/cancellazione), smoke screenshot OK. Il tab Diario è dietro OAuth
+Google → verifica visiva finale a carico dell'utente dopo deploy.
+⚠️ Ordine deploy: 1) esegui fammy-bp-readings.sql su Supabase, 2) Save to
+GitHub → Vercel.
