@@ -522,9 +522,10 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
         <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)}
-          className="input" style={{ flex: 1 }}
+          className="input" style={{ flex: 1, minWidth: 0 }}
           data-testid="med-form-time-picker" />
         <button type="button" onClick={addTime} className="profile-btn"
+          style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
           data-testid="med-form-add-time">
           + {t('add') || 'Aggiungi'}
         </button>
@@ -536,16 +537,18 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
       {/* Periodo di assunzione */}
       <label style={{ marginTop: 10 }}>📅 {t('med_period_label') || 'Periodo di assunzione'}</label>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 2 }}>{t('med_period_from') || 'Dal'}</div>
           <input type="date" className="input" value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+            style={{ width: '100%', minWidth: 0 }}
             data-testid="med-form-start-date" />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 2 }}>{t('med_period_to') || 'Al'}</div>
           <input type="date" className="input" value={endDate} min={startDate || undefined}
             onChange={(e) => setEndDate(e.target.value)}
+            style={{ width: '100%', minWidth: 0 }}
             data-testid="med-form-end-date" />
         </div>
       </div>
@@ -567,7 +570,7 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
             <input type="date" className="input" value={p.from}
               min={startDate || undefined}
               onChange={(e) => updatePhase(idx, { from: e.target.value })}
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: 0 }}
               data-testid={`med-phase-from-${idx}`} />
             <button type="button" onClick={() => removePhase(idx)}
               data-testid={`med-phase-remove-${idx}`}
@@ -597,8 +600,9 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
           <div style={{ display: 'flex', gap: 6 }}>
             <input type="time" value={p._newTime || '08:00'}
               onChange={(e) => updatePhase(idx, { _newTime: e.target.value })}
-              className="input" style={{ flex: 1 }} />
-            <button type="button" onClick={() => addPhaseTime(idx)} className="profile-btn">
+              className="input" style={{ flex: 1, minWidth: 0 }} />
+            <button type="button" onClick={() => addPhaseTime(idx)} className="profile-btn"
+              style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
               + {t('add') || 'Aggiungi'}
             </button>
           </div>

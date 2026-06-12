@@ -490,6 +490,8 @@ export const T = {
     // Profile
     profile_your_name: 'Il tuo nome',
     profile_language: 'Lingua',
+    profile_start_tab: 'Schermata iniziale',
+    profile_start_tab_hint: 'Quale schermata vedere quando apri FAMMY (su questo dispositivo).',
     profile_signed_in_as: 'Account collegato',
     profile_app_info: 'FAMMY · v0.2 (MVP)\nI tuoi dati sono salvati su Supabase.',
     profile_h: 'Il tuo profilo',

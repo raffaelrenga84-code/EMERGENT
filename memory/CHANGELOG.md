@@ -2,6 +2,25 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 (octies) — Fix i18n schermata iniziale + overflow form medicine
+
+### Bug 1: chiavi raw "PROFILE_START_TAB" visibili nel Profilo
+Le chiavi `profile_start_tab` / `profile_start_tab_hint` erano presenti in
+en/fr/de ma MANCAVANO nel blocco italiano (l'edit della 16.5.48 era stato
+applicato in un punto sbagliato). Aggiunte nel blocco it.
+
+### Bug 2: form medicine sborda a destra su iPhone
+Causa: gli input date/time su iOS hanno una min-width intrinseca che nei
+flex row impedisce la compressione → la riga sborda (bottone "+ Aggiungi"
+e campo "Al" tagliati). Fix:
+- CSS globale: `.modal input[type=date|time|number] { min-width:0; max-width:100% }`
+- MedicationsModal: `minWidth:0` sugli input flex, `flexShrink:0 +
+  whiteSpace:nowrap` sui bottoni "+ Aggiungi".
+
+### Stato azioni Supabase (CONFERMATE FATTE dall'utente, 12 giu):
+✅ fammy-care-upgrade.sql · ✅ medication-reminder-push redeploy (2 deploy)
+✅ task-reminder-push creata (+ cron SQL) · ✅ hotfix get_invitation eseguito
+
 ## 2026-06-12 (septies) — Grafici salute 30gg + Report per il medico con QR
 
 ### Feature 1: mini-grafici andamento (tab 🩺 Profilo del Care Hub)

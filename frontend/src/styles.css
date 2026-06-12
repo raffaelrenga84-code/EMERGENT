@@ -200,6 +200,16 @@ body:has(.modal-bg) .fab-action-label {
   -webkit-overflow-scrolling: touch;
 }
 @media (min-width: 768px) { .modal { border-radius: 24px; } }
+/* iOS: i campi data/ora hanno una min-width intrinseca che fa sbordare i
+   flex row oltre il bordo destro del modal. min-width:0 li rende comprimibili. */
+.modal input[type="date"],
+.modal input[type="time"],
+.modal input[type="number"] {
+  min-width: 0;
+  max-width: 100%;
+}
+/* I bottoni accanto a input flessibili non devono essere tagliati */
+.modal .row > button { flex-shrink: 0; }
 /* Variante a TUTTO SCHERMO su mobile (es. Nuovo incarico): il foglio occupa
    tutta l'altezza disponibile sotto la safe-area invece di fermarsi al 92%. */
 .modal.modal-full {
