@@ -1718,8 +1718,8 @@ returns json
 language plpgsql security definer set search_path = public as $$
 declare
   inv record;
-  fam record;
-  mem record;
+  mem_name text := null;
+  mem_role text := null;
 begin
   select i.*, f.name as family_name, f.emoji as family_emoji
     into inv
@@ -1741,15 +1741,15 @@ begin
 
   -- Eventuale info sul membro pre-creato
   if inv.member_id is not null then
-    select name, role into mem from members where id = inv.member_id;
+    select name, role into mem_name, mem_role from members where id = inv.member_id;
   end if;
 
   return json_build_object(
     'valid', true,
     'family_name', inv.family_name,
     'family_emoji', inv.family_emoji,
-    'member_name', coalesce(mem.name, null),
-    'member_role', coalesce(mem.role, null)
+    'member_name', mem_name,
+    'member_role', mem_role
   );
 end;
 $$;
