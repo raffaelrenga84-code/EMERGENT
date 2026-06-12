@@ -114,16 +114,23 @@ serve(async (req) => {
       results.push({ id: s.id, ua: s.user_agent || null, ok: true, status: 201 });
     } catch (e) {
       const code = (e as { statusCode?: number }).statusCode ?? 0;
+      // Il body della risposta del push service contiene il motivo esatto
+      // (es. Apple: {"reason":"BadJwtToken"} → VAPID subject/chiavi errati)
+      const rawBody = (e as { body?: string }).body;
+      const detail = typeof rawBody === 'string' && rawBody.trim()
+        ? rawBody.trim().slice(0, 140)
+        : undefined;
       // 404/410 = endpoint scaduto/revocato. 403 = VAPID mismatch (subscription
       // creata con un'altra coppia di chiavi): inutilizzabile, va rimossa.
       if (code === 404 || code === 410 || code === 403) {
         expired.push(s.id);
-        results.push({ id: s.id, ua: s.user_agent || null, ok: false, status: code, removed: true });
+        results.push({ id: s.id, ua: s.user_agent || null, ok: false, status: code, removed: true, detail });
       } else {
-        console.warn('push send failed', e);
+        console.warn('push send failed', code, detail || e);
         results.push({
           id: s.id, ua: s.user_agent || null, ok: false,
           status: code || ((e as Error)?.message ?? 'error'),
+          detail,
         });
       }
     }

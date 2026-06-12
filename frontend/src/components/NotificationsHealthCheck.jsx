@@ -457,6 +457,9 @@ export default function NotificationsHealthCheck({ session }) {
                           : r.removed
                             ? `❌ ${t('nhc_dev_removed')} (${r.status})`
                             : `❌ ${t('nhc_dev_failed')} ${r.status}`}
+                        {!r.ok && r.detail && (
+                          <span style={{ opacity: 0.85 }}> — {r.detail}</span>
+                        )}
                       </div>
                     ))}
                   </div>
