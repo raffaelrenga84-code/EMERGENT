@@ -226,6 +226,31 @@ body:has(.modal-bg) .fab-action-label {
 @media (min-width: 768px) {
   .modal.modal-full { height: auto; max-height: 92vh; }
 }
+/* Variante CHAT (tab Chat di task/eventi): il modale diventa una colonna ad
+   altezza fissa dove SOLO l'area messaggi scrolla (niente scroll annidati,
+   che su Android/iOS rendevano irraggiungibile l'ultimo messaggio). */
+.modal.modal-chat {
+  height: calc(92vh - env(safe-area-inset-top, 0px));
+  height: calc(92dvh - env(safe-area-inset-top, 0px));
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+.modal.modal-chat > * { flex-shrink: 0; }
+.modal.modal-chat .chat-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Area scrollabile della chat: contiene lo scroll (no chaining al modale /
+   pull-to-refresh) e usa lo scrolling fluido su iOS. */
+.chat-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 .modal h2 { font-family: var(--fs); font-size: 22px; font-weight: 600; margin-bottom: 6px; }
 .modal .modal-sub { color: var(--km); font-size: 14px; margin-bottom: 20px; }
 .modal .row { display: flex; gap: 8px; margin-top: 8px; }

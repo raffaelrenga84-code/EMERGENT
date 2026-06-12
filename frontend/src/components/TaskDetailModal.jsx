@@ -70,6 +70,26 @@ export default function TaskDetailModal({
   const longPressTimerRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
   const chatPhotoInputRef = useRef(null);
+  const chatListRef = useRef(null);
+
+  // Scroll in fondo all'area chat. force=true salta il check "vicino al
+  // fondo" (apertura tab / nuovo messaggio); force=false (load immagini)
+  // riallinea solo se l'utente è già in fondo, senza strappargli lo scroll
+  // mentre legge la cronologia.
+  const scrollChatToBottom = (force = false) => {
+    const el = chatListRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
+    if (force || nearBottom) el.scrollTop = el.scrollHeight;
+  };
+
+  // Auto-scroll all'ultimo messaggio (stile WhatsApp) quando si apre il
+  // tab Chat o arriva un nuovo messaggio.
+  useEffect(() => {
+    if (activeTab !== 'thread') return;
+    requestAnimationFrame(() => scrollChatToBottom(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, comments.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -549,7 +569,7 @@ export default function TaskDetailModal({
           </div>
         </div>
       )}
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal${activeTab === 'thread' ? ' modal-chat' : ''}`} onClick={(e) => e.stopPropagation()}>
         {/* HEADER COMPATTO: emoji + titolo + 3 icone (Modifica, Elimina, Chiudi) */}
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 6,
@@ -811,7 +831,13 @@ export default function TaskDetailModal({
 
         {/* ====== TAB: CHAT ====== */}
         {activeTab === 'thread' && (
-          <div data-testid="task-detail-pane-thread">
+          <div data-testid="task-detail-pane-thread" className="chat-pane">
+            {/* UNICA area scrollabile: action bar + header chat + messaggi.
+                Su mobile evita gli scroll annidati (modale + lista) che
+                rendevano irraggiungibile l'ultimo messaggio. Quick replies
+                e composer restano fissi in basso. */}
+            <div ref={chatListRef} className="chat-scroll" data-testid="task-chat-list"
+              style={{ flex: 1, marginBottom: 10, padding: '4px 2px' }}>
             {/* Action bar: Stato + Priorità in cima al tab Chat.
                 Prima erano nascosti dentro "Dettagli" — adesso sono subito
                 visibili nel tab di default (Chat) per accesso rapido. */}
@@ -934,11 +960,8 @@ export default function TaskDetailModal({
 
             {/* Lista messaggi (stile chat con bubble) */}
             <div style={{
-              maxHeight: 360, overflowY: 'auto', marginBottom: 10,
               display: 'flex', flexDirection: 'column', gap: 8,
-              padding: '4px 2px',
-            }}
-              data-testid="task-chat-list">
+            }}>
               {comments.length === 0 && (
                 <div style={{
                   padding: '32px 16px', textAlign: 'center',
@@ -1075,6 +1098,7 @@ export default function TaskDetailModal({
                               <img
                                 src={photoUrls[linkedPhoto.id]}
                                 alt={linkedPhoto.file_name}
+                                onLoad={() => scrollChatToBottom()}
                                 style={{
                                   display: 'block', maxWidth: 220,
                                   width: '100%', height: 'auto',
@@ -1120,6 +1144,7 @@ export default function TaskDetailModal({
                   </div>
                 );
               })}
+            </div>
             </div>
 
             {/* Quick replies (visibili sempre, sopra il composer) */}

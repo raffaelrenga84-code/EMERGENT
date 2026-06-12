@@ -644,3 +644,25 @@ bottone File.
 - `MedicationsModal.jsx`: passa `onSaved={onClose}` → il Care Hub si chiude.
 - Il toast "✅ Diario salvato" è globale (ToastListener su window) → resta
   visibile anche a modale chiuso. Verifica: esbuild + Vite serve OK.
+
+## Iterazione 16.5.69 (giugno 2026) — 💬 Fix scroll chat mobile (P0)
+Tre cause radice risolte:
+1. **Scroll annidati** (modale overflow-y + lista chat maxHeight 360): su
+   Android la lista catturava il touch e l'ultimo messaggio/composer era
+   irraggiungibile. Ora con tab Chat attivo il modale diventa
+   `.modal.modal-chat` (altezza fissa 92dvh, colonna flex, overflow hidden):
+   UNICA area scrollabile `.chat-scroll` (action bar + header + messaggi),
+   quick replies + composer FISSI in basso (stile WhatsApp).
+2. **Nessun auto-scroll**: nuovo `chatListRef` + `scrollChatToBottom(force)`
+   — scroll in fondo all'apertura del tab e su nuovi messaggi (rAF);
+   `onLoad` delle foto ri-allinea solo se l'utente è già vicino al fondo
+   (non strappa lo scroll mentre legge la cronologia).
+3. **Tastiera Android copre il composer**: aggiunto
+   `interactive-widget=resizes-content` al viewport meta (index.html) → il
+   layout si restringe quando la tastiera è aperta e dvh si adatta.
+Extra: `.chat-scroll` con `overscroll-behavior: contain` +
+`-webkit-overflow-scrolling: touch` (fix glitch iOS); GiftChatModal ora ha
+auto-scroll (mancava del tutto); AbsenceCommentsThread usa `.chat-scroll`.
+Verifica: harness HTML con 30 messaggi su viewport 390x700 — auto-scroll
+PASS (gap 0px, ultimo msg visibile, composer in viewport), scroll-to-top
+mostra action bar con composer sempre fisso. Harness rimosso.

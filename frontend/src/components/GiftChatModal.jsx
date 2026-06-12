@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 import Avatar from './Avatar.jsx';
 
@@ -7,6 +7,14 @@ export default function GiftChatModal({ member, members, familyId, currentUserId
   const [newMessage, setNewMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const listRef = useRef(null);
+
+  // Auto-scroll in fondo all'apertura e su nuovi messaggi
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  }, [messages.length, loading]);
 
   useEffect(() => {
     loadMessages();
@@ -79,8 +87,8 @@ export default function GiftChatModal({ member, members, familyId, currentUserId
         </div>
 
         {/* Messages container */}
-        <div style={{
-          flex: 1, overflowY: 'auto', marginBottom: 12, paddingRight: 4,
+        <div ref={listRef} className="chat-scroll" style={{
+          flex: 1, marginBottom: 12, paddingRight: 4,
           display: 'flex', flexDirection: 'column', gap: 8,
         }}>
           {loading ? (

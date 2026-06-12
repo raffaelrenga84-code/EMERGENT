@@ -106,8 +106,9 @@ export default function AbsenceCommentsThread({ absenceId, session, profile }) {
 
       <div
         ref={scrollRef}
+        className="chat-scroll"
         style={{
-          maxHeight: 280, overflowY: 'auto',
+          maxHeight: 280,
           background: 'var(--ab)', border: '1px solid var(--sm)',
           borderRadius: 12, padding: 10, marginBottom: 8,
         }}>
