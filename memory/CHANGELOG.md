@@ -4,6 +4,11 @@
 
 ## 2026-06-12 (bis) — ROOT CAUSE push iPhone: VAPID_PUBLIC_KEY errata su Supabase
 
+### ✅ VERIFICATO DALL'UTENTE (12 giu, 09:14)
+Dopo la rotazione delle chiavi VAPID, screenshot dell'iPhone con la notifica
+"☀️ Buongiorno! Ecco la tua giornata — Oggi ti aspettano 1 incarico" arrivata.
+Push iOS funzionanti per la PRIMA volta + digest del mattino live.
+
 ### Diagnosi (via confronto digest SHA256 dei Secrets!)
 Il test push restituiva 400 da Apple anche con subscription appena rigenerata.
 Supabase non mostra i valori dei secret ma il loro digest SHA256 → calcolati
