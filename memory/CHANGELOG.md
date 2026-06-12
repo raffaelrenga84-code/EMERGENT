@@ -2,6 +2,37 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 — Push non consegnate: diagnostica per-dispositivo + reset subscription
+
+### Problema riportato
+Test push dice "Inviata a 3 dispositivi" ma nulla arriva (né digest mattutino).
+L'utente usa solo 2 dispositivi → nel DB ci sono subscription "zombie":
+endpoint creati a febbraio (quando il salvataggio server falliva col bug 400),
+riesumati dopo il fix ma ormai non più consegnabili dai push service.
+`send-push` contava `sent` solo su accettazione del push service e nascondeva
+gli errori non-410 (es. 403 VAPID mismatch) → zero visibilità.
+
+### Fix
+1. **`send-push.ts`** (standalone, da rideployare): ritorna `results[]` con
+   esito per ogni subscription `{id, ua, ok, status, removed}`; elimina dal
+   DB anche i 403 (VAPID mismatch) oltre a 404/410; nuovo campo `failed`.
+2. **`NotificationsHealthCheck.jsx`**:
+   - Sezione "📱 Dispositivi registrati": elenco da `push_subscriptions`
+     (browser+OS da user_agent, ultimo uso, badge "questo dispositivo",
+     bottone 🗑 per rimuovere righe zombie).
+   - Bottone "🔄 Rigenera la subscription di questo dispositivo": delete riga
+     DB + `unsubscribe()` + `subscribe()` fresca + upsert → endpoint nuovo
+     di zecca (cura per endpoint morti).
+   - Il risultato del test push ora mostra l'esito per dispositivo
+     ("Safari · iPhone — ✓ inviata / ❌ scaduta · rimossa (410)").
+3. **`usePushSubscription.js`**: esportato `urlBase64ToUint8Array`.
+4. i18n: 11 nuove chiavi `nhc_devices_*`/`nhc_resub_*`/`nhc_dev_*` in it/en/fr/de.
+
+### Azioni utente
+1. Re-deploy edge function `send-push` (Dashboard → Edge Functions)
+2. Save to GitHub (deploya anche il fix AddressAutocomplete)
+3. Sul telefono: Diagnostica → Rigenera subscription → Invia push di prova
+
 ## 2026-06-12 — Fix schermo bianco su autocomplete indirizzo (mobile)
 
 ### Bug (segnalato con screenshot iPhone)

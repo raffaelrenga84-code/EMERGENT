@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
+import { urlBase64ToUint8Array } from '../lib/usePushSubscription.js';
 
 /**
  * Diagnostica notifiche push — health-check completo.
@@ -29,6 +30,11 @@ export default function NotificationsHealthCheck({ session }) {
   // rileva errori, così l'utente è "spinto" a vedere il problema.
   const [open, setOpen] = useState(false);
   const [didAutoOpen, setDidAutoOpen] = useState(false);
+  // Dispositivi registrati (righe push_subscriptions di questo utente)
+  const [devices, setDevices] = useState([]);
+  const [localEndpoint, setLocalEndpoint] = useState(null);
+  const [resubRunning, setResubRunning] = useState(false);
+  const [resubResult, setResubResult] = useState(null);
 
   const userId = session?.user?.id;
 
@@ -141,7 +147,70 @@ export default function NotificationsHealthCheck({ session }) {
     // Aggiorna lo stato UNA SOLA volta a fine batch
     setChecks(next);
     setRunning(false);
+    loadDevices();
   }, [userId, isIOS, isStandalone, t]);
+
+  // Carica l'elenco dispositivi registrati + endpoint locale corrente
+  const loadDevices = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const { data: rows } = await supabase
+        .from('push_subscriptions')
+        .select('id, endpoint, user_agent, created_at, last_used_at')
+        .eq('user_id', userId)
+        .order('last_used_at', { ascending: false });
+      setDevices(rows || []);
+    } catch (_) { setDevices([]); }
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      const sub = await reg?.pushManager?.getSubscription();
+      setLocalEndpoint(sub?.endpoint || null);
+    } catch (_) { setLocalEndpoint(null); }
+  }, [userId]);
+
+  const deleteDevice = async (id) => {
+    await supabase.from('push_subscriptions').delete().eq('id', id);
+    loadDevices();
+  };
+
+  // Rigenera la subscription del device corrente: elimina la riga DB,
+  // unsubscribe locale, subscribe fresca con la VAPID key, salva.
+  // È LA cura per gli endpoint "zombie" (vecchi endpoint che il push
+  // service accetta ma non consegna più).
+  const regenerateSubscription = async () => {
+    setResubRunning(true);
+    setResubResult(null);
+    try {
+      const vapid = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      if (!vapid) throw new Error('VAPID key mancante');
+      const reg = await navigator.serviceWorker.ready;
+      const oldSub = await reg.pushManager.getSubscription();
+      if (oldSub) {
+        await supabase.from('push_subscriptions')
+          .delete().eq('user_id', userId).eq('endpoint', oldSub.endpoint);
+        try { await oldSub.unsubscribe(); } catch (_) {}
+      }
+      const newSub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapid),
+      });
+      const keys = newSub.toJSON().keys || {};
+      await supabase.from('push_subscriptions').upsert({
+        user_id: userId,
+        endpoint: newSub.endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        user_agent: navigator.userAgent.slice(0, 200),
+        last_used_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,endpoint', ignoreDuplicates: false });
+      setResubResult({ tone: 'ok', msg: t('nhc_resub_ok') });
+      setTestResult(null);
+      loadDevices();
+    } catch (e) {
+      setResubResult({ tone: 'err', msg: `${t('nhc_resub_err')}: ${e?.message || e}` });
+    }
+    setResubRunning(false);
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -177,9 +246,12 @@ export default function NotificationsHealthCheck({ session }) {
       if (res.status === 404) {
         result = { tone: 'err', msg: t('nhc_test_404') };
       } else if (data?.sent && data.sent > 0) {
-        result = { tone: 'ok', msg: t('nhc_test_ok', { n: data.sent }) };
+        result = { tone: 'ok', msg: t('nhc_test_ok', { n: data.sent }), results: data.results };
       } else if (data?.reason === 'no_subscriptions') {
         result = { tone: 'warn', msg: t('nhc_test_no_subs') };
+      } else if (Array.isArray(data?.results) && data.results.length > 0) {
+        // 0 inviate ma con dettagli per device (es. tutte scadute)
+        result = { tone: 'err', msg: t('nhc_test_unknown'), results: data.results };
       } else if (!res.ok) {
         result = { tone: 'err', msg: data?.error || `HTTP ${res.status}` };
       } else {
@@ -190,6 +262,8 @@ export default function NotificationsHealthCheck({ session }) {
     }
     setTestResult(result);
     setTestRunning(false);
+    // Le subscription scadute vengono rimosse dal server: ricarica l'elenco
+    loadDevices();
   };
 
   // Calcolo riassunto (usato sia dall'effetto auto-open sia dal render)
@@ -286,6 +360,75 @@ export default function NotificationsHealthCheck({ session }) {
             ))}
           </div>
 
+          {/* Dispositivi registrati */}
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--sm)' }}
+            data-testid="nhc-devices-section">
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--k)', marginBottom: 6 }}>
+              {t('nhc_devices_h')} ({devices.length})
+            </div>
+            {devices.length === 0 ? (
+              <div style={{ fontSize: 11.5, color: 'var(--km)' }}>{t('nhc_devices_none')}</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {devices.map((d) => {
+                  const isThis = localEndpoint && d.endpoint === localEndpoint;
+                  return (
+                    <div key={d.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'var(--s)', border: '1px solid var(--sm)',
+                      borderRadius: 8, padding: '7px 10px',
+                    }} data-testid={`nhc-device-${d.id}`}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--k)' }}>
+                          {uaLabel(d.user_agent)}
+                          {isThis && (
+                            <span style={{
+                              marginLeft: 6, padding: '1px 7px', borderRadius: 100,
+                              background: 'var(--gnB)', color: 'var(--gn)',
+                              fontSize: 10, fontWeight: 800,
+                            }}>{t('nhc_devices_this')}</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 10.5, color: 'var(--km)', marginTop: 1 }}>
+                          {t('nhc_devices_last_used')}: {fmtDate(d.last_used_at || d.created_at)}
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => deleteDevice(d.id)}
+                        data-testid={`nhc-device-remove-${d.id}`}
+                        title={t('nhc_devices_remove')}
+                        style={{
+                          border: '1px solid var(--sm)', background: 'white',
+                          borderRadius: 8, padding: '4px 8px', cursor: 'pointer',
+                          fontSize: 12, color: '#A93B2B', flexShrink: 0,
+                        }}>🗑</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Rigenera subscription del device corrente */}
+            <button type="button" onClick={regenerateSubscription} disabled={resubRunning}
+              data-testid="nhc-resub-btn"
+              style={{
+                marginTop: 8, width: '100%', padding: '9px 12px',
+                border: '1px solid var(--sm)', borderRadius: 100,
+                background: 'white', cursor: resubRunning ? 'wait' : 'pointer',
+                fontSize: 12, fontWeight: 700, color: 'var(--k)',
+              }}>
+              {resubRunning ? '…' : `🔄 ${t('nhc_resub_btn')}`}
+            </button>
+            {resubResult && (
+              <div style={{
+                marginTop: 6, padding: '7px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                background: resubResult.tone === 'ok' ? 'var(--gnB)' : '#FDECEC',
+                color: resubResult.tone === 'ok' ? 'var(--gn)' : '#A93B2B',
+              }} data-testid="nhc-resub-result">
+                {resubResult.tone === 'ok' ? '✅ ' : '❌ '}{resubResult.msg}
+              </div>
+            )}
+          </div>
+
           {/* Bottone test push */}
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--sm)' }}>
             <button type="button" onClick={sendTestPush} disabled={testRunning}
@@ -305,6 +448,19 @@ export default function NotificationsHealthCheck({ session }) {
               }} data-testid="nhc-test-push-result">
                 {testResult.tone === 'ok' ? '✅ ' : testResult.tone === 'warn' ? '⚠️ ' : '❌ '}
                 {testResult.msg}
+                {Array.isArray(testResult.results) && testResult.results.length > 0 && (
+                  <div style={{ marginTop: 6, fontWeight: 500 }} data-testid="nhc-test-push-details">
+                    {testResult.results.map((r, i) => (
+                      <div key={r.id || i} style={{ fontSize: 11.5, marginTop: 2 }}>
+                        • {uaLabel(r.ua)} — {r.ok
+                          ? `✓ ${t('nhc_dev_sent')}`
+                          : r.removed
+                            ? `❌ ${t('nhc_dev_removed')} (${r.status})`
+                            : `❌ ${t('nhc_dev_failed')} ${r.status}`}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <div style={{ marginTop: 8, fontSize: 11, color: 'var(--km)', lineHeight: 1.5 }}>
@@ -393,4 +549,30 @@ function initialChecks() {
 function setStatus(arr, key, status, detail) {
   const idx = arr.findIndex((c) => c.key === key);
   if (idx >= 0) arr[idx] = { ...arr[idx], status, detail };
+}
+
+// "Chrome · Windows", "Safari · iPhone/iPad", ecc. da uno user_agent
+function uaLabel(ua) {
+  if (!ua) return 'Dispositivo';
+  const os = /iPhone|iPad|iPod/.test(ua) ? 'iPhone/iPad'
+    : /Android/i.test(ua) ? 'Android'
+    : /Windows/.test(ua) ? 'Windows'
+    : /Macintosh|Mac OS/.test(ua) ? 'Mac'
+    : /Linux/.test(ua) ? 'Linux' : '';
+  const br = /Edg\//.test(ua) ? 'Edge'
+    : /OPR\//.test(ua) ? 'Opera'
+    : /SamsungBrowser/.test(ua) ? 'Samsung Internet'
+    : /Firefox\//.test(ua) ? 'Firefox'
+    : /Chrome\//.test(ua) ? 'Chrome'
+    : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+  return os ? `${br} · ${os}` : br;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) +
+      ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  } catch (_) { return '—'; }
 }

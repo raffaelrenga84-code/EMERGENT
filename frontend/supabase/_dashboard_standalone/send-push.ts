@@ -84,7 +84,7 @@ serve(async (req) => {
   // Recupera tutte le subscription
   const { data: subs, error } = await supabaseAdmin
     .from('push_subscriptions')
-    .select('id, user_id, endpoint, p256dh, auth')
+    .select('id, user_id, endpoint, p256dh, auth, user_agent')
     .in('user_id', userIds);
 
   if (error) return json({ error: error.message }, 500);
@@ -99,6 +99,9 @@ serve(async (req) => {
 
   let sent = 0;
   let expired: string[] = [];
+  // Esito per ogni subscription (per la diagnostica frontend):
+  // ok=true → il push service ha accettato. removed=true → endpoint morto, eliminato.
+  const results: Array<{ id: string; ua: string | null; ok: boolean; status: number | string; removed?: boolean }> = [];
 
   await Promise.all(subs.map(async (s) => {
     const subscription = {
@@ -108,13 +111,20 @@ serve(async (req) => {
     try {
       await webpush.sendNotification(subscription, notificationPayload);
       sent++;
+      results.push({ id: s.id, ua: s.user_agent || null, ok: true, status: 201 });
     } catch (e) {
-      const code = (e as { statusCode?: number }).statusCode;
-      if (code === 404 || code === 410) {
-        // Subscription scaduta / revocata → la rimuoviamo
+      const code = (e as { statusCode?: number }).statusCode ?? 0;
+      // 404/410 = endpoint scaduto/revocato. 403 = VAPID mismatch (subscription
+      // creata con un'altra coppia di chiavi): inutilizzabile, va rimossa.
+      if (code === 404 || code === 410 || code === 403) {
         expired.push(s.id);
+        results.push({ id: s.id, ua: s.user_agent || null, ok: false, status: code, removed: true });
       } else {
         console.warn('push send failed', e);
+        results.push({
+          id: s.id, ua: s.user_agent || null, ok: false,
+          status: code || ((e as Error)?.message ?? 'error'),
+        });
       }
     }
   }));
@@ -133,5 +143,5 @@ serve(async (req) => {
     }
   }
 
-  return json({ sent, expired_removed: expired.length });
+  return json({ sent, failed: subs.length - sent, expired_removed: expired.length, results });
 });

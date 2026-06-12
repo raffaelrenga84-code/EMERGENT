@@ -2,6 +2,11 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.47 (12 giugno 2026) — Push non consegnate: visibilità per-dispositivo
+- `send-push.ts` ora ritorna esiti per subscription e rimuove anche i 403;
+  diagnostica con elenco dispositivi registrati (+rimozione) e bottone
+  "Rigenera subscription" per curare gli endpoint zombie post-bug-400.
+
 ## Iterazione 16.5.46 (12 giugno 2026) — Fix schermo bianco autocomplete indirizzo
 - Sostituito `<gmp-place-autocomplete>` con API programmatica `AutocompleteSuggestion`
   + dropdown custom ancorato al campo (`AddressAutocomplete.jsx` riscritto).
