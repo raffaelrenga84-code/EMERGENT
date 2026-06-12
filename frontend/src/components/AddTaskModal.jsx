@@ -5,6 +5,7 @@ import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
 import { useAndroidBack } from '../lib/useAndroidBack.js';
 import { isIOS } from '../lib/platformDetect.js';
+import { isImageFile, DOC_ACCEPT } from '../lib/fileKind.js';
 import { findAbsenceOverlap, absenceLabel, fmtAbsenceRange } from '../lib/useAbsences.js';
 import { markSelfAssignment } from '../lib/assignMarker.js';
 import AISmartTaskHint from './AISmartTaskHint.jsx';
@@ -126,6 +127,11 @@ export default function AddTaskModal({
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);
     files.forEach((file) => {
+      if (!isImageFile(file.name)) {
+        // Documento (PDF, ecc.): niente anteprima immagine
+        setAttachments((prev) => [...prev, { file, preview: null, name: file.name }]);
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (evt) => {
         setAttachments((prev) => [...prev, { file, preview: evt.target.result, name: file.name }]);
@@ -812,11 +818,18 @@ export default function AddTaskModal({
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                 <span>📸 {t('attach_photo')} <span style={{ color: 'var(--km)', fontSize: 11 }}>({t('optional_label')})</span></span>
               </label>
-              <input type="file" id="file-input" multiple accept="image/*"
+              {/* iOS: il picker nativo ha "Sfoglia" → input unico con anche i
+                  documenti. Android: image/* per la galleria + input doc
+                  separato (image/* nasconde il file manager). */}
+              <input type="file" id="file-input" multiple
+                accept={isIOS() ? `image/*,${DOC_ACCEPT}` : 'image/*'}
                 data-testid="add-task-file-input"
                 onChange={handleFileSelect} style={{ display: 'none' }} />
               <input type="file" id="file-input-camera" multiple accept="image/*" capture="environment"
                 data-testid="add-task-file-input-camera"
+                onChange={handleFileSelect} style={{ display: 'none' }} />
+              <input type="file" id="file-input-doc" multiple accept={DOC_ACCEPT}
+                data-testid="add-task-file-input-doc"
                 onChange={handleFileSelect} style={{ display: 'none' }} />
               {isIOS() ? (
                 /* iOS: picker nativo già mostra "Scatta foto / Libreria foto / Sfoglia" */
@@ -849,13 +862,37 @@ export default function AddTaskModal({
                     }}>
                     🖼️ {t('from_gallery') || 'Galleria'}
                   </button>
+                  <button type="button" onClick={() => document.getElementById('file-input-doc').click()}
+                    data-testid="add-task-attach-file-btn"
+                    style={{
+                      flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                      background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                      color: 'var(--ac)',
+                    }}>
+                    📎 File
+                  </button>
                 </div>
               )}
               {attachments.length > 0 && (
                 <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8 }}>
                   {attachments.map((att, idx) => (
                     <div key={idx} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--sm)' }}>
-                      <img src={att.preview} style={{ width: '100%', height: '100%', objectFit: 'cover', aspectRatio: '1' }} alt="" />
+                      {att.preview ? (
+                        <img src={att.preview} style={{ width: '100%', height: '100%', objectFit: 'cover', aspectRatio: '1' }} alt="" />
+                      ) : (
+                        <div style={{
+                          width: '100%', aspectRatio: '1', background: 'var(--ab)',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center',
+                          justifyContent: 'center', gap: 3, padding: 4, boxSizing: 'border-box',
+                        }}>
+                          <span style={{ fontSize: 18 }}>📄</span>
+                          <span style={{
+                            fontSize: 8, fontWeight: 600, color: 'var(--km)',
+                            wordBreak: 'break-all', textAlign: 'center',
+                            maxHeight: 22, overflow: 'hidden',
+                          }}>{att.name}</span>
+                        </div>
+                      )}
                       <button type="button" onClick={() => removeAttachment(idx)}
                         style={{
                           position: 'absolute', top: 2, right: 2, width: 20, height: 20,

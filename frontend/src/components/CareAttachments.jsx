@@ -176,7 +176,7 @@ export default function CareAttachments({ memberId, kind, parentId = null, meId 
                   {uploading ? (t('care_att_uploading') || 'Carico…') : `📎 File`}
                   <input
                     type="file"
-                    accept="application/pdf,image/*"
+                    accept="application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
                     onChange={handleFile}
                     disabled={uploading}
                     style={{ display: 'none' }}

@@ -581,3 +581,26 @@ ricontava tutte (getNotifications().length) e il badge ripartiva dal totale.
 - Sintassi sw.js verificata + build OK. Da testare su iPhone reale dopo
   deploy (push non simulabile in preview): apri l'app col badge attivo →
   badge sparisce e notifiche rimosse; il push successivo riparte da 1.
+
+## Iterazione 16.5.65 (giugno 2026) — Allegati FILE (PDF/doc) su Android + incarichi
+Bug 1: nel profilo medico il bottone "📎 File" su Android apriva solo
+Camera/Galleria — l'accept conteneva image/* che su Android nasconde il
+file manager. Bug 2: su nuovi incarichi/dettagli mancava del tutto il
+bottone File.
+- Nuovo `lib/fileKind.js`: isImageFile(name) + DOC_ACCEPT (pdf/doc/xls/...
+  SENZA image/*).
+- `CareAttachments.jsx`: accept del bottone File → solo documenti.
+- `PhotoGalleryEditor.jsx` (dettagli incarico): terzo input+bottone 📎
+  (photo-gallery-doc-btn-{kind}); bottoni ora SEMPRE visibili anche a 0
+  allegati; su iOS input unico image/*+DOC_ACCEPT (il picker iOS ha già
+  "Sfoglia"); allegati non-immagine renderizzati come chip 📄 con nome,
+  tap → apre signed URL in nuova scheda ({kind}-doc-{id}).
+- `AddTaskModal.jsx`: terzo bottone "📎 File" (add-task-attach-file-btn) con
+  input dedicato (add-task-file-input-doc); handleFileSelect: i non-immagine
+  entrano senza anteprima e mostrano chip 📄 col nome; upload già generico.
+- `HomeScreen.jsx`: taskMeta separa photos (solo immagini, thumbnails) da
+  docs (contatore); select aggiunge file_name.
+- `BachecaTab.jsx`: badge 📎 N sulla card (task-docs-badge-{id}).
+- i18n: td_attach_photos → "Foto & file", hint con PDF (it+en).
+- Verificato con harness: 3 bottoni gallery, chip PDF nel dettaglio, bottone
+  File + selezione PDF reale in AddTaskModal (set_input_files). Build OK.

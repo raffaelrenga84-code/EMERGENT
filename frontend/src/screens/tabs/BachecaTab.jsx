@@ -1013,6 +1013,15 @@ function TaskCard({ task, meta, unread, onOpenPhoto, family, assignees, statusLa
                   border: unread ? '1px solid #2A6FDB' : '1px solid rgba(193, 98, 75, 0.25)',
                 }}>💬 {meta.msgs}</span>
             )}
+            {(meta?.docs || 0) > 0 && (
+              <span data-testid={`task-docs-badge-${task.id}`} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                padding: '2px 8px', borderRadius: 100,
+                background: 'var(--ab)', color: 'var(--km)',
+                fontSize: 11, fontWeight: 700,
+                border: '1px solid var(--sm)',
+              }}>📎 {meta.docs}</span>
+            )}
             {isFollowUp && (
               <span
                 data-testid={`task-followup-badge-${task.id}`}

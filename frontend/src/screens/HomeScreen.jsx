@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { isImageFile } from '../lib/fileKind.js';
 import { useT } from '../lib/i18n.jsx';
 import { useEventNotifications } from '../lib/useEventNotifications.jsx';
 import { usePullToRefresh } from '../lib/usePullToRefresh.jsx';
@@ -149,7 +150,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
         [aRes, rRes, atRes] = await Promise.all([
           supabase.from('task_assignees').select('*').in('task_id', taskIds),
           supabase.from('task_responses').select('task_id, type, created_at, author_id').in('task_id', taskIds),
-          supabase.from('task_attachments').select('id, task_id, file_path').in('task_id', taskIds),
+          supabase.from('task_attachments').select('id, task_id, file_path, file_name').in('task_id', taskIds),
         ]);
       }
 
@@ -172,7 +173,13 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
           .from('task-attachments')
           .createSignedUrls(atts.map((a) => a.file_path), 60 * 60);
         atts.forEach((a, i) => {
-          metaFor(a.task_id).photos.push({ id: a.id, url: sigs?.[i]?.signedUrl || null });
+          const mm = metaFor(a.task_id);
+          if (isImageFile(a.file_name || a.file_path)) {
+            mm.photos.push({ id: a.id, url: sigs?.[i]?.signedUrl || null });
+          } else {
+            // Documenti (PDF ecc.): solo contatore 📎 sulla card
+            mm.docs = (mm.docs || 0) + 1;
+          }
         });
       }
 
