@@ -724,3 +724,20 @@ A2HS, alias famiglia, foto task...).
 ### Debito noto (non bloccante)
 - AddTaskModal: weekday picker con etichette 'Dom/Lun/...' hardcoded.
 - useEventNotifications.jsx: testi notifiche locali in italiano hardcoded.
+
+## Iterazione 16.5.73 (giugno 2026) — 😊 Fix picker reazioni fuori schermo
+Segnalazione: nel picker reazioni della chat appariva solo 🙏 (l'ultimo),
+gli altri emoji erano fuori dalla visualizzazione.
+### Root cause
+`MessageReactions.jsx`: picker `position:absolute` con `right:-8` ancorato
+a un wrapper stretto sul lato sinistro del bubble → per i messaggi degli
+ALTRI il picker (≈230px) si estendeva a sinistra fuori dallo schermo, e in
+più veniva clippato dal contenitore scrollabile della chat (overflow).
+### Fix
+- Picker ora `position:fixed` (z-index 300, sopra il modale): posizione
+  calcolata all'apertura dal getBoundingClientRect dell'anchor, clampata
+  dentro lo schermo (margin 8px); flip sotto l'anchor se manca spazio sopra.
+- Listener scroll (capture) chiude il picker se la chat scrolla.
+- Verifica: harness React root HTML (Vite transform) con 12 messaggi —
+  picker non-mio: PASS (left 60, right 290, 6 emoji visibili);
+  picker mio: PASS (dentro viewport). Harness rimosso.

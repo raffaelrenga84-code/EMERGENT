@@ -28,6 +28,12 @@ export default function MessageReactions({
   const [reactions, setReactions] = useState(response?.reactions || {});
   const [internalOpen, setInternalOpen] = useState(false);
   const pickerRef = useRef(null);
+  const anchorRef = useRef(null);
+  // Posizione fixed del picker: calcolata all'apertura dal rect dell'anchor
+  // e clampata dentro lo schermo. (Prima era position:absolute con right:-8
+  // → per i messaggi degli altri si estendeva a sinistra FUORI dallo schermo
+  // e veniva clippato dal contenitore scrollabile della chat.)
+  const [pickerPos, setPickerPos] = useState(null);
 
   const isControlled = typeof pickerOpen === 'boolean';
   const open = isControlled ? pickerOpen : internalOpen;
@@ -39,6 +45,31 @@ export default function MessageReactions({
   useEffect(() => {
     setReactions(response?.reactions || {});
   }, [response?.reactions]);
+
+  useEffect(() => {
+    if (!open) { setPickerPos(null); return; }
+    const r = anchorRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const PICKER_W = REACTIONS.length * 32 + (REACTIONS.length - 1) * 4 + 16;
+    const PICKER_H = 44;
+    const margin = 8;
+    let left = isMine ? r.right - PICKER_W : r.left;
+    left = Math.max(margin, Math.min(left, window.innerWidth - PICKER_W - margin));
+    // Sopra l'anchor; se non c'è spazio (primo messaggio in alto) → sotto.
+    let top = r.top - PICKER_H - 6;
+    if (top < margin) top = r.bottom + 6;
+    setPickerPos({ top, left });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isMine]);
+
+  // Chiudi il picker se la chat scrolla (la posizione fixed non seguirebbe)
+  useEffect(() => {
+    if (!open) return;
+    const onScroll = () => close();
+    window.addEventListener('scroll', onScroll, true);
+    return () => window.removeEventListener('scroll', onScroll, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -117,7 +148,7 @@ export default function MessageReactions({
   );
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={anchorRef} style={{ position: 'relative', display: 'inline-block' }}>
       {/* Bollini reactions attivi sotto il bubble */}
       {entries.length > 0 && (
         <div style={{
@@ -174,21 +205,21 @@ export default function MessageReactions({
         </button>
       )}
 
-      {/* Picker overlay */}
-      {open && (
+      {/* Picker overlay — fixed, sempre dentro lo schermo, sopra il modale */}
+      {open && pickerPos && (
         <div ref={pickerRef}
           data-testid={`reaction-picker-${response.id}`}
           style={{
-            position: 'absolute',
-            top: entries.length > 0 ? -52 : -44,
-            [isMine ? 'left' : 'right']: -8,
+            position: 'fixed',
+            top: pickerPos.top,
+            left: pickerPos.left,
             background: 'white',
             borderRadius: 100,
             padding: '6px 8px',
             border: '1px solid var(--sm)',
             boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
             display: 'flex', gap: 4,
-            zIndex: 50,
+            zIndex: 300,
             animation: 'reactionPop 0.18s ease-out',
           }}>
           {REACTIONS.map((emoji) => (
