@@ -604,3 +604,24 @@ bottone File.
 - i18n: td_attach_photos → "Foto & file", hint con PDF (it+en).
 - Verificato con harness: 3 bottoni gallery, chip PDF nel dettaglio, bottone
   File + selezione PDF reale in AddTaskModal (set_input_files). Build OK.
+
+## Iterazione 16.5.66 (giugno 2026) — 📎 File su Eventi/Spese + feedback Diario
+### Eventi & Spese
+- `AddEventModal.jsx` / `AddExpenseModal.jsx`: terzo bottone "📎 File"
+  (add-event/-expense-attach-file-btn) con input doc dedicato (DOC_ACCEPT
+  senza image/* → Android apre il file manager); iOS input unico
+  image/*+documenti; non-immagine senza anteprima → chip 📄 col nome.
+- `SpeseTab.jsx`: NUOVO viewer allegati sulle card spese (prima gli allegati
+  venivano caricati ma MAI mostrati!): fetch batch expense_attachments +
+  createSignedUrls; foto = miniature 42px, PDF = chip 📄 col nome, tap →
+  apre in nuova scheda (expense-attachments-{id}, expense-att-img/-doc-{id}).
+- Eventi: il dettaglio usa già PhotoGalleryEditor (aggiornato in 16.5.65).
+### Diario medico
+- Nessun blocco di validazione esisteva (tutti i campi opzionali), ma
+  mancava QUALSIASI feedback → l'utente pensava che il salvataggio fosse
+  rifiutato. Ora: toast "✅ Diario salvato" (fammy_toast) + auto-include
+  della misurazione pressione digitata ma non aggiunta col "+" (stesso
+  pattern del fix medicine 16.5.62). i18n dd_saved (it+en).
+- Verifica: harness su entrambi i modal (bottone 📎 + chip PDF con
+  set_input_files reale), build OK. expense_attachments table/bucket già
+  presenti nel MASTER sql — nessun nuovo SQL.

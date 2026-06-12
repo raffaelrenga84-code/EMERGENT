@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useAndroidBack } from '../lib/useAndroidBack.js';
 import { isIOS } from '../lib/platformDetect.js';
+import { isImageFile, DOC_ACCEPT } from '../lib/fileKind.js';
 import { EXPENSE_CATEGORIES } from '../lib/expenseCategories.js';
 
 export default function AddExpenseModal({ familyId, families = [], members, defaultPaidBy, authorMemberId, prefilledTask = null, prefilledExpense = null, onClose, onCreated }) {
@@ -76,6 +77,11 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);
     files.forEach((file) => {
+      if (!isImageFile(file.name)) {
+        // Documento (PDF, ecc.): niente anteprima immagine
+        setAttachments((prev) => [...prev, { file, preview: null, name: file.name }]);
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (evt) => {
         setAttachments((prev) => [...prev, {
@@ -371,7 +377,13 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
               <span>{t('attach_photo_optional')} <span style={{ color: 'var(--km)', fontSize: 11 }}>(opzionale)</span></span>
             </label>
-            <input type="file" id="expense-file-input" multiple accept="image/*"
+            <input type="file" id="expense-file-input" multiple
+              accept={isIOS() ? `image/*,${DOC_ACCEPT}` : 'image/*'}
+              data-testid="add-expense-file-input"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }} />
+            <input type="file" id="expense-file-input-doc" multiple accept={DOC_ACCEPT}
+              data-testid="add-expense-file-input-doc"
               onChange={handleFileSelect}
               style={{ display: 'none' }} />
             <input type="file" id="expense-file-input-camera" multiple accept="image/*" capture="environment"
@@ -404,6 +416,15 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
                   }}>
                   🖼️ {t('from_gallery') || 'Galleria'}
                 </button>
+                <button type="button" onClick={() => document.getElementById('expense-file-input-doc').click()}
+                  data-testid="add-expense-attach-file-btn"
+                  style={{
+                    flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
+                    background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                    color: 'var(--ac)',
+                  }}>
+                  📎 File
+                </button>
               </div>
             )}
 
@@ -411,7 +432,22 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
               <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8 }}>
                 {attachments.map((att, idx) => (
                   <div key={idx} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--sm)' }}>
-                    <img src={att.preview} style={{ width: '100%', height: '100%', objectFit: 'cover', aspectRatio: '1' }} alt={`Attachment ${idx}`} />
+                    {att.preview ? (
+                      <img src={att.preview} style={{ width: '100%', height: '100%', objectFit: 'cover', aspectRatio: '1' }} alt={`Attachment ${idx}`} />
+                    ) : (
+                      <div style={{
+                        width: '100%', aspectRatio: '1', background: 'var(--ab)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        justifyContent: 'center', gap: 3, padding: 4, boxSizing: 'border-box',
+                      }}>
+                        <span style={{ fontSize: 18 }}>📄</span>
+                        <span style={{
+                          fontSize: 8, fontWeight: 600, color: 'var(--km)',
+                          wordBreak: 'break-all', textAlign: 'center',
+                          maxHeight: 22, overflow: 'hidden',
+                        }}>{att.name}</span>
+                      </div>
+                    )}
                     <button type="button" onClick={() => removeAttachment(idx)}
                       style={{
                         position: 'absolute', top: 2, right: 2, width: 20, height: 20,

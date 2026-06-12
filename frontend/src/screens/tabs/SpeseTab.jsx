@@ -6,6 +6,7 @@ import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import PartialPaymentModal from '../../components/PartialPaymentModal.jsx';
 import ExpensesBalance from '../../components/ExpensesBalance.jsx';
 import { getCategory } from '../../lib/expenseCategories.js';
+import { isImageFile } from '../../lib/fileKind.js';
 
 export default function SpeseTab({ familyId, families = [], expenses, tasks, members, me, onChanged, pendingTask, onClearPendingTask }) {
   const { t } = useT();
@@ -15,6 +16,36 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
   const [showArchive, setShowArchive] = useState(false);
   // Pagamento parziale: {expense, share, member} oppure null
   const [payingShare, setPayingShare] = useState(null);
+  // Allegati spese (scontrini/bollette): { expense_id: [{id, file_name, url, isImg}] }
+  const [expAtts, setExpAtts] = useState({});
+
+  useEffect(() => {
+    const ids = (expenses || []).map((e) => e.id);
+    if (ids.length === 0) { setExpAtts({}); return undefined; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('expense_attachments')
+        .select('id, expense_id, file_path, file_name')
+        .in('expense_id', ids);
+      const rows = data || [];
+      if (rows.length === 0) { if (!cancelled) setExpAtts({}); return; }
+      const { data: sigs } = await supabase.storage
+        .from('expense-attachments')
+        .createSignedUrls(rows.map((r) => r.file_path), 60 * 60);
+      const map = {};
+      rows.forEach((r, i) => {
+        (map[r.expense_id] = map[r.expense_id] || []).push({
+          id: r.id,
+          file_name: r.file_name,
+          url: sigs?.[i]?.signedUrl || null,
+          isImg: isImageFile(r.file_name || r.file_path),
+        });
+      });
+      if (!cancelled) setExpAtts(map);
+    })();
+    return () => { cancelled = true; };
+  }, [expenses]);
   // Idle-pulse: dopo ~1s di inattività il FAB "+" pulsa per attirare attenzione
   const [idlePulse, setIdlePulse] = useState(false);
 
@@ -156,6 +187,37 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
               title="Elimina (solo creatore)">✕</button>
           )}
         </div>
+
+        {/* Allegati (scontrini/bollette): foto come miniature, PDF come chip */}
+        {(expAtts[e.id] || []).length > 0 && (
+          <div data-testid={`expense-attachments-${e.id}`}
+            style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 10 }}>
+            {expAtts[e.id].map((a) => (a.isImg ? (
+              <a key={a.id} href={a.url || '#'} target="_blank" rel="noreferrer"
+                data-testid={`expense-att-img-${a.id}`}>
+                <img src={a.url} alt={a.file_name}
+                  style={{
+                    width: 42, height: 42, borderRadius: 9, objectFit: 'cover',
+                    border: '1px solid var(--sm)', display: 'block',
+                  }} />
+              </a>
+            ) : (
+              <a key={a.id} href={a.url || '#'} target="_blank" rel="noreferrer"
+                data-testid={`expense-att-doc-${a.id}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '5px 10px', borderRadius: 100,
+                  background: 'var(--ab)', border: '1px solid var(--sm)',
+                  fontSize: 11, fontWeight: 600, color: 'var(--k)',
+                  textDecoration: 'none', maxWidth: 180,
+                }}>
+                📄 <span style={{
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{a.file_name}</span>
+              </a>
+            )))}
+          </div>
+        )}
 
         {expShares.length > 0 && (
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--sm)' }}>

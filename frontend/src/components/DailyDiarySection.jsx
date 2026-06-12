@@ -71,6 +71,15 @@ export default function DailyDiarySection({ member, me }) {
 
   const save = async () => {
     setSaving(true);
+    // Auto-include: misurazione pressione digitata ma non aggiunta col "+"
+    const pSys = parseInt(newSys, 10);
+    const pDia = parseInt(newDia, 10);
+    if (pSys && pDia) {
+      const next = [...getBpReadings(todayEntry), { t: newTime || null, sys: pSys, dia: pDia }];
+      if (await saveReadings(next)) {
+        setNewSys(''); setNewDia(''); setNewTime(nowHM());
+      }
+    }
     const payload = {
       member_id: member.id,
       diary_date: today,
@@ -85,6 +94,11 @@ export default function DailyDiarySection({ member, me }) {
       .from('daily_diary').upsert(payload, { onConflict: 'member_id,diary_date' });
     setSaving(false);
     if (error) { alert(error.message); return; }
+    // Feedback esplicito: tutti i campi sono opzionali, ma senza conferma
+    // l'utente pensava che il salvataggio fosse bloccato.
+    window.dispatchEvent(new CustomEvent('fammy_toast', {
+      detail: { text: `✅ ${t('dd_saved') || 'Diario salvato'}`, tone: 'success' },
+    }));
     await load();
   };
 
