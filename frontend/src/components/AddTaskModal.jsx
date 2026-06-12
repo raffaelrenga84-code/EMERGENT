@@ -239,6 +239,21 @@ export default function AddTaskModal({
       }
     }
 
+    // L'autore deve essere il MIO membro della famiglia FINALE del task:
+    // con più famiglie selezionabili, authorMemberId può appartenere a
+    // un'altra famiglia e i filtri "escludi autore" delle notifiche
+    // (trigger + coda) non riconoscerebbero il creatore.
+    const authorUserId = members.find((m) => m.id === authorMemberId)?.user_id || null;
+    let finalAuthorId = authorMemberId || null;
+    if (finalAuthorId) {
+      const authorMember = members.find((m) => m.id === finalAuthorId);
+      if (authorMember && authorMember.family_id !== finalFamilyId) {
+        finalAuthorId = members.find((m) =>
+          m.family_id === finalFamilyId && m.user_id && m.user_id === authorUserId
+        )?.id || null;
+      }
+    }
+
     const payloadCommon = {
       title: title.trim(),
       note: note.trim() || null,
@@ -289,7 +304,9 @@ export default function AddTaskModal({
     }
 
     // Creazione: se l'unico assegnatario sono io, parto in 'taken'
-    const initialStatus = (assignees.length === 1 && authorMemberId && assignees[0] === authorMemberId)
+    const initialStatus = (assignees.length === 1 &&
+      ((authorMemberId && assignees[0] === authorMemberId) ||
+       (finalAuthorId && assignees[0] === finalAuthorId)))
       ? 'taken'
       : 'todo';
 
@@ -298,7 +315,7 @@ export default function AddTaskModal({
       ...payloadCommon,
       status: initialStatus,
       visibility: 'all',
-      author_id: authorMemberId || null,
+      author_id: finalAuthorId,
       assigned_to: assignees[0] || null,
     }).select().single();
 

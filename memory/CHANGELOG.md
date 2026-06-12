@@ -4,6 +4,21 @@
 
 ## 2026-06-12 (decies) — Fix doppia push "Nuovo incarico"+"Assegnato a te"
 
+### UPDATE (stesso giorno): autore notificato in scenario MULTI-FAMIGLIA
+L'utente (creatore) riceveva le notifiche del proprio task: con la vista
+multi-famiglia, il task viene creato nella famiglia degli ASSEGNATARI ma
+`author_id` era il member id del creatore in UN'ALTRA famiglia → tutti i
+filtri "escludi autore" fallivano. Fix su 3 livelli:
+1. `AddTaskModal.jsx`: `finalAuthorId` = il MIO membro della famiglia
+   FINALE (lookup per user_id); usato in author_id e initialStatus.
+2. `notify_task_assigned` (SQL, incluso in fammy-fix-double-push.sql):
+   confronto autore/assegnatario per USER ID, non per member id.
+   Patch applicata anche a MASTER-restore, RESTORE-3-of-3, push-on-tasks.
+3. `task-reminder-push.ts`: lookup globale dell'autore (fallback fuori
+   famiglia) nella coda "Nuovo incarico".
+Desiderata utente confermato: il creatore deve ricevere SOLO follow-up
+(chi accetta, commenti, foto) — mai notifiche delle proprie azioni.
+
 ### Problema
 Famiglia da 2: l'assegnatario riceveva 2 push per lo stesso task. Causa:
 trigger `notify_task_created` (su tasks INSERT) non può escludere gli

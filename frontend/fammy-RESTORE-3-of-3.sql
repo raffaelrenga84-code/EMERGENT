@@ -646,8 +646,13 @@ begin
   -- Non notificare placeholder senza account
   if v_assignee_uid is null then return new; end if;
 
-  -- Non notificare l'autore se è anche assegnatario di se stesso
-  if new.member_id = v_task.author_id then return new; end if;
+  -- Non notificare l'autore se è anche assegnatario di se stesso.
+  -- Confronto per UTENTE (non per member id): con più famiglie
+  -- l'author_id può appartenere a un membro di un'altra famiglia.
+  if new.member_id = v_task.author_id
+     or v_assignee_uid = (select user_id from public.members where id = v_task.author_id) then
+    return new;
+  end if;
 
   -- Nome dell'autore
   select coalesce(m.name, 'Qualcuno') into v_author_name

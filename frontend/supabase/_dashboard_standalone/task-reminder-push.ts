@@ -84,7 +84,15 @@ serve(async (req) => {
         const { data: fam } = await supabaseAdmin
           .from('members').select('id, user_id, name').eq('family_id', task.family_id);
 
-        const author = (fam || []).find((m) => m.id === task.author_id);
+        // L'autore può essere un membro di UN'ALTRA famiglia (task creato
+        // dalla vista multi-famiglia): lookup globale di fallback.
+        let author = (fam || []).find((m) => m.id === task.author_id) || null;
+        if (!author && task.author_id) {
+          const { data: a } = await supabaseAdmin
+            .from('members').select('id, user_id, name')
+            .eq('id', task.author_id).maybeSingle();
+          author = a || null;
+        }
         const excluded = new Set<string>();
         if (author?.user_id) excluded.add(author.user_id);
         for (const m of fam || []) {
