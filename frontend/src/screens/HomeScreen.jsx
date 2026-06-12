@@ -148,16 +148,22 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
       if (taskIds.length > 0) {
         [aRes, rRes, atRes] = await Promise.all([
           supabase.from('task_assignees').select('*').in('task_id', taskIds),
-          supabase.from('task_responses').select('task_id, type').in('task_id', taskIds),
+          supabase.from('task_responses').select('task_id, type, created_at, author_id').in('task_id', taskIds),
           supabase.from('task_attachments').select('id, task_id, file_path').in('task_id', taskIds),
         ]);
       }
 
-      // Conteggio messaggi chat reali (non system) + miniature foto per card.
+      // Conteggio messaggi chat reali (non system) + ultimo messaggio (per
+      // badge "non letto" stile WhatsApp) + miniature foto per card.
       const meta = {};
-      const metaFor = (id) => (meta[id] = meta[id] || { msgs: 0, photos: [] });
+      const metaFor = (id) => (meta[id] = meta[id] || { msgs: 0, photos: [], lastMsg: null });
       for (const r of rRes.data || []) {
-        if (r.type !== 'system') metaFor(r.task_id).msgs += 1;
+        if (r.type === 'system') continue;
+        const mm = metaFor(r.task_id);
+        mm.msgs += 1;
+        if (!mm.lastMsg || r.created_at > mm.lastMsg.at) {
+          mm.lastMsg = { at: r.created_at, author_id: r.author_id };
+        }
       }
       const atts = atRes.data || [];
       if (atts.length > 0) {

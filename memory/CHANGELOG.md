@@ -547,3 +547,22 @@ Bug: l'orario scelto nel time-picker veniva salvato SOLO premendo
   2) picker non toccato → [] al bisogno ✓
   3) chip 08:30 + picker 20:00 → entrambi ✓
 - Build OK. Nessun SQL.
+
+## Iterazione 16.5.63 (giugno 2026) — Chat non lette stile WhatsApp in Bacheca
+- `HomeScreen.jsx`: taskMeta ora include lastMsg {at, author_id} (ultimo
+  messaggio non-system per task).
+- `BachecaTab.jsx`:
+  - tracking "visto" per device in localStorage (fammy_chat_seen_v1);
+    markChatSeen all'apertura E alla chiusura del TaskDetailModal;
+  - hasUnreadChat: ultimo msg di qualcun altro + successivo all'ultima
+    apertura (se l'ultimo è mio → letto);
+  - badge 💬 BLU (#2A6FDB) + animazione pulse (classe .chat-badge-unread,
+    keyframes fammy-chat-pulse in styles.css) quando non letto; neutro se letto;
+  - sortByNews sulla lista "Da fare": prima chat non lette (più recente in
+    cima), poi priorità alta/media, poi ordine consueto (sort stabile).
+    Archivio "Fatti" non riordinato.
+- Verificato con harness: ordine non letta→urgente→normale, badge blu
+  pulsante (animationName=fammy-chat-pulse), dopo apertura torna neutro e
+  l'urgente risale. 0 errori JS. Build OK. Nessun SQL.
+- NOTA: il "visto" è per dispositivo (localStorage); sync cross-device
+  richiederebbe una tabella task_reads (eventuale evoluzione futura).

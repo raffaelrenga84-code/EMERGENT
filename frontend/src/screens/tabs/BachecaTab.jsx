@@ -142,6 +142,51 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const otherTasks = todos.filter((t) => !isMine(t));
   const followUpTasks = todos.filter(isFollowUp);
 
+  // ===== Chat non lette (stile WhatsApp) =====
+  // Tracking "visto" per device via localStorage: un task ha chat non letta
+  // se l'ultimo messaggio è di qualcun altro ed è successivo all'ultima
+  // apertura del dettaglio su questo dispositivo.
+  const [chatSeen, setChatSeen] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('fammy_chat_seen_v1')) || {}; }
+    catch (_) { return {}; }
+  });
+  const markChatSeen = (taskId) => {
+    setChatSeen((prev) => {
+      const next = { ...prev, [taskId]: new Date().toISOString() };
+      try { localStorage.setItem('fammy_chat_seen_v1', JSON.stringify(next)); } catch (_) { /* ignore */ }
+      return next;
+    });
+  };
+  const myMemberIds = new Set(
+    (members || []).filter((m) => m.user_id === session.user.id).map((m) => m.id)
+  );
+  const hasUnreadChat = (task) => {
+    const m = taskMeta[task._origId || task.id];
+    if (!m?.lastMsg?.at) return false;
+    if (m.lastMsg.author_id && myMemberIds.has(m.lastMsg.author_id)) return false;
+    const seen = chatSeen[task._origId || task.id];
+    return !seen || new Date(m.lastMsg.at) > new Date(seen);
+  };
+
+  // Ordinamento "novità in alto" (come WhatsApp): prima i task con chat non
+  // letta (più recente in cima), poi urgenti/medi, poi il resto nell'ordine
+  // consueto (Array.sort è stabile).
+  const prioRank = (x) => ((x.priority === 'high' || x.urgent) ? 2 : x.priority === 'medium' ? 1 : 0);
+  const lastMsgTime = (task) => {
+    const m = taskMeta[task._origId || task.id];
+    return m?.lastMsg?.at ? new Date(m.lastMsg.at).getTime() : 0;
+  };
+  const sortByNews = (list) => [...list].sort((a, b) => {
+    const ua = hasUnreadChat(a) ? 1 : 0;
+    const ub = hasUnreadChat(b) ? 1 : 0;
+    if (ua !== ub) return ub - ua;
+    if (ua && ub) return lastMsgTime(b) - lastMsgTime(a);
+    const pa = prioRank(a);
+    const pb = prioRank(b);
+    if (pa !== pb) return pb - pa;
+    return 0;
+  });
+
   // Filtri rapidi applicati ai TODO
   const applyQuickFilter = (list) => {
     if (quickFilter === 'all')      return list;
@@ -426,6 +471,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
             <TaskCard
               task={task}
               meta={taskMeta[task._origId || task.id]}
+              unread={hasUnreadChat(task)}
               onOpenPhoto={(idx) => setPhotoLightbox({
                 photos: taskMeta[task._origId || task.id]?.photos || [],
                 index: idx,
@@ -445,6 +491,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
                 if (priorityMenuOpen?.taskId === task.id) {
                   setPriorityMenuOpen(null);
                 } else {
+                  markChatSeen(task._origId || task.id);
                   setSelTask(task);
                 }
               }}
@@ -567,7 +614,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           t={t}
         />
       ) : (
-        renderTaskList([...visibleMyTasks, ...visibleOtherTasks])
+        renderTaskList(sortByNews([...visibleMyTasks, ...visibleOtherTasks]))
       )}
 
       {/* Sezione "Fatti": SEMPRE visibile (a prescindere dal filtro "Da fare")
@@ -628,9 +675,9 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           task={selTask}
           members={members}
           me={me}
-          onClose={() => setSelTask(null)}
+          onClose={() => { markChatSeen(selTask._origId || selTask.id); setSelTask(null); }}
           onChanged={() => { onChanged(); }}
-          onClosed={() => setSelTask(null)}
+          onClosed={() => { markChatSeen(selTask._origId || selTask.id); setSelTask(null); }}
           onEdit={(task) => { setSelTask(null); setEditingTask(task); }}
           onOpenExpense={(task) => { setSelTask(null); onOpenExpenseForTask && onOpenExpenseForTask(task); }}
         />
@@ -882,7 +929,7 @@ function CollapsibleSection({ label, count, open, onToggle, children, empty, acc
   );
 }
 
-function TaskCard({ task, meta, onOpenPhoto, family, assignees, statusLabel, isFollowUp, followUpLabel, followUpHistory = [], members = [], onClick, onCheck, priorityMenu, onSetPriority, onClosePriorityMenu }) {
+function TaskCard({ task, meta, unread, onOpenPhoto, family, assignees, statusLabel, isFollowUp, followUpLabel, followUpHistory = [], members = [], onClick, onCheck, priorityMenu, onSetPriority, onClosePriorityMenu }) {
   const priority = task.priority || (task.urgent ? 'high' : 'normal');
   const priorityColor = priority === 'high' ? 'var(--rd)'
                       : priority === 'medium' ? '#F39C12'
@@ -956,12 +1003,14 @@ function TaskCard({ task, meta, onOpenPhoto, family, assignees, statusLabel, isF
               <span data-testid={`task-chat-badge-${task.id}`}
                 role="button"
                 onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}
+                className={unread ? 'chat-badge-unread' : ''}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 3,
                   padding: '2px 8px', borderRadius: 100,
-                  background: 'var(--ab)', color: 'var(--ac)',
+                  background: unread ? '#2A6FDB' : 'var(--ab)',
+                  color: unread ? 'white' : 'var(--ac)',
                   fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                  border: '1px solid rgba(193, 98, 75, 0.25)',
+                  border: unread ? '1px solid #2A6FDB' : '1px solid rgba(193, 98, 75, 0.25)',
                 }}>💬 {meta.msgs}</span>
             )}
             {isFollowUp && (

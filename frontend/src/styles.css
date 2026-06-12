@@ -640,6 +640,12 @@ html[data-theme="dark"] .ai-pill-btn { background: rgba(255,255,255,.05); color:
 @keyframes ai-slide { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes fammy-toast-in { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes fammy-flash { 0% { transform: scale(1); } 30% { transform: scale(1.015); } 100% { transform: scale(1); } }
+/* Badge chat non letta: blu, pulsante (stile WhatsApp) */
+@keyframes fammy-chat-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(42, 111, 219, 0.40); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(42, 111, 219, 0); }
+}
+.chat-badge-unread { animation: fammy-chat-pulse 1.5s ease-in-out infinite; }
 @keyframes fammy-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes fammy-toast-up {
   from { transform: translate(-50%, 16px); opacity: 0; }
