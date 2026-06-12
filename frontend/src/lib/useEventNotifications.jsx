@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from './supabase.js';
+import { wasSelfAssignment } from './assignMarker.js';
 import { isBirthdayTomorrow } from './birthdayUtils.js';
 
 const NOTIFICATIONS_ENABLED_KEY = 'fammy_notifications_enabled';
@@ -129,6 +130,9 @@ export function useEventNotifications(session, profile, families, events, taskAs
 
         if (payload.eventType === 'INSERT') {
           const t = payload.new;
+          // ⛔️ Niente notifica al CREATORE per il proprio incarico:
+          // chi lo crea sa già di averlo creato.
+          if (t.author_id && myMemberIds.includes(t.author_id)) return;
           const family = families.find((f) => f.id === t.family_id);
           showNewTaskNotification(t, family);
         } else if (payload.eventType === 'UPDATE') {
@@ -191,16 +195,27 @@ export function useEventNotifications(session, profile, families, events, taskAs
         if (!row.task_id || !row.member_id) return;
         // Salta se l'assegnatario sono io stesso (no auto-notifica)
         if (myMemberIds.includes(row.member_id)) return;
+        // ⛔️ Salta se l'assegnazione l'ho fatta IO da questo dispositivo
+        // (creazione/modifica/delega): notifico solo quando QUALCUN ALTRO
+        // si prende in carico un mio incarico.
+        if (wasSelfAssignment(row.task_id)) return;
         try {
           const { data: task } = await supabase
-            .from('tasks').select('id, title, family_id, author_id')
+            .from('tasks').select('id, title, family_id, author_id, created_at')
             .eq('id', row.task_id).maybeSingle();
           if (!task) return;
           if (!familyIds.includes(task.family_id)) return;
           // Notifica SOLO se il creator sono io (= sto seguendo questo task)
           if (!task.author_id || !myMemberIds.includes(task.author_id)) return;
+          // ⛔️ Assegnazione contestuale alla CREAZIONE del task (fatta dal
+          // creatore, anche da un altro dispositivo): il creatore sa già
+          // a chi l'ha assegnato → niente notifica.
+          if (task.created_at && (Date.now() - new Date(task.created_at).getTime()) < 120000) return;
           // Nome del nuovo assegnatario per il body
           const assignee = members.find((m) => m.id === row.member_id);
+          // ⛔️ Membro placeholder senza account: non può essersi preso
+          // l'incarico da solo → è stato assegnato da qualcuno. Salta.
+          if (!assignee?.user_id) return;
           showAssignedToMyTaskNotification(task, assignee);
         } catch (e) { /* silent */ }
       })

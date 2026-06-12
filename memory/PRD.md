@@ -2,6 +2,12 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.50 (12 giugno 2026) — Logica notifiche + promemoria a orario
+- Niente più notifiche al creatore per le proprie azioni (nuovo incarico /
+  "X se ne occupa" su assegnazione propria o verso placeholder).
+- Nuovo cron task-reminder-push: push agli assegnatari all'ora di due_time.
+- AddTaskModal full-screen su mobile + stop oscillazione orizzontale.
+
 ## Iterazione 16.5.49 (12 giugno 2026) — Fix schermo bianco + Spese come start
 - White-screen al rientro (iOS PWA): openExternal() per i link wa.me + watchdog
   in main.jsx (pageshow/visibilitychange + repaint nudge). Da verificare su device.

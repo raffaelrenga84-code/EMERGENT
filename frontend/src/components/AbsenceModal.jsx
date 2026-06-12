@@ -3,6 +3,7 @@ import { toLocalYMD } from '../lib/dateUtils.js';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
+import { markSelfAssignment } from '../lib/assignMarker.js';
 import NativeDateInput from './NativeDateInput.jsx';
 import ImportScheduleModal from './ImportScheduleModal.jsx';
 import AbsenceCommentsThread from './AbsenceCommentsThread.jsx';
@@ -138,6 +139,7 @@ export default function AbsenceModal({
           });
           // Set assignee
           await supabase.from('task_assignees').delete().eq('task_id', taskRow.id);
+          markSelfAssignment(taskRow.id);
           await supabase.from('task_assignees').insert({ task_id: taskRow.id, member_id: reassignTo });
         }
       } catch (e) { /* silent */ }

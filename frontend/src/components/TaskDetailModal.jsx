@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { sendPush, memberIdsToUserIds } from '../lib/pushClient.js';
+import { markSelfAssignment } from '../lib/assignMarker.js';
 import { useT } from '../lib/i18n.jsx';
 import { useAndroidBack } from '../lib/useAndroidBack.js';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
@@ -358,6 +359,7 @@ export default function TaskDetailModal({
 
     await supabase.from('task_assignees').delete().eq('task_id', realTaskId);
     if (restoreIds.length > 0) {
+      markSelfAssignment(realTaskId);
       await supabase.from('task_assignees').insert(
         restoreIds.map((mid) => ({ task_id: realTaskId, member_id: mid }))
       );
@@ -404,6 +406,7 @@ export default function TaskDetailModal({
     }
 
     if (restoreIds.length > 0) {
+      markSelfAssignment(realTaskId);
       await supabase.from('task_assignees').insert(
         restoreIds.map((mid) => ({ task_id: realTaskId, member_id: mid }))
       );

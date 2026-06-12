@@ -2,6 +2,42 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 (quinquies) — Logica notifiche incarichi + promemoria a orario + modal full-screen
+
+### Bug 1: il creatore riceveva notifiche per le proprie azioni
+- "📋 Nuovo incarico": il watcher locale tasks INSERT non escludeva l'autore
+  → fix in `useEventNotifications.jsx` (skip se `author_id ∈ myMemberIds`).
+- "✅ X se ne occupa": scattava su QUALSIASI INSERT in task_assignees, inclusa
+  l'assegnazione fatta dal creatore alla creazione (anche verso placeholder
+  senza account, es. Jenna non ancora registrata). Nuove guardie nel watcher:
+  1. `wasSelfAssignment(taskId)` — marker localStorage scritto da
+     AddTaskModal (create+edit), AbsenceModal (riassegna), TaskDetailModal
+     (delega + unassign-restore) quando IO modifico gli assegnatari
+     (nuovo file `src/lib/assignMarker.js`). Il claim (`claimOnly`,
+     swipe "Me ne occupo io", azione push) NON marca: deve notificare.
+  2. Skip se assegnazione entro 2 min dalla creazione del task (cross-device).
+  3. Skip se l'assegnatario è un placeholder senza account (non può
+     essersi preso l'incarico da solo).
+
+### Feature: ⏰ promemoria push all'ora dell'incarico
+Caso d'uso: incarico auto-assegnato come promemoria → push al giorno e
+all'ora impostati (due_date + due_time), NON alla creazione.
+- ➕ `task-reminder-push.ts` (standalone): cron ogni minuto, calcola data/ora
+  in Europe/Rome via Intl, matcha `due_date=oggi AND due_time=adesso AND
+  status≠done`, push agli assegnatari (`⏰ <titolo> — È l'ora che avevi
+  impostato · 🕒 HH:MM`, tag `task-due-<id>`).
+- ➕ `fammy-task-reminder-cron.sql`: job pg_cron 'fammy-task-reminder'
+  (* * * * *), pattern identico al promemoria farmaci.
+- AZIONI UTENTE: creare la NUOVA edge function `task-reminder-push` nel
+  dashboard + eseguire l'SQL. ESEGUITE? da confermare.
+
+### Bug 2: modal "Nuovo incarico" ballava a destra/sinistra e non era full-screen
+- `.modal { overflow-x: hidden }` (stop pan orizzontale da figli larghi).
+- Nuova variante `.modal-full` (100dvh - safe-area) applicata ad AddTaskModal;
+  su desktop ≥768px torna al comportamento standard (92vh, centrato).
+
+Build OK + smoke preview OK. Test funzionale push → utente su device reali.
+
 ## 2026-06-12 (quater) — Fix schermo bianco al rientro + opzione Spese
 
 ### Bug P0: schermo bianco al rientro nell'app (es. dopo invito WhatsApp)

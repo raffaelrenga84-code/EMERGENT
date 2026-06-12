@@ -6,6 +6,7 @@ import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
 import { useAndroidBack } from '../lib/useAndroidBack.js';
 import { isIOS } from '../lib/platformDetect.js';
 import { findAbsenceOverlap, absenceLabel, fmtAbsenceRange } from '../lib/useAbsences.js';
+import { markSelfAssignment } from '../lib/assignMarker.js';
 import AISmartTaskHint from './AISmartTaskHint.jsx';
 import NativeDateInput from './NativeDateInput.jsx';
 
@@ -261,6 +262,7 @@ export default function AddTaskModal({
 
       await supabase.from('task_assignees').delete().eq('task_id', editingTask.id);
       if (assignees.length > 0) {
+        markSelfAssignment(editingTask.id);
         const rows = assignees.map((memberId) => ({ task_id: editingTask.id, member_id: memberId }));
         await supabase.from('task_assignees').insert(rows);
       }
@@ -303,6 +305,7 @@ export default function AddTaskModal({
     if (e1) { setErr(e1.message); setBusy(false); return; }
 
     if (assignees.length > 0) {
+      markSelfAssignment(task.id);
       const rows = assignees.map((memberId) => ({ task_id: task.id, member_id: memberId }));
       await supabase.from('task_assignees').insert(rows);
     }
@@ -333,7 +336,7 @@ export default function AddTaskModal({
 
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+      <div className="modal modal-full" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column' }}>
         {/* Alert assegnatari mancanti — popup bloccante sopra la modale */}
         {showAssigneeAlert && (
           <div onClick={(e) => e.stopPropagation()}
