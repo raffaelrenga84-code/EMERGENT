@@ -2,6 +2,12 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.51 (12 giugno 2026) — Upgrade Assistenza
+- Diario: pressione sanguigna (sistolica/diastolica) + report.
+- Medicine: periodo dal/al + cambi di frequenza nel tempo (schedule_phases).
+- Fix bug latente: reminder farmaci confrontava orari in UTC (2h di ritardo).
+- Richiede: SQL fammy-care-upgrade.sql + redeploy medication-reminder-push.
+
 ## Iterazione 16.5.50 (12 giugno 2026) — Logica notifiche + promemoria a orario
 - Niente più notifiche al creatore per le proprie azioni (nuovo incarico /
   "X se ne occupa" su assegnazione propria o verso placeholder).

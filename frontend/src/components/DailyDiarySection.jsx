@@ -31,6 +31,8 @@ export default function DailyDiarySection({ member, me }) {
   const [appetite, setAppetite] = useState(null);
   const [weight, setWeight] = useState('');
   const [notes, setNotes] = useState('');
+  const [bpSys, setBpSys] = useState('');
+  const [bpDia, setBpDia] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -49,6 +51,8 @@ export default function DailyDiarySection({ member, me }) {
     setAppetite(t0?.appetite ?? null);
     setWeight(t0?.weight_kg != null ? String(t0.weight_kg) : '');
     setNotes(t0?.notes || '');
+    setBpSys(t0?.bp_systolic != null ? String(t0.bp_systolic) : '');
+    setBpDia(t0?.bp_diastolic != null ? String(t0.bp_diastolic) : '');
     setHistory(rows.filter((r) => r.diary_date !== today));
     setLoading(false);
   };
@@ -141,6 +145,18 @@ export default function DailyDiarySection({ member, me }) {
           </div>
         </div>
 
+        {/* Pressione sanguigna */}
+        <Label style={{ marginTop: 10 }}>🩺 {t('dd_bp_label') || 'Pressione (mmHg)'}</Label>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input className="input" type="number" min="40" max="300" inputMode="numeric"
+            value={bpSys} onChange={(e) => setBpSys(e.target.value)}
+            data-testid="dd-bp-sys" placeholder="120" style={{ flex: 1 }} />
+          <span style={{ fontWeight: 800, color: 'var(--km)' }}>/</span>
+          <input className="input" type="number" min="20" max="200" inputMode="numeric"
+            value={bpDia} onChange={(e) => setBpDia(e.target.value)}
+            data-testid="dd-bp-dia" placeholder="80" style={{ flex: 1 }} />
+        </div>
+
         {/* Appetito */}
         <Label style={{ marginTop: 10 }}>🍽️ {t('dd_appetite_label') || 'Appetito'}</Label>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
@@ -211,6 +227,9 @@ export default function DailyDiarySection({ member, me }) {
                       weekday: 'short', day: 'numeric', month: 'short',
                     })}
                   </span>
+                  {h.bp_systolic != null && h.bp_diastolic != null && (
+                    <span style={{ fontSize: 11, color: 'var(--km)' }}>🩺 {h.bp_systolic}/{h.bp_diastolic}</span>
+                  )}
                   {h.sleep_hours != null && (
                     <span style={{ fontSize: 11, color: 'var(--km)' }}>💤 {h.sleep_hours}h</span>
                   )}

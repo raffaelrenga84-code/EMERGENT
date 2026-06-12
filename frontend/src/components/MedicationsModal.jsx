@@ -6,6 +6,8 @@ import DailyDiarySection from './DailyDiarySection.jsx';
 import CareAttachments from './CareAttachments.jsx';
 import CareReportShare from './CareReportShare.jsx';
 import { getCanonicalMember } from '../lib/personScope.js';
+import { toLocalYMD } from '../lib/dateUtils.js';
+import { activeTimesForToday } from '../lib/medSchedule.js';
 
 /**
  * MedicationsModal (alias Care Hub) — modale unica per la gestione delle
@@ -330,29 +332,58 @@ function MedicationCard({ med, member, meId, todayLogs, onEdit, onRemove }) {
         </div>
       </div>
 
-      {med.times_of_day && med.times_of_day.length > 0 ? (
-        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {med.times_of_day.map((time) => {
-            const taken = todayTakenTimes.has(time);
-            return (
-              <span key={time} style={{
-                padding: '4px 10px', borderRadius: 100,
-                background: taken ? 'var(--gnB)' : 'var(--ab)',
-                color: taken ? 'var(--gn)' : 'var(--k)',
-                border: taken ? '1px solid var(--gn)' : '1px solid var(--sm)',
-                fontSize: 11, fontWeight: 700,
-                display: 'inline-flex', alignItems: 'center', gap: 3,
-              }}>
-                {taken && '✓ '}🕒 {time}
-              </span>
-            );
-          })}
-        </div>
-      ) : (
-        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--km)' }}>
-          {t('med_as_needed') || 'Al bisogno'}
-        </div>
-      )}
+      {(() => {
+        const today = toLocalYMD(new Date());
+        const ended = med.end_date && med.end_date < today;
+        const notStarted = med.start_date && med.start_date > today;
+        const todayTimes = activeTimesForToday(med, today);
+        const fmtD = (ymd) => new Date(ymd + 'T12:00:00')
+          .toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+        const futurePhases = (Array.isArray(med.schedule_phases) ? med.schedule_phases : [])
+          .filter((p) => p?.from && p.from > today)
+          .sort((a, b) => a.from.localeCompare(b.from));
+        return (
+          <>
+            {/* Periodo di assunzione */}
+            {(med.start_date || med.end_date) && (
+              <div style={{ marginTop: 6, fontSize: 11, color: ended ? 'var(--rd)' : 'var(--km)', fontWeight: 600 }}>
+                {ended
+                  ? `✅ ${t('med_ended') || 'Cura terminata'} (${fmtD(med.end_date)})`
+                  : `📅 ${med.start_date ? fmtD(med.start_date) : '…'} → ${med.end_date ? fmtD(med.end_date) : '∞'}`}
+              </div>
+            )}
+            {!ended && !notStarted && todayTimes.length > 0 ? (
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {todayTimes.map((time) => {
+                  const taken = todayTakenTimes.has(time);
+                  return (
+                    <span key={time} style={{
+                      padding: '4px 10px', borderRadius: 100,
+                      background: taken ? 'var(--gnB)' : 'var(--ab)',
+                      color: taken ? 'var(--gn)' : 'var(--k)',
+                      border: taken ? '1px solid var(--gn)' : '1px solid var(--sm)',
+                      fontSize: 11, fontWeight: 700,
+                      display: 'inline-flex', alignItems: 'center', gap: 3,
+                    }}>
+                      {taken && '✓ '}🕒 {time}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (!ended && !notStarted) ? (
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--km)' }}>
+                {t('med_as_needed') || 'Al bisogno'}
+              </div>
+            ) : null}
+            {/* Prossimi cambi di frequenza */}
+            {!ended && futurePhases.map((p) => (
+              <div key={p.from} style={{ marginTop: 4, fontSize: 11, color: 'var(--km)' }}>
+                🔁 {t('med_phase_upcoming') || 'Dal'} {fmtD(p.from)}: {(p.times || []).map((x) => `🕒 ${x}`).join(' ')}
+              </div>
+            ))}
+          </>
+        );
+      })()}
 
       {med.notes && (
         <div style={{
@@ -386,6 +417,14 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
   const [notes, setNotes] = useState(med?.notes || '');
   const [times, setTimes] = useState(med?.times_of_day || []);
   const [newTime, setNewTime] = useState('08:00');
+  const [startDate, setStartDate] = useState(med?.start_date || toLocalYMD(new Date()));
+  const [endDate, setEndDate] = useState(med?.end_date || '');
+  // Fasi di frequenza variabile: [{ from: 'YYYY-MM-DD', times: ['08:00'], _newTime: '08:00' }]
+  const [phases, setPhases] = useState(() =>
+    Array.isArray(med?.schedule_phases)
+      ? med.schedule_phases.map((p) => ({ from: p.from || '', times: p.times || [], _newTime: '08:00' }))
+      : []
+  );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -396,6 +435,20 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
   };
   const removeTime = (t) => setTimes(times.filter((x) => x !== t));
 
+  const updatePhase = (idx, patch) => {
+    setPhases(phases.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
+  };
+  const addPhaseTime = (idx) => {
+    const p = phases[idx];
+    if (!p._newTime || (p.times || []).includes(p._newTime)) return;
+    updatePhase(idx, { times: [...(p.times || []), p._newTime].sort() });
+  };
+  const removePhaseTime = (idx, time) => {
+    updatePhase(idx, { times: (phases[idx].times || []).filter((x) => x !== time) });
+  };
+  const addPhase = () => setPhases([...phases, { from: '', times: [], _newTime: '08:00' }]);
+  const removePhase = (idx) => setPhases(phases.filter((_, i) => i !== idx));
+
   const submit = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -404,12 +457,19 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
     }
     setBusy(true);
     setErr('');
+    const cleanPhases = phases
+      .filter((p) => p.from && (p.times || []).length > 0)
+      .map((p) => ({ from: p.from, times: [...p.times].sort() }))
+      .sort((a, b) => a.from.localeCompare(b.from));
     const payload = {
       member_id: member.id,
       name: name.trim(),
       dose: dose.trim() || null,
       notes: notes.trim() || null,
       times_of_day: times,
+      start_date: startDate || null,
+      end_date: endDate || null,
+      schedule_phases: cleanPhases.length > 0 ? cleanPhases : null,
       ...(med ? {} : { created_by: me?.id || null }),
     };
     const { error } = med
@@ -467,6 +527,85 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
       </div>
       <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
         {t('med_times_hint') || 'Lascia vuoto se la medicina è "al bisogno" (no reminder)'}
+      </p>
+
+      {/* Periodo di assunzione */}
+      <label style={{ marginTop: 10 }}>📅 {t('med_period_label') || 'Periodo di assunzione'}</label>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 2 }}>{t('med_period_from') || 'Dal'}</div>
+          <input type="date" className="input" value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            data-testid="med-form-start-date" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 2 }}>{t('med_period_to') || 'Al'}</div>
+          <input type="date" className="input" value={endDate} min={startDate || undefined}
+            onChange={(e) => setEndDate(e.target.value)}
+            data-testid="med-form-end-date" />
+        </div>
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+        {t('med_period_hint') || 'Lascia vuoto "Al" se la cura è continuativa.'}
+      </p>
+
+      {/* Cambi di frequenza nel tempo */}
+      <label style={{ marginTop: 10 }}>🔁 {t('med_phases_label') || 'Cambi di frequenza'}</label>
+      {phases.map((p, idx) => (
+        <div key={idx} style={{
+          padding: 10, borderRadius: 10, marginBottom: 8,
+          background: 'var(--ab)', border: '1px dashed var(--sd)',
+        }} data-testid={`med-phase-${idx}`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--km)', flexShrink: 0 }}>
+              {t('med_phase_from') || 'A partire dal'}
+            </span>
+            <input type="date" className="input" value={p.from}
+              min={startDate || undefined}
+              onChange={(e) => updatePhase(idx, { from: e.target.value })}
+              style={{ flex: 1 }}
+              data-testid={`med-phase-from-${idx}`} />
+            <button type="button" onClick={() => removePhase(idx)}
+              data-testid={`med-phase-remove-${idx}`}
+              style={{
+                background: 'transparent', border: 'none', color: 'var(--rd)',
+                cursor: 'pointer', fontSize: 16, lineHeight: 1, flexShrink: 0,
+              }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+            {(p.times || []).map((time) => (
+              <span key={time} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '4px 10px', borderRadius: 100,
+                background: 'white', border: '1px solid var(--sm)',
+                fontSize: 12, fontWeight: 600,
+              }}>
+                🕒 {time}
+                <button type="button" onClick={() => removePhaseTime(idx, time)}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    color: 'var(--rd)', cursor: 'pointer', padding: 0,
+                    fontSize: 14, lineHeight: 1,
+                  }}>✕</button>
+              </span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input type="time" value={p._newTime || '08:00'}
+              onChange={(e) => updatePhase(idx, { _newTime: e.target.value })}
+              className="input" style={{ flex: 1 }} />
+            <button type="button" onClick={() => addPhaseTime(idx)} className="profile-btn">
+              + {t('add') || 'Aggiungi'}
+            </button>
+          </div>
+        </div>
+      ))}
+      <button type="button" onClick={addPhase} className="profile-btn"
+        style={{ width: '100%' }} data-testid="med-form-add-phase">
+        🔁 {t('med_phases_add') || '+ Aggiungi cambio di frequenza'}
+      </button>
+      <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+        {t('med_phases_hint') || 'Es. prima settimana 2 volte al giorno, poi dal giorno X solo 1 volta.'}
       </p>
 
       <label style={{ marginTop: 10 }}>{t('med_notes_label') || 'Note'}</label>

@@ -43,12 +43,42 @@ function timeKey(d: Date) {
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
 
+// Data (YYYY-MM-DD) e minuti correnti nel fuso Europe/Rome — gli orari delle
+// medicine sono inseriti dagli utenti in ora locale italiana, NON in UTC.
+function nowInRome(now: Date) {
+  const date = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now); // "YYYY-MM-DD"
+  const time = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(now); // "HH:MM"
+  const [h, m] = time.split(':').map(Number);
+  return { date, minutes: h * 60 + m };
+}
+
+// Orari attivi OGGI per una medicina con eventuali fasi di frequenza
+// (schedule_phases: [{from:'YYYY-MM-DD', times:['08:00']}]). L'ultima fase
+// con from <= oggi vince; senza fasi valide → times_of_day.
+function activeTimesForToday(med: { schedule_phases?: unknown; times_of_day?: string[] }, todayYMD: string): string[] {
+  const phases = Array.isArray(med.schedule_phases)
+    ? (med.schedule_phases as Array<{ from?: string; times?: string[] }>).filter((p) => p && p.from)
+    : [];
+  if (phases.length > 0) {
+    const sorted = [...phases].sort((a, b) => String(a.from).localeCompare(String(b.from)));
+    let act: { from?: string; times?: string[] } | null = null;
+    for (const p of sorted) if (String(p.from) <= todayYMD) act = p;
+    if (act) return act.times || [];
+  }
+  return med.times_of_day || [];
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
   try {
     const now = new Date();
     const currentTime = timeKey(now);
+    const rome = nowInRome(now);
     const dayStart = todayStartUTC();
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
@@ -56,7 +86,7 @@ serve(async (req) => {
     // [currentTime] ma fallback safe). Limitare le righe è utile su grandi DB.
     const { data: meds } = await supabaseAdmin
       .from('medications')
-      .select('id, name, dose, times_of_day, member_id')
+      .select('id, name, dose, times_of_day, member_id, start_date, end_date, schedule_phases')
       .eq('active', true);
 
     if (!meds || meds.length === 0) return json({ sent: 0, reason: 'no_active_medications' });
@@ -82,11 +112,14 @@ serve(async (req) => {
     let skippedAlreadyHandled = 0;
 
     for (const med of meds) {
-      const times = med.times_of_day || [];
-      // Match con tempo corrente (con tolleranza ±1 minuto per evitare drift)
-      const hh = now.getUTCHours();
-      const mm = now.getUTCMinutes();
-      const nowMinutes = hh * 60 + mm;
+      // Finestra del periodo di assunzione (start/end in data Roma)
+      if (med.start_date && String(med.start_date) > rome.date) continue;
+      if (med.end_date && String(med.end_date) < rome.date) continue;
+
+      // Orari attivi oggi (fasi di frequenza variabile o times_of_day base)
+      const times = activeTimesForToday(med, rome.date);
+      // Match con ORA ITALIANA corrente (con tolleranza ±1 minuto)
+      const nowMinutes = rome.minutes;
       const matched = times.find((tStr: string) => {
         const [h, m] = tStr.split(':').map(Number);
         const tMinutes = h * 60 + m;
@@ -95,10 +128,12 @@ serve(async (req) => {
       });
       if (!matched) continue;
 
-      // Calcola scheduled_at del giorno corrente per quel time
+      // scheduled_at = istante UTC dell'orario italiano matchato.
+      // Visto che |orario - adesso| <= 1 min, lo ricaviamo da `now` spostandolo
+      // della differenza e azzerando i secondi (indipendente dall'offset CET/CEST).
       const [h, m] = matched.split(':').map(Number);
-      const scheduledAt = new Date(dayStart);
-      scheduledAt.setUTCHours(h, m, 0, 0);
+      const diffMin = (h * 60 + m) - nowMinutes;
+      const scheduledAt = new Date(Math.floor(now.getTime() / 60000) * 60000 + diffMin * 60000);
       const scheduledISO = scheduledAt.toISOString();
 
       // Già gestito (taken/skipped) per questo scheduled_at?

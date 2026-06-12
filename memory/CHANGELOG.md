@@ -2,6 +2,40 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-12 (sexies) — Upgrade Assistenza: pressione + periodo/fasi medicine
+
+### Richieste utente
+1. Pressione sanguigna nel Diario.
+2. Medicine: periodo di assunzione "dal… al…".
+3. Medicine: frequenza variabile (sett.1: 2 volte/giorno → sett.2: 1 volta).
+
+### Implementazione
+- SQL `fammy-care-upgrade.sql` (DA ESEGUIRE dall'utente):
+  `daily_diary.bp_systolic/bp_diastolic smallint`,
+  `medications.schedule_phases jsonb` (start/end_date esistevano già).
+- `DailyDiarySection.jsx`: campi 🩺 sistolica/diastolica (120/80), salvataggio,
+  storico e report condivisibile (`CareReportShare.jsx`) aggiornati.
+- `MedicationsModal.jsx`: form con "Periodo di assunzione" (Dal default oggi /
+  Al opzionale) + sezione "🔁 Cambi di frequenza" (fasi: {from, times[]},
+  editor orari per fase). Card medicina: mostra periodo (📅 12 giu → 26 giu),
+  orari ATTIVI oggi (fase corrente), prossimi cambi (🔁 Dal 19 giu: 🕒 08:00),
+  stato "✅ Cura terminata".
+- ➕ `src/lib/medSchedule.js`: helper condivisi `activeTimesForToday` /
+  `isMedActiveOn` usati da card, hook in-app e (in TS) dal cron.
+- `useMedicationReminders.js`: i banner in-app rispettano periodo + fasi.
+- `medication-reminder-push.ts` (DA RIDEPLOYARE): 🐛 FIX bug latente — gli
+  orari erano confrontati in UTC (reminder 2h in ritardo d'estate!). Ora usa
+  Europe/Rome via Intl; rispetta start/end_date e schedule_phases;
+  scheduled_at = istante UTC dell'orario italiano (ora coerente con i log
+  scritti dal client in ora locale).
+
+### Azioni utente PENDENTI (riepilogo completo)
+1. SQL: `fammy-care-upgrade.sql` (pressione + fasi)
+2. SQL: hotfix `get_invitation` (inviato, forse già eseguito)
+3. Re-deploy edge function `medication-reminder-push` (fix UTC + fasi)
+4. Nuova edge function `task-reminder-push` + SQL cron (promemoria incarichi)
+5. Save to GitHub (notifiche, modal full-screen, diario/medicine UI)
+
 ## 2026-06-12 (quinquies) — Logica notifiche incarichi + promemoria a orario + modal full-screen
 
 ### Bug 1: il creatore riceveva notifiche per le proprie azioni

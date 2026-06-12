@@ -13,6 +13,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from './supabase.js';
+import { activeTimesForToday, isMedActiveOn } from './medSchedule.js';
+import { toLocalYMD } from './dateUtils.js';
 
 const POLL_MS = 60_000; // check ogni minuto
 
@@ -94,8 +96,11 @@ export function useMedicationReminders(members = [], meId = null) {
   //   - Max 4 ore in ritardo (oltre ignoriamo)
   const pendingReminders = [];
   const MAX_LATE_MS = 4 * 60 * 60 * 1000;
+  const todayYMD = toLocalYMD(now);
   for (const med of medications) {
-    for (const time of (med.times_of_day || [])) {
+    // Periodo di assunzione (start/end) + fasi di frequenza variabile
+    if (!isMedActiveOn(med, todayYMD)) continue;
+    for (const time of activeTimesForToday(med, todayYMD)) {
       const scheduledAt = hhmmToTodayDate(time);
       // Check snooze
       const snoozedLog = todayLogs.find((l) =>
