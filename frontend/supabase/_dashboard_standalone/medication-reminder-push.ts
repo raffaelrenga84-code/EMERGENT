@@ -177,10 +177,12 @@ serve(async (req) => {
         userIds = (cgs || []).map((m: any) => m.user_id).filter(Boolean);
         if (targetMember.user_id) userIds.push(targetMember.user_id);
       } else {
-        // Fallback comportamento storico: tutta la famiglia
-        const { data: familyMembers } = await supabaseAdmin
-          .from('members').select('user_id').eq('family_id', targetMember.family_id);
-        userIds = (familyMembers || []).map((m: any) => m.user_id).filter(Boolean);
+        // STRICT (13 giu 2026): nessun caregiver selezionato → solo l'assistito
+        // stesso (se ha un account) riceve la notifica. NIENTE fallback
+        // "tutta la famiglia" — era confondente: l'utente non capiva perché
+        // gli arrivassero notifiche di medicine altrui senza essere stato
+        // selezionato come caregiver.
+        if (targetMember.user_id) userIds = [targetMember.user_id];
       }
 
       // Dedup

@@ -2,6 +2,12 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.56 (13 giugno 2026) — Medicine push STRICT
+- Rimosso fallback "notifica tutta la famiglia" quando `cared_by` è vuoto.
+- Ora `cared_by = []` notifica SOLO l'assistito stesso (se ha account).
+- Hint UI aggiornato in IT/EN/FR/DE per spiegare il comportamento reale.
+- Richiede: Save to GitHub + redeploy edge `medication-reminder-push`.
+
 ## Iterazione 16.5.55 (13 giugno 2026) — Agenda filtro multi-assignee + task senza data
 - Bug critico: il filtro "Solo a me" in Agenda controllava solo il campo
   legacy `assigned_to`. Gli incarichi presi via "Me ne occupo io" (che

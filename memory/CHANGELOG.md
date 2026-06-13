@@ -2,6 +2,34 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-13 (quater) — Medicine push STRICT: niente più fallback famiglia
+
+### Bug riportato
+L'utente riceveva la notifica medicine anche quando NON era selezionato
+come caregiver. Causa: logica di routing "fallback whole family" quando
+`cared_by` era vuoto.
+
+### Cambio comportamento (richiesta utente, opzione strict)
+- **Prima**: `cared_by = []` → notifica TUTTA la famiglia (fallback).
+- **Ora**: `cared_by = []` → notifica SOLO l'assistito stesso se ha un
+  account FAMMY. Nessun altro. Nessuna sorpresa.
+- `cared_by = [X, Y]` → invariato: solo X, Y + assistito (se account).
+
+### File modificati
+- ✏️ `supabase/_dashboard_standalone/medication-reminder-push.ts` —
+  rimosso else-branch "whole family", sostituito con `userIds = [assistito]`
+  solo se ha `user_id`.
+- ✏️ `src/lib/i18n.jsx` — `caregiver_hint` riscritto in IT/EN/FR/DE per
+  riflettere il nuovo comportamento ("Se non selezioni nessuno, nessuno
+  verrà notificato — tranne l'assistito stesso se ha un account FAMMY").
+
+### ⚠️ AZIONI UTENTE (2)
+1. **Save to GitHub** → Vercel deploy (testo hint).
+2. **Supabase Dashboard → Edge Functions → medication-reminder-push →
+   Deploy** (incollando il contenuto aggiornato del file .ts).
+   Senza re-deploy l'edge function vecchia continuerà a notificare la
+   famiglia intera.
+
 ## 2026-06-13 (ter) — Agenda: filtro "Solo a me" multi-assignee + task senza data
 
 ### Bug 1: incarico assegnato via "Me ne occupo io" non appariva nel calendario
