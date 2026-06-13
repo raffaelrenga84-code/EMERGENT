@@ -144,7 +144,7 @@ function ActionRow({ icon, label, onClick, accent, testid }) {
 }
 
 
-export default function AgendaTab({ familyId, families, events, tasks = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily, onOpenAI }) {
+export default function AgendaTab({ familyId, families, events, tasks = [], taskAssignees = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily, onOpenAI }) {
   const { t, lang } = useT();
   const localeMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' };
   const dateLocale = localeMap[lang] || 'it-IT';
@@ -230,22 +230,49 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
   const baseDueTasks = (tasks || []).filter((tk) => tk.due_date && tk.status !== 'done');
   const dueTasks = expandTasks(baseDueTasks);
 
-  // Filtro "Solo a me": eventi dove ci sono assegnato (event_assignees) o ne sono autore,
-  // task dove sono assigned_to o author_id
-  const myEventIds = new Set(eventAssignees.filter((a) => a.member_id === me?.id).map((a) => a.event_id));
+  // Task SENZA due_date: appaiono nel calendario sul GIORNO DI CREAZIONE,
+  // con flag `_undated` per evidenziarli con label "Senza data" nella card.
+  // (Richiesta utente 13 giu: tasks senza data devono comunque essere
+  // trovabili in Agenda, sull'unico giorno sensato disponibile.)
+  const undatedTasks = (tasks || [])
+    .filter((tk) => !tk.due_date && tk.status !== 'done' && tk.created_at)
+    .map((tk) => {
+      // Estrai YYYY-MM-DD dal created_at (timestamp UTC → data locale)
+      const created = new Date(tk.created_at);
+      const localDate = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`;
+      return { ...tk, due_date: localDate, _undated: true };
+    });
+  const allDueTasks = [...dueTasks, ...undatedTasks];
+
+  // Filtro "Solo a me": eventi dove sono assegnato (event_assignees) o creatore,
+  // task dove sono assegnatario (task_assignees, multi-assignee) o autore.
+  // Considera TUTTI i member_id dell'utente (vista multi-famiglia).
+  const myMemberIdSet = new Set(
+    (members || []).filter((m) => m.user_id === session?.user?.id).map((m) => m.id)
+  );
+  const myEventIds = new Set(eventAssignees.filter((a) => myMemberIdSet.has(a.member_id)).map((a) => a.event_id));
+  const myAssignedTaskIds = new Set(
+    (taskAssignees || []).filter((a) => myMemberIdSet.has(a.member_id)).map((a) => a.task_id)
+  );
   const filterEvent = (ev) => {
     if (!onlyMine) return true;
     if (!me?.id) return false;
     const origId = ev._origId || ev.id;
-    return myEventIds.has(origId) || ev.created_by === me.id;
+    return myEventIds.has(origId) || myMemberIdSet.has(ev.created_by);
   };
   const filterTask = (tk) => {
     if (!onlyMine) return true;
     if (!me?.id) return false;
-    return tk.assigned_to === me.id || tk.author_id === me.id;
+    const origId = tk._origId || tk.id;
+    if (myAssignedTaskIds.has(origId)) return true;
+    if (myMemberIdSet.has(tk.author_id)) return true;
+    // Legacy single-assignee fallback
+    if (tk.assigned_to && myMemberIdSet.has(tk.assigned_to)) return true;
+    if (tk.delegated_to && myMemberIdSet.has(tk.delegated_to)) return true;
+    return false;
   };
   const filteredEvents = expandedEvents.filter(filterEvent);
-  const filteredTasks = dueTasks.filter(filterTask);
+  const filteredTasks = allDueTasks.filter(filterTask);
 
   // Occorrenze "sospese" (escluse) — solo per il giorno selezionato.
   // Mostra una card placeholder "🚫 Sospeso oggi" per dare contesto
@@ -355,9 +382,10 @@ export default function AgendaTab({ familyId, families, events, tasks = [], memb
         onClick={() => setSelEvent(it.data)} />
     ) : (
       <TaskAsEventCard key={`t-${it.data.id}`} task={it.data} family={isAll ? getFamily(it.data) : null} past={past} onClick={() => {
-        // Se è un'istanza ricorrente, apri il task originale dal DB
+        // Se è un'istanza ricorrente o un task "senza data" (mappato sul
+        // created_at), apri il task ORIGINALE dal DB invece della copia.
         const origId = it.data._origId || it.data.id;
-        const orig = baseDueTasks.find((tk) => tk.id === origId) || it.data;
+        const orig = (tasks || []).find((tk) => tk.id === origId) || it.data;
         setSelTask(orig);
       }} />
     ));
@@ -1452,14 +1480,17 @@ function EventCard({ event, me, family, past, onRemove, onClick }) {
 
 // Card per task con due_date mostrato in agenda
 function TaskAsEventCard({ task, family, past, onClick }) {
+  const { t } = useT();
   const due = new Date(task.due_date + 'T00:00:00');
   const priority = task.priority || (task.urgent ? 'high' : 'normal');
   const accentColor = priority === 'high' ? 'var(--rd)' : '#F39C12';
+  const isUndated = !!task._undated;
   return (
     <div className="card" onClick={onClick} style={{
       opacity: past ? 0.6 : 1, cursor: 'pointer',
       borderLeft: `4px solid ${accentColor}`,
       background: priority === 'high' ? 'var(--rd)11' : '#F39C1211',
+      borderStyle: isUndated ? 'dashed' : 'solid',
     }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <div className="event-date">
@@ -1497,11 +1528,22 @@ function TaskAsEventCard({ task, family, past, onClick }) {
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
-            <span style={{
-              padding: '2px 8px', borderRadius: 100,
-              background: '#F39C1222', color: '#B36E00',
-              fontSize: 11, fontWeight: 600,
-            }}>Incarico</span>
+            {isUndated ? (
+              <span
+                title={`${t('agenda_task_undated_hint') || 'Mostrato qui perché non ha una data: l\'hai creato il'} ${due.toLocaleDateString()}`}
+                style={{
+                  padding: '2px 8px', borderRadius: 100,
+                  background: 'var(--ab)', color: 'var(--km)',
+                  fontSize: 11, fontWeight: 600,
+                  border: '1px dashed var(--sm)',
+                }}>📅 {t('agenda_task_undated') || 'Senza data'}</span>
+            ) : (
+              <span style={{
+                padding: '2px 8px', borderRadius: 100,
+                background: '#F39C1222', color: '#B36E00',
+                fontSize: 11, fontWeight: 600,
+              }}>Incarico</span>
+            )}
             {family && (
               <span style={{
                 padding: '2px 8px', borderRadius: 100,

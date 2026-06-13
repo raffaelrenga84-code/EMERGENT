@@ -358,6 +358,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             familyId={isAll ? null : activeFamily}
             events={events}
             tasks={tasks}
+            taskAssignees={taskAssignees}
             members={members}
             me={me}
             isAll={isAll}

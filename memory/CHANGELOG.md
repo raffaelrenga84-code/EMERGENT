@@ -2,6 +2,67 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-13 (ter) — Agenda: filtro "Solo a me" multi-assignee + task senza data
+
+### Bug 1: incarico assegnato via "Me ne occupo io" non appariva nel calendario
+🎯 Root cause: `AgendaTab.filterTask` controllava SOLO il campo legacy
+`tasks.assigned_to` (single-assignee) e `tasks.author_id`. Quando l'utente
+swipe "Me ne occupo io", il sistema scrive in `task_assignees` (multi-
+assignee table) ma NON tocca `assigned_to`. Risultato: l'incarico
+correttamente assegnato non passava il filtro → nessun pallino sul
+calendario, nessun item nella lista del giorno selezionato.
+
+Fix in `AgendaTab.jsx`:
+- Aggiunta prop `taskAssignees` (già caricata da HomeScreen)
+- Calcolo `myMemberIdSet` da TUTTI i member_id dell'utente (cross-famiglia)
+- Calcolo `myAssignedTaskIds` da `task_assignees` con qualsiasi mio member_id
+- filterTask ora controlla: `task_assignees` → `author_id` → `assigned_to`
+  legacy → `delegated_to` — tutti via `myMemberIdSet`
+
+### Bug 2: i18n key `agenda_day_empty` non tradotta
+La chiave era referenziata in `AgendaTab.jsx:654` ma MAI definita in
+`i18n.jsx`. Il `t()` ritorna la chiave come fallback (truthy) → il
+fallback inline `|| 'Nessun impegno...'` non scattava mai.
+Aggiunta in IT/EN/FR/DE: `agenda_day_empty` + `agenda_task_undated` +
+`agenda_task_undated_hint`.
+
+### Feature: task senza data ora nel calendario (sul giorno di creazione)
+Richiesta utente: "l'incarico senza data potrebbe apparire sul calendario
+nel giorno di creazione". Implementato:
+- Pipeline nuovo array `undatedTasks` con `due_date := created_at_local`
+  e flag `_undated=true`
+- `TaskAsEventCard` rende task `_undated` con border tratteggiato e una
+  pill grigia "📅 Senza data" (tooltip: "Mostrato qui perché non ha una
+  data: l'hai creato il <gg/mm/aaaa>")
+- Click → apre il task ORIGINALE dal DB (no synthetic due_date)
+
+## 2026-06-13 (bis) — Fix toast "Famiglia aggiornata" rimaneva infinito
+
+### Bug riportato
+Il banner verde di conferma "✅ Famiglia aggiornata" (dopo salvataggio
+EditFamilyModal) restava sempre visibile fino a chiusura manuale. Stesso
+problema potenziale per TUTTI gli altri toast `fammy_toast` dell'app
+(15+ punti: DailyDiarySection, ProfilePhoneCard, ExportSheet, ImportSchedule,
+WeeklyEmailSyncToggle, ecc.).
+
+### Root cause
+`ToastListener.jsx` aveva un SINGOLO `useEffect` con deps `[queue, active]`
+che chiamava `setActive(next)` e poi `setTimeout(..., 3500)`. Al re-render
+successivo (perché `active` era cambiato), la cleanup function dell'effect
+cancellava il `setTimeout` PRIMA dei 3.5s. Risultato: il toast partiva ma
+non si auto-chiudeva mai.
+
+### Fix
+Split in due effect:
+- 1° effect: dequeue (deps `[queue, active]`)
+- 2° effect: auto-dismiss che dipende SOLO da `active` (`[active]`).
+  La cleanup si attiva solo quando `active` torna `null`, non a ogni
+  arrivo di un nuovo toast in coda.
+
+### Test
+Smoke test programmatico: dispatch `fammy_toast` → presente a t=1s,
+assente a t=4.5s ✅. Un singolo fix copre tutta l'app (15+ punti).
+
 ## 2026-06-13 — Fix FAB sopra toast medicina + bug cron push medicine
 
 ### Bug 1: FAB rosso "+" copre il toast promemoria medicina (non cliccabile)

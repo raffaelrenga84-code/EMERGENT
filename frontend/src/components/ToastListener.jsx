@@ -32,23 +32,20 @@ export default function ToastListener() {
 
   useEffect(() => {
     if (active || queue.length === 0) return;
-    const next = queue[0];
+    setActive(queue[0]);
     setQueue((q) => q.slice(1));
-    setActive(next);
-    // Auto-dismiss: usiamo sia setTimeout (preferibile, tipico) sia un
-    // fallback basato su `expiresAt` per quando la tab è in background
-    // e setTimeout viene throttled (iOS PWA).
-    const expiresAt = Date.now() + 3500;
-    const tick = () => {
-      if (Date.now() >= expiresAt) {
-        setActive(null);
-      } else {
-        timer = window.setTimeout(tick, 500);
-      }
-    };
-    let timer = window.setTimeout(tick, 3500);
-    return () => window.clearTimeout(timer);
   }, [queue, active]);
+
+  // Auto-dismiss separato: dipende SOLO da `active` così la cleanup non
+  // viene rilanciata quando arriva un nuovo item in coda. Bug precedente:
+  // un singolo effect con deps [queue, active] cancellava il timer al
+  // re-render successivo a setActive (deps changed → cleanup → clearTimeout
+  // prima dei 3500ms) → toast restava infinito.
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setTimeout(() => setActive(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [active]);
 
   if (!active) return null;
 

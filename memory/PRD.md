@@ -2,6 +2,26 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.55 (13 giugno 2026) — Agenda filtro multi-assignee + task senza data
+- Bug critico: il filtro "Solo a me" in Agenda controllava solo il campo
+  legacy `assigned_to`. Gli incarichi presi via "Me ne occupo io" (che
+  scrivono in `task_assignees` multi-assignee) erano invisibili nel
+  calendario. Fix: `AgendaTab` ora riceve `taskAssignees`, usa
+  `myMemberIdSet` cross-famiglia e controlla task_assignees + author +
+  legacy + delegated_to.
+- i18n key mancante `agenda_day_empty` aggiunta in IT/EN/FR/DE.
+- Nuova feature (richiesta utente): task SENZA `due_date` ora appaiono
+  nel calendario sul giorno di `created_at`, con bordo tratteggiato e
+  pill "📅 Senza data" per distinguerli visivamente.
+
+## Iterazione 16.5.54 (13 giugno 2026) — Toast "Famiglia aggiornata" rimaneva infinito
+- Bug: `ToastListener.jsx` aveva un single-useEffect [queue, active] che si
+  rilanciava al cambio di `active`, e la cleanup cancellava il setTimeout
+  prima dei 3.5s. Il toast restava visibile fino a chiusura manuale.
+- Fix: split in 2 effect. Dequeue + dismiss separato (deps `[active]`).
+- Impatto: tutti i toast `fammy_toast` dell'app (15+ usi) ora si chiudono
+  automaticamente. Smoke test verificato.
+
 ## Iterazione 16.5.53 (13 giugno 2026) — FAB sopra toast medicina + fix cron push medicine
 - CSS: FAB rosso "+" si sposta a `bottom: 240px` quando il toast promemoria
   medicina è visibile (`body:has([data-testid="medication-reminder-toast"])`).
