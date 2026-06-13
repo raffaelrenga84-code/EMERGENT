@@ -389,6 +389,27 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
                   value={caredBy}
                   onChange={setCaredBy}
                 />
+                {/* Warning quando 0 caregiver scelti (UX: evita "perché non
+                    mi arriva la notifica?"). Va sotto al picker, visibile
+                    appena uno deseleziona tutti i caregiver. */}
+                {caredBy.length === 0 && (
+                  <div
+                    data-testid="caregiver-none-warn"
+                    style={{
+                      marginTop: 8,
+                      padding: '8px 12px',
+                      background: '#FFF7E6',
+                      border: '1px solid #E89B2D',
+                      borderRadius: 10,
+                      fontSize: 12,
+                      color: '#7A4E00',
+                      lineHeight: 1.4,
+                      fontWeight: 600,
+                    }}>
+                    {(t('caregiver_none_warn', { name: name.trim() || (t('caregiver_none_default_name') || 'lui/lei') })
+                      || `🤝 Nessun caregiver selezionato. Le notifiche medicine andranno solo a ${name.trim() || 'lui/lei'} stessa/o (se ha account FAMMY). Tocca un nome qui sopra per aggiungere un caregiver.`)}
+                  </div>
+                )}
                 <p style={{
                   fontSize: 11, color: 'var(--km)',
                   margin: '8px 0 0', lineHeight: 1.4,

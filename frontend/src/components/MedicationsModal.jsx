@@ -34,6 +34,8 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showShare, setShowShare] = useState(false);
+  // Dirty: il form medicina ha modifiche non salvate (per warning su X/backdrop)
+  const [formDirty, setFormDirty] = useState(false);
   // Membri della famiglia (per derivare i caregiver assegnati)
   const [familyMembers, setFamilyMembers] = useState([]);
   // CONSOLIDAMENTO: se la persona ha user_id, ridirigi al "primary member"
@@ -104,7 +106,20 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
   const onSaved = async () => {
     setShowForm(false);
     setEditing(null);
+    setFormDirty(false);
     await load();
+  };
+
+  // Wrapper di chiusura: se il form medicina ha modifiche non salvate,
+  // chiedi conferma prima di scartare. Bug fix utente 13 giu:
+  // "premo X pensando sia Salva e perdo le modifiche".
+  const handleClose = () => {
+    if (formDirty && (showForm || editing)) {
+      const msg = t('med_form_dirty_confirm') ||
+        'Hai modifiche non salvate sulla medicina. Vuoi davvero chiudere senza salvare?';
+      if (!confirm(msg)) return;
+    }
+    onClose();
   };
 
   const removeMed = async (med) => {
@@ -115,7 +130,7 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
   };
 
   return (
-    <div className="modal-bg" onClick={onClose} data-testid="medications-modal">
+    <div className="modal-bg" onClick={handleClose} data-testid="medications-modal">
       <div className="modal" onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -153,7 +168,7 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
             style={{ marginRight: 4 }}>
             📤
           </button>
-          <button onClick={onClose} className="profile-btn">✕</button>
+          <button onClick={handleClose} className="profile-btn">✕</button>
         </div>
 
         {/* Tab strip: 💊 Medicine · 🩺 Profilo · 📓 Diario */}
@@ -210,8 +225,9 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
                   member={member}
                   me={me}
                   med={editing}
-                  onCancel={() => { setShowForm(false); setEditing(null); }}
+                  onCancel={() => { setShowForm(false); setEditing(null); setFormDirty(false); }}
                   onSaved={onSaved}
+                  onDirtyChange={setFormDirty}
                 />
               ) : (
                 <>
@@ -414,7 +430,7 @@ function MedicationCard({ med, member, meId, todayLogs, onEdit, onRemove }) {
   );
 }
 
-function MedicationForm({ member, me, med, onCancel, onSaved }) {
+function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
   const { t } = useT();
   const [name, setName] = useState(med?.name || '');
   const [dose, setDose] = useState(med?.dose || '');
@@ -435,6 +451,34 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
   );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  // Dirty tracking: il parent (MedicationsModal) ascolta per chiedere
+  // conferma se l'utente preme X senza salvare.
+  const initial = {
+    name: med?.name || '', dose: med?.dose || '', notes: med?.notes || '',
+    times: JSON.stringify(med?.times_of_day || []),
+    startDate: med?.start_date || toLocalYMD(new Date()),
+    endDate: med?.end_date || '',
+    phases: JSON.stringify(Array.isArray(med?.schedule_phases)
+      ? med.schedule_phases.map((p) => ({ from: p.from || '', times: p.times || [] }))
+      : []),
+  };
+  useEffect(() => {
+    const phasesCmp = JSON.stringify(phases.map((p) => ({ from: p.from || '', times: p.times || [] })));
+    const dirty = (
+      name.trim() !== initial.name.trim() ||
+      dose.trim() !== initial.dose.trim() ||
+      notes.trim() !== initial.notes.trim() ||
+      JSON.stringify(times) !== initial.times ||
+      startDate !== initial.startDate ||
+      endDate !== initial.endDate ||
+      phasesCmp !== initial.phases ||
+      // Orario nel picker toccato ma non ancora aggiunto
+      (newTimeTouched && !times.includes(newTime))
+    );
+    onDirtyChange?.(dirty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, dose, notes, times, startDate, endDate, phases, newTime, newTimeTouched]);
 
   const addTime = () => {
     if (!newTime) return;
@@ -545,6 +589,19 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
           + {t('add') || 'Aggiungi'}
         </button>
       </div>
+      {/* Hint: l'orario nel picker viene incluso ANCHE senza "+ Aggiungi" */}
+      {newTimeTouched && !times.includes(newTime) && (
+        <div style={{
+          marginTop: 6, padding: '6px 10px', borderRadius: 8,
+          background: 'var(--gnB)', border: '1px solid var(--gn)',
+          fontSize: 11, color: 'var(--gn)', fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 6,
+        }} data-testid="med-form-time-autoinclude-hint">
+          <span>✅</span>
+          <span>{t('med_time_autoinclude', { time: newTime }) ||
+            `L'orario ${newTime} verrà salvato. Premi "+ Aggiungi" se vuoi inserirne altri.`}</span>
+        </div>
+      )}
       <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
         {t('med_times_hint') || 'Lascia vuoto se la medicina è "al bisogno" (no reminder)'}
       </p>
@@ -640,7 +697,20 @@ function MedicationForm({ member, me, med, onCancel, onSaved }) {
         <div className="login-msg error" style={{ marginTop: 12 }}>{err}</div>
       )}
 
-      <div className="row" style={{ marginTop: 16 }}>
+      {/* Save bar sticky: resta sempre visibile in fondo alla form mentre si
+          scrolla. Bug fix utente 13 giu: "non vedo il Salva, premo X e perdo
+          tutto". Ora il Salva è sempre a portata di mano. */}
+      <div className="row" style={{
+        marginTop: 16,
+        position: 'sticky', bottom: 0,
+        background: 'white',
+        padding: '12px 0 calc(8px + env(safe-area-inset-bottom, 0px))',
+        borderTop: '1px solid var(--sm)',
+        marginLeft: -4, marginRight: -4,
+        paddingLeft: 4, paddingRight: 4,
+        boxShadow: '0 -8px 12px -8px rgba(28,22,17,0.08)',
+        zIndex: 5,
+      }}>
         <button type="button" className="btn secondary" onClick={onCancel}>
           {t('cancel')}
         </button>

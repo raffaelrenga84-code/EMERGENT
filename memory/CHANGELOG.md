@@ -2,6 +2,45 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-13 (quinquies) — UX form medicine + warning caregiver mancante
+
+### Fix 1: form medicina — Salva sticky + autosave orario + conferma chiusura
+Bug riportato: l'utente apre Modifica medicina, sceglie un orario nel
+picker iOS (conferma con ✓ blu), poi non vede il "Salva" (scrolled
+off-screen) e preme la X in alto a destra → tutto perduto.
+
+3 livelli di fix:
+1. **Sticky save bar** (`position: sticky; bottom: 0`) sul "Salva/Annulla"
+   del form medicina con bordo top + ombra leggera + safe-area iOS. Resta
+   SEMPRE visibile anche durante lo scroll.
+2. **Hint inline verde** sotto al time-picker quando l'utente tocca
+   l'orario senza premere "+ Aggiungi": "✅ L'orario 09:42 verrà salvato.
+   Premi + Aggiungi se vuoi inserirne altri." (la logica auto-include
+   esisteva già, ma era invisibile).
+3. **Conferma uscita non salvata**: parent modal traccia `formDirty` via
+   `onDirtyChange` callback dal `MedicationForm`. Se X o backdrop sono
+   premuti mentre ci sono modifiche non salvate, `confirm()` chiede
+   "Hai modifiche non salvate sulla medicina. Vuoi davvero chiudere?".
+
+### Fix 2: avviso "🤝 Nessun caregiver selezionato"
+Banner giallo (background `#FFF7E6`, bordo `#E89B2D`) appare appena
+sotto al CaregiverPicker quando `caredBy.length === 0` e
+`is_assisted=true`. Spiega all'utente: "Le notifiche medicine andranno
+solo a {nome} stessa/o (se ha account FAMMY). Tocca un nome qui sopra
+per aggiungere un caregiver." Cooperante con il fix STRICT di ieri:
+l'utente capisce subito perché potrebbe non ricevere notifiche.
+
+### File modificati
+- ✏️ `MedicationsModal.jsx` — formDirty state, handleClose wrapper,
+  MedicationForm con `onDirtyChange` + sticky save bar + hint inline
+  autoinclude orario.
+- ✏️ `EditMemberModal.jsx` — warning banner caregiver vuoto.
+- ✏️ `i18n.jsx` — 4 nuove chiavi × 4 lingue: `caregiver_none_warn`,
+  `med_time_autoinclude`, `med_form_dirty_confirm`.
+
+### ⚠️ AZIONI PER TE
+Solo **Save to GitHub** per push del fix su Vercel. Nessun SQL stavolta.
+
 ## 2026-06-13 (quater) — Medicine push STRICT: niente più fallback famiglia
 
 ### Bug riportato

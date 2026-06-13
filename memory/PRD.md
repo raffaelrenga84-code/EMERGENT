@@ -2,6 +2,15 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.57 (13 giugno 2026) — UX form medicine + warning caregiver vuoto
+- Sticky save bar sul form medicina (resta sempre visibile durante scroll).
+- Hint verde inline che conferma "l'orario nel picker verrà salvato"
+  anche senza premere "+ Aggiungi" (auto-include era già attivo).
+- Conferma uscita su X/backdrop se ci sono modifiche non salvate
+  (`formDirty` tracking via callback).
+- Banner giallo "🤝 Nessun caregiver selezionato" sotto il picker quando
+  un membro è marcato assistito ma nessun caregiver è stato scelto.
+
 ## Iterazione 16.5.56 (13 giugno 2026) — Medicine push STRICT
 - Rimosso fallback "notifica tutta la famiglia" quando `cared_by` è vuoto.
 - Ora `cared_by = []` notifica SOLO l'assistito stesso (se ha account).
