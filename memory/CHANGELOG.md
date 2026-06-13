@@ -2,6 +2,48 @@
 
 > Le voci più recenti in alto. Il PRD completo è in `/app/memory/PRD.md`.
 
+## 2026-06-13 — Fix FAB sopra toast medicina + bug cron push medicine
+
+### Bug 1: FAB rosso "+" copre il toast promemoria medicina (non cliccabile)
+Il FAB (`.fab`, z-index 50/900) era posizionato a `bottom: 92px` mentre il
+toast medicina a `bottom: 84px`. Il "+" coperchiava il bottone "⏭️ Salta"
+del promemoria → utente non poteva interagire.
+**Fix CSS** (`styles.css`): quando `[data-testid="medication-reminder-toast"]`
+è nel DOM, il FAB scivola sopra al toast (`bottom: 240px`, transition 220ms
+fluida). Stesso trattamento per `.fab.ai-fab` (`bottom: 316px`).
+
+### Bug 2: push medicina mai consegnata fuori dall'app
+🎯 **Root cause vera**: nel file `fammy-medication-cron.sql` il cron pg_cron
+schedulato ogni minuto usava una query SBAGLIATA per leggere la config:
+```
+select edge_base_url || '/...' from fammy_private.config limit 1
+```
+La tabella `fammy_private.config` ha schema `(key text, value text)` →
+la colonna `edge_base_url` NON esiste → ogni esecuzione del cron falliva in
+silenzio dal giorno 1. Per questo i promemoria medicina non arrivavano mai
+come push, mentre task/commenti/foto sì (usano i DB trigger immediati).
+
+**Fix**: nuovo file `/app/frontend/fammy-medication-cron-FIX.sql` con la
+query corretta (pattern identico a quello degli altri cron):
+```
+url := (select value from fammy_private.config where key = 'edge_base_url')
+       || '/functions/v1/medication-reminder-push'
+```
+Lo script include anche query di verifica (`cron.job_run_details`) + trigger
+manuale di test. Corretti per coerenza anche `fammy-medication-cron.sql`,
+`fammy-RESTORE-2-of-3.sql`, `fammy-MASTER-restore-after-reset.sql`.
+
+### ⚠️ AZIONE UTENTE
+1. **Save to GitHub** → deploy Vercel del fix CSS.
+2. **Supabase → SQL Editor** → esegui `fammy-medication-cron-FIX.sql`.
+3. **Verifica** (opzionale, query in fondo allo script):
+   - `select * from cron.job where jobname='fammy-medication-reminder';`
+   - Dopo 1-2 minuti: `select * from cron.job_run_details ... limit 5;`
+     → deve uscire `status='succeeded'`.
+4. **Test fine**: imposta una medicina con orario tra 2-3 minuti → chiudi
+   completamente la PWA → attendi → la push deve arrivare come per i
+   task/commenti.
+
 ## 2026-06-12 (decies) — Fix doppia push "Nuovo incarico"+"Assegnato a te"
 
 ### UPDATE (stesso giorno): autore notificato in scenario MULTI-FAMIGLIA

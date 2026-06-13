@@ -2736,11 +2736,11 @@ select cron.schedule(
   '* * * * *',  -- ogni minuto
   $$
   select net.http_post(
-    url := (select edge_base_url || '/functions/v1/medication-reminder-push'
-            from fammy_private.config limit 1),
+    url := (select value from fammy_private.config where key = 'edge_base_url')
+           || '/functions/v1/medication-reminder-push',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (select service_role_key from fammy_private.config limit 1)
+      'Authorization', 'Bearer ' || (select value from fammy_private.config where key = 'service_role_key')
     ),
     body := '{}'::jsonb,
     timeout_milliseconds := 8000

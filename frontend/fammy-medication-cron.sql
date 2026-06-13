@@ -13,16 +13,21 @@
 select cron.unschedule('fammy-medication-reminder')
   where exists (select 1 from cron.job where jobname = 'fammy-medication-reminder');
 
+-- ⚠️ FIX 13 giu 2026: il vecchio script aveva `select edge_base_url from
+--    fammy_private.config` ma la tabella ha schema (key, value). Il cron
+--    falliva in silenzio ogni minuto. Allineato al pattern usato dagli
+--    altri cron in fammy-push-notifications.sql. Vedi fammy-medication-cron-FIX.sql
+
 select cron.schedule(
   'fammy-medication-reminder',
   '* * * * *',  -- ogni minuto
   $$
   select net.http_post(
-    url := (select edge_base_url || '/functions/v1/medication-reminder-push'
-            from fammy_private.config limit 1),
+    url := (select value from fammy_private.config where key = 'edge_base_url')
+           || '/functions/v1/medication-reminder-push',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (select service_role_key from fammy_private.config limit 1)
+      'Authorization', 'Bearer ' || (select value from fammy_private.config where key = 'service_role_key')
     ),
     body := '{}'::jsonb,
     timeout_milliseconds := 8000

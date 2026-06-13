@@ -2,6 +2,19 @@
 
 > Le iterazioni successive alla 16.5.43 sono in `/app/memory/CHANGELOG.md`.
 
+## Iterazione 16.5.53 (13 giugno 2026) — FAB sopra toast medicina + fix cron push medicine
+- CSS: FAB rosso "+" si sposta a `bottom: 240px` quando il toast promemoria
+  medicina è visibile (`body:has([data-testid="medication-reminder-toast"])`).
+  Niente più overlap con i bottoni del toast (Presa/Rimanda/Salta).
+- 🎯 Bug critico: il cron `fammy-medication-reminder` falliva in silenzio dal
+  giorno 1 a causa di una query SQL sbagliata (`select edge_base_url from
+  fammy_private.config` — colonna inesistente, tabella key/value). Per questo
+  le push medicine non sono MAI arrivate fuori dall'app.
+- Hotfix: `fammy-medication-cron-FIX.sql` con la sintassi corretta (allineata
+  agli altri cron che funzionano). Corretti anche i file source per future
+  ricostruzioni.
+- Richiede: Save to GitHub + esecuzione del nuovo SQL su Supabase.
+
 ## Iterazione 16.5.52 (12 giugno 2026) — Grafici salute + report medico con QR
 - HealthTrendsCard (SVG 30gg pressione/peso) nel tab Profilo del Care Hub.
 - doctorReport.js: PNG A4 condivisibile con grafici + branding FAMMY + QR
