@@ -1,35 +1,6 @@
 // =============================================================================
-// FAMMY — send-push (Web Push singolo invio)
+// FAMMY — send-push (Web Push singolo invio) — v2 con esiti per dispositivo
 // =============================================================================
-// POST con body { user_id, title, body, tag?, data? } → invia una notifica push
-// a TUTTE le subscription dell'utente. Rimuove le subscription scadute (410).
-//
-// Chiamata via service_role da altre edge functions (cron-digest), oppure
-// dal frontend logged-in per test.
-//
-// Secrets richiesti (Supabase Dashboard → Project Settings → Edge Functions
-// → Secrets):
-//   VAPID_PUBLIC_KEY  = (copia dal file frontend/.env)
-//   VAPID_PRIVATE_KEY = (la chiave privata, mai esposta al frontend)
-//   VAPID_SUBJECT     = mailto:tuo-email@example.com
-//   SUPABASE_URL      = https://<ref>.supabase.co  (gia' iniettato)
-//   SUPABASE_SERVICE_ROLE_KEY  (gia' iniettato)
-// =============================================================================
-//
-// Deploy:
-//   curl -X POST https://api.supabase.com/v1/projects/<REF>/functions/deploy?slug=send-push \
-//     -H "Authorization: Bearer $PAT" \
-//     -F 'metadata={"name":"send-push","entrypoint_path":"index.ts","verify_jwt":false}' \
-//     -F "file=@send-push.ts"
-//
-// Test:
-//   curl -X POST https://<REF>.supabase.co/functions/v1/send-push \
-//     -H "Authorization: Bearer $SERVICE_ROLE" \
-//     -H "Content-Type: application/json" \
-//     -d '{"user_id":"<uuid>","title":"Test","body":"Ciao!"}'
-//
-// =============================================================================
-
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webpush from 'https://esm.sh/web-push@3.6.7?bundle';
@@ -109,20 +80,24 @@ serve(async (req) => {
       keys: { p256dh: s.p256dh, auth: s.auth },
     };
     try {
-      await webpush.sendNotification(subscription, notificationPayload);
+      // urgency: 'high' → su Chrome/Android dice a FCM di consegnare subito e
+      // svegliare il dispositivo dal Doze (altrimenti la notifica resta in coda
+      // finché non si riapre Chrome). TTL: validità della notifica se il device
+      // è irraggiungibile (1h: oltre, viene scartata invece di arrivare stantia).
+      await webpush.sendNotification(subscription, notificationPayload, {
+        urgency: 'high',
+        TTL: 3600,
+      });
       sent++;
       results.push({ id: s.id, ua: s.user_agent || null, ok: true, status: 201 });
     } catch (e) {
       const code = (e as { statusCode?: number }).statusCode ?? 0;
-      // Il body della risposta del push service contiene il motivo esatto
-      // (es. Apple: {"reason":"BadJwtToken"} → VAPID subject/chiavi errati)
       const rawBody = (e as { body?: string }).body;
       const detail = typeof rawBody === 'string' && rawBody.trim()
         ? rawBody.trim().slice(0, 140)
         : undefined;
-      // 404/410 = endpoint scaduto/revocato. 403 = VAPID mismatch.
-      // 400 con BadJwtToken (Apple) = subscription legata a chiavi VAPID
-      // diverse da quelle del server: inutilizzabile, va rimossa.
+      // 404/410 = endpoint scaduto. 403 = VAPID mismatch.
+      // 400 con BadJwtToken (Apple) = subscription con chiavi vecchie: rimuovi.
       const vapidIssue = typeof rawBody === 'string' &&
         /BadJwtToken|VapidPkHashMismatch/i.test(rawBody);
       if (code === 404 || code === 410 || code === 403 || (code === 400 && vapidIssue)) {
