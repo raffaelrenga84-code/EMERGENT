@@ -7,9 +7,18 @@
 // Logica:
 //   1. Calcola data e ora correnti in EUROPE/ROME (gli utenti inseriscono
 //      l'orario in ora locale italiana)
-//   2. Cerca i task NON completati con due_date = oggi e due_time = adesso
+//   2. Cerca i task NON completati con due_date = oggi e due_time ≈ adesso
+//      (finestra di catch-up: minuto esatto oppure fino a 1 minuto dopo)
 //   3. Manda una push agli ASSEGNATARI del task (chi se lo è messo come
 //      promemoria personale lo riceve al giorno e all'ora impostati)
+//
+// ANTI-DOPPIONE: la tolleranza ±1 minuto potrebbe far scattare lo stesso
+// promemoria su due tick consecutivi del cron. Per evitarlo registriamo ogni
+// invio in `task_reminder_sent` (PK = task_id+data+orario): il secondo
+// tentativo viola la PK (errore 23505) e viene saltato.
+// IMPORTANTE: se quella tabella NON esiste, la funzione NON si blocca →
+// fa "fail-open" (invia comunque). In quel caso un eventuale doppione viene
+// comunque collassato sul dispositivo grazie al `tag` identico.
 //
 // Body: nessuno (cron trigger) o { manual: true } per test
 // =============================================================================
@@ -33,7 +42,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// Data (YYYY-MM-DD) e ora (HH:MM) correnti nel fuso Europe/Rome
+// Data (YYYY-MM-DD), ora (HH:MM) e minuti-del-giorno correnti nel fuso Europe/Rome
 function nowInRome() {
   const now = new Date();
   const date = new Intl.DateTimeFormat('en-CA', {
@@ -42,14 +51,15 @@ function nowInRome() {
   const time = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(now); // "HH:MM"
-  return { date, time };
+  const [h, m] = time.split(':').map(Number);
+  return { date, time, minutes: h * 60 + m };
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
   try {
-    const { date: todayRome, time: nowRome } = nowInRome();
+    const { date: todayRome, time: nowRome, minutes: nowMinutes } = nowInRome();
 
     // =====================================================================
     // A) CODA "NUOVO INCARICO" (debounce ~45s per conoscere gli assegnatari)
@@ -200,7 +210,7 @@ serve(async (req) => {
     }
 
     // =====================================================================
-    // B) PROMEMORIA A ORARIO (due_date = oggi, due_time = adesso)
+    // B) PROMEMORIA A ORARIO (due_date = oggi, due_time ≈ adesso)
     // =====================================================================
 
     // Task di OGGI con orario impostato e non ancora completati
@@ -215,16 +225,44 @@ serve(async (req) => {
       return json({ queue_sent: queueSent, followup_sent: followupSent, sent: 0, reason: 'no_tasks_today', now_rome: `${todayRome} ${nowRome}` });
     }
 
-    // Match sull'orario corrente (due_time può essere "HH:MM" o "HH:MM:SS")
-    const dueNow = tasks.filter((t) => String(t.due_time).slice(0, 5) === nowRome);
+    // Finestra di catch-up: il promemoria scatta nel minuto ESATTO oppure
+    // fino a 1 minuto DOPO (se il cron salta un tick). Mai in anticipo.
+    // delta = (minuti correnti) - (minuti dell'orario impostato).
+    const dueNow = tasks.filter((t) => {
+      const hhmm = String(t.due_time).slice(0, 5);
+      const [h, m] = hhmm.split(':').map(Number);
+      if (Number.isNaN(h) || Number.isNaN(m)) return false;
+      const delta = nowMinutes - (h * 60 + m);
+      return delta === 0 || delta === 1;
+    });
     if (dueNow.length === 0) {
       return json({ queue_sent: queueSent, followup_sent: followupSent, sent: 0, reason: 'no_match_this_minute', now_rome: `${todayRome} ${nowRome}` });
     }
 
     let sentTotal = 0;
+    let skippedDuplicate = 0;
     const details: Array<{ task: string; users: number }> = [];
 
     for (const task of dueNow) {
+      const dueHHMM = String(task.due_time).slice(0, 5);
+
+      // Anti-doppione: prova a "prenotare" l'invio di questo task per questo
+      // orario di oggi. Se la riga esiste già → 23505 → l'ha già mandato un
+      // tick precedente, salta. Se l'errore è ALTRO (es. tabella mancante),
+      // logga e prosegui comunque (fail-open: meglio un possibile doppione,
+      // collassato dal tag, che un promemoria perso).
+      const { error: dupErr } = await supabaseAdmin
+        .from('task_reminder_sent')
+        .insert({ task_id: task.id, scheduled_date: todayRome, scheduled_time: dueHHMM });
+      if (dupErr) {
+        if ((dupErr as { code?: string }).code === '23505') {
+          skippedDuplicate++;
+          continue;
+        }
+        console.warn('task_reminder_sent insert failed (non-conflict):', dupErr.message);
+        // prosegue comunque (fail-open)
+      }
+
       // Assegnatari → user_id (i placeholder senza account vengono ignorati)
       const { data: asg } = await supabaseAdmin
         .from('task_assignees').select('member_id').eq('task_id', task.id);
@@ -247,7 +285,7 @@ serve(async (req) => {
           body: JSON.stringify({
             user_ids: userIds,
             title: `⏰ ${task.title}`,
-            body: `È l'ora che avevi impostato · 🕒 ${nowRome}`,
+            body: `È l'ora che avevi impostato · 🕒 ${dueHHMM}`,
             tag: `task-due-${task.id}`,
             data: { kind: 'task', task_id: task.id },
           }),
@@ -260,7 +298,15 @@ serve(async (req) => {
       } catch (_) { /* skip silent */ }
     }
 
-    return json({ queue_sent: queueSent, followup_sent: followupSent, sent_total: sentTotal, matched_tasks: dueNow.length, details, now_rome: `${todayRome} ${nowRome}` });
+    return json({
+      queue_sent: queueSent,
+      followup_sent: followupSent,
+      sent_total: sentTotal,
+      skipped_duplicate: skippedDuplicate,
+      matched_tasks: dueNow.length,
+      details,
+      now_rome: `${todayRome} ${nowRome}`,
+    });
   } catch (err) {
     console.error('task-reminder-push error:', err);
     return json({ error: String(err) }, 500);
