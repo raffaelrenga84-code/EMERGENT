@@ -204,10 +204,26 @@ export default function ProfileTab({ session, profile, families = [], members = 
     setBusy(true);
 
     // Salva il compleanno nel profilo
-    await supabase.from('profiles').update({ birthday: birthday || null }).eq('id', session.user.id);
+    const { error: profileErr } = await supabase
+      .from('profiles')
+      .update({ birthday: birthday || null })
+      .eq('id', session.user.id);
 
     // Salva il compleanno anche in tutti i members dell'utente (per le notifiche)
-    await supabase.from('members').update({ birth_date: birthday || null }).eq('user_id', session.user.id);
+    const { error: membersErr } = await supabase
+      .from('members')
+      .update({ birth_date: birthday || null })
+      .eq('user_id', session.user.id);
+
+    // NON ignorare gli errori: una update fallita (colonna mancante, RLS)
+    // altrimenti fallisce in silenzio e il campo torna a "Not set".
+    if (profileErr || membersErr) {
+      console.error('saveBirthday failed', { profileErr, membersErr });
+      alert('Errore nel salvataggio della data di nascita: ' +
+        (profileErr?.message || membersErr?.message || 'errore sconosciuto'));
+      setBusy(false);
+      return; // tieni aperto l'editor così non perdi il valore inserito
+    }
 
     onChanged && onChanged();
     setBusy(false);
