@@ -190,7 +190,12 @@ body:has([data-testid="medication-reminder-toast"]) .fab.ai-fab {
 .bnav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto;
   background: white; border-top: 1px solid var(--sm); display: flex;
   padding: 8px 4px max(env(safe-area-inset-bottom, 16px), 16px);
-  z-index: 40; }
+  z-index: 40;
+  /* iOS Safari: promuove la barra a layer di compositing proprio, così non
+     "segue" lo scroll inerziale e resta ancorata in basso. */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform; }
 .bnav button { flex: 1; background: none; border: none; padding: 8px 4px; color: var(--kl);
   font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .bnav button.active { color: var(--k); }
