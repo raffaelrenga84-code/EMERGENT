@@ -344,6 +344,14 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
     if (a.user_id === userId) return true;
     return Array.isArray(a.visible_to_families) && a.visible_to_families.includes(familyId);
   });
+  // Tutte le assenze visibili all'utente (senza filtro sul giorno):
+  // serve per NON far scattare lo stato vuoto globale quando esistono
+  // solo assenze (o solo task senza data).
+  const visibleAbsences = (absences || []).filter((a) => {
+    if (isAll) return true;
+    if (a.user_id === userId) return true;
+    return Array.isArray(a.visible_to_families) && a.visible_to_families.includes(familyId);
+  });
   const futureCount = futureEvents.length + futureTasks.length;
   const pastCount = pastEvents.length + pastTasks.length;
 
@@ -580,7 +588,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
         </div>
       )}
 
-      {(expandedEvents.length === 0 && dueTasks.length === 0) ? (
+      {(expandedEvents.length === 0 && allDueTasks.length === 0 && visibleAbsences.length === 0) ? (
         <div className="empty">
           <div className="empty-emoji">📅</div>
           <h3>{t('agenda_empty_h')}</h3>
