@@ -278,6 +278,11 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     } catch (_) { /* push best-effort */ }
   };
   const myFirstName = () => (me?.name || '').split(' ')[0] || 'Qualcuno';
+  // Traduzione con fallback robusto: se la chiave non esiste, t() restituisce
+  // la chiave stessa (non una stringa vuota) → qui lo intercettiamo e usiamo
+  // il fallback. Evita di mostrare la chiave grezza per stringhe non ancora
+  // tradotte in i18n.jsx.
+  const tf = (key, fallback) => { const v = t(key); return (!v || v === key) ? fallback : v; };
 
   const quickToggleDone = async (task) => {
     // Per le istanze ricorrenti, l'id reale è in _origId (le ricorrenze
@@ -324,6 +329,38 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         .eq('task_id', id).eq('member_id', me.id);
     }
     notifyQuickAction(task, `🤚 ${myFirstName()} ${t('push_act_decline') || 'non può occuparsene'}`);
+    onChanged();
+  };
+
+  // Quick "Ho un imprevisto" — per un incarico già tuo: lo rimette tra i
+  // "da fare" per tutti, lo segna urgente così emerge ("serve aiuto"),
+  // scrive un messaggio di sistema e notifica. Stessa semantica di
+  // `unassignMe` nel modale dettagli (riassegna l'eventuale gruppo originale).
+  const quickUnexpected = async (task) => {
+    if (!me) return;
+    const id = task._origId || task.id;
+    await supabase.from('task_assignees').delete().eq('task_id', id);
+    let restoreIds = [];
+    if (Array.isArray(task.delegated_from) && task.delegated_from.length > 0) {
+      restoreIds = task.delegated_from.filter((x) => x !== me.id);
+    } else {
+      restoreIds = assigneesForTask(task.id).filter((a) => a.id !== me.id).map((a) => a.id);
+    }
+    if (restoreIds.length > 0) {
+      await supabase.from('task_assignees').insert(
+        restoreIds.map((mid) => ({ task_id: id, member_id: mid }))
+      );
+    }
+    await supabase.from('task_responses').insert({
+      task_id: id, author_id: me.id,
+      text: t('td_sys_unexpected'), type: 'system',
+    });
+    await supabase.from('tasks').update({
+      status: restoreIds.length === 0 ? 'todo' : 'taken',
+      urgent: true, priority: 'high',
+      delegated_from: null, delegated_to: null,
+    }).eq('id', id);
+    notifyQuickAction(task, `🚨 ${myFirstName()} ${tf('push_act_unexpected', 'ha un imprevisto — serve aiuto')}`);
     onChanged();
   };
 
@@ -420,20 +457,12 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
                 onAction: () => quickToggleDone(task),
               },
               {
-                id: 'claim',
-                icon: '✋',
-                label: t('swipe_claim') || 'Me ne occupo',
-                color: 'var(--ac)',
-                testid: `swipe-claim-${task.id}`,
-                onAction: () => quickAssignMe(task),
-              },
-              {
-                id: 'decline',
-                icon: '🤚',
-                label: t('swipe_decline') || 'Non posso',
+                id: 'unexpected',
+                icon: '🚨',
+                label: tf('swipe_unexpected', 'Ho un imprevisto'),
                 color: 'var(--rd)',
-                testid: `swipe-decline-${task.id}`,
-                onAction: () => quickDecline(task),
+                testid: `swipe-unexpected-${task.id}`,
+                onAction: () => quickUnexpected(task),
               },
             ]
           : [
@@ -970,7 +999,7 @@ function TaskCard({ task, meta, unread, onOpenPhoto, family, assignees, statusLa
         boxShadow: '0 0 8px rgba(200, 74, 54, 0.18)',
       } : priority === 'medium' ? {
         borderLeft: '6px solid #F39C12', borderRadius: 0,
-        background: 'var(--amB)',
+        background: '#F39C1222',
       } : { borderRadius: 8 };
   // Quando il menu priorità è aperto, alza lo stacking context della card
   // così il popup vince su qualsiasi card sorella.
