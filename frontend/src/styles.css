@@ -130,6 +130,11 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--km); mar
 /* Quando una .tc è dentro uno SwipeableRow, il margine è gestito dal wrapper */
 .swipe-row-inner > .tc { margin-bottom: 0; box-shadow: none; }
 .swipe-row-inner > .tc:hover { transform: none; box-shadow: none; }
+/* Sfondo opaco del livello che scorre: impedisce che una card con sfondo
+   semi-trasparente (es. priorita' "attenzione", #F39C1222) lasci trasparire
+   i pulsanti d'azione durante lo swipe. Coincide col colore della pagina,
+   quindi nessun cambiamento visivo a riposo. */
+.swipe-row-inner { background: var(--s); }
 .tc.care { background: #FEF8F4; }
 .tc.home { background: var(--s); }
 .tc.health { background: #F2F9F5; }
