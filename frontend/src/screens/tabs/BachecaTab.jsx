@@ -970,7 +970,7 @@ function TaskCard({ task, meta, unread, onOpenPhoto, family, assignees, statusLa
         boxShadow: '0 0 8px rgba(200, 74, 54, 0.18)',
       } : priority === 'medium' ? {
         borderLeft: '6px solid #F39C12', borderRadius: 0,
-        background: '#F39C1222',
+        background: 'var(--amB)',
       } : { borderRadius: 8 };
   // Quando il menu priorità è aperto, alza lo stacking context della card
   // così il popup vince su qualsiasi card sorella.
