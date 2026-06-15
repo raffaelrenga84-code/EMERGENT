@@ -482,11 +482,22 @@ export default function TaskDetailModal({
     if (!newComment.trim()) return;
     setBusy(true);
     const commentText = newComment.trim();
-    await supabase.from('task_responses').insert({
+    const { error: insErr } = await supabase.from('task_responses').insert({
       task_id: realTaskId, author_id: me?.id || null,
       text: commentText, type: 'comment',
+      // Collega la risposta al messaggio citato — SOLO se stai rispondendo.
+      // Spread condizionale: i messaggi normali non includono il campo, così
+      // la chat funziona identica anche se la colonna non esistesse.
+      ...(replyTo?.id ? { reply_to_id: replyTo.id } : {}),
     });
+    if (insErr) {
+      console.error('addComment failed', insErr);
+      alert('Errore nell\'invio del messaggio: ' + insErr.message);
+      setBusy(false);
+      return; // non perdere il testo digitato
+    }
     setNewComment('');
+    setReplyTo(null);
     const { data } = await supabase.from('task_responses').select('*').eq('task_id', realTaskId).order('created_at');
     setComments(data || []);
     setBusy(false);
@@ -1369,7 +1380,9 @@ export default function TaskDetailModal({
                       author_id: me?.id || null,
                       text: `📷 ${t('td_chat_photo_shared') || 'ha condiviso una foto'}`,
                       type: 'photo',
+                      ...(replyTo?.id ? { reply_to_id: replyTo.id } : {}),
                     });
+                    setReplyTo(null);
                     // Push agli altri membri (stessi destinatari della chat)
                     try {
                       const userIds = await memberIdsToUserIds(chatRecipientMemberIds());
