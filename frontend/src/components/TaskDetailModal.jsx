@@ -50,10 +50,17 @@ export default function TaskDetailModal({
   const [photoUrls, setPhotoUrls] = useState({});
   const [linkedExpenses, setLinkedExpenses] = useState([]);
   const [lightbox, setLightbox] = useState(null);
-  // Default tab = 'thread' (Chat) per UX: chi apre un task/evento di
-  // solito vuole leggere/scrivere commenti, non rivedere i dettagli che
-  // ha già appena visto nella card.
-  const [activeTab, setActiveTab] = useState('thread');
+  // Default tab = 'details' (Dettagli): all'apertura mostriamo la parte
+  // utile (checklist, foto, assegnazioni). Se l'incarico ha già una
+  // conversazione reale, l'effetto di caricamento commenti passa a 'thread'
+  // (vedi sotto): così una chat attiva si apre direttamente sulla chat.
+  const [activeTab, setActiveTab] = useState('details');
+  // Priorità con stato locale per feedback immediato al tap: la scrittura
+  // su DB + onChanged() arriverebbe in ritardo, lasciando la pill "ferma".
+  const [priorityLocal, setPriorityLocal] = useState(task.priority || (task.urgent ? 'high' : 'normal'));
+  useEffect(() => {
+    setPriorityLocal(task.priority || (task.urgent ? 'high' : 'normal'));
+  }, [task.priority, task.urgent]);
   const [didAutoOpen, setDidAutoOpen] = useState(false);
   // Numero di messaggi nuovi arrivati mentre il tab Chat NON è attivo.
   // Reset a 0 appena l'utente passa al tab Chat.
@@ -290,6 +297,7 @@ export default function TaskDetailModal({
   // Cambio priorità (urgenza). Non chiude il modale: l'utente di solito
   // continua a chattare/agire dopo aver impostato l'urgenza.
   const updatePriority = async (p) => {
+    setPriorityLocal(p);   // feedback immediato: la pill selezionata si colora subito
     setBusy(true);
     await supabase.from('tasks').update({
       priority: p,
@@ -299,7 +307,7 @@ export default function TaskDetailModal({
     onChanged();
   };
 
-  const currentPriority = task.priority || (task.urgent ? 'high' : 'normal');
+  const currentPriority = priorityLocal;
 
   const canDelete = !task.author_id || task.author_id === me?.id;
   const isRecurring = !!(task.recurring_days && task.recurring_days.length > 0);
@@ -485,16 +493,13 @@ export default function TaskDetailModal({
     const { error: insErr } = await supabase.from('task_responses').insert({
       task_id: realTaskId, author_id: me?.id || null,
       text: commentText, type: 'comment',
-      // Collega la risposta al messaggio citato — SOLO se stai rispondendo.
-      // Spread condizionale: i messaggi normali non includono il campo, così
-      // la chat funziona identica anche se la colonna non esistesse.
       ...(replyTo?.id ? { reply_to_id: replyTo.id } : {}),
     });
     if (insErr) {
       console.error('addComment failed', insErr);
       alert('Errore nell\'invio del messaggio: ' + insErr.message);
       setBusy(false);
-      return; // non perdere il testo digitato
+      return;
     }
     setNewComment('');
     setReplyTo(null);
