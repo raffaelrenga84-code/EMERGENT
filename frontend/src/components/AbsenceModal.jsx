@@ -211,7 +211,7 @@ export default function AbsenceModal({
               title={t('imp_h') || 'Importa da foto turno'}
               style={{
                 padding: '8px 12px', borderRadius: 100,
-                border: '1.5px solid var(--ac)', background: 'white',
+                border: '1.5px solid var(--ac)', background: 'var(--w, #fff)',
                 color: 'var(--ac)', fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', whiteSpace: 'nowrap',
                 display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -233,7 +233,7 @@ export default function AbsenceModal({
               aria-label={t('delete') || 'Elimina'}
               style={{
                 width: 36, height: 36, borderRadius: 10,
-                border: '1px solid #E89898', background: 'white',
+                border: '1px solid #E89898', background: 'var(--w, #fff)',
                 color: '#A93B2B', fontSize: 16, cursor: 'pointer',
                 padding: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -249,7 +249,7 @@ export default function AbsenceModal({
             title={t('close') || 'Chiudi'}
             style={{
               width: 36, height: 36, borderRadius: 10,
-              border: '1px solid var(--sm)', background: 'white',
+              border: '1px solid var(--sm)', background: 'var(--w, #fff)',
               fontSize: 14, cursor: 'pointer', padding: 0,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             }}>✕
@@ -353,7 +353,7 @@ export default function AbsenceModal({
                   {conflictingTasks.map((ct) => (
                     <span key={ct.id} style={{
                       padding: '4px 10px', borderRadius: 100,
-                      background: 'white', border: '1px solid var(--sm)',
+                      background: 'var(--w, #fff)', border: '1px solid var(--sm)',
                       fontSize: 11, fontWeight: 600,
                     }}>🔁 {ct.title}</span>
                   ))}
@@ -578,7 +578,7 @@ function AbsenceViewOnly({ absence, members = [], families = [], t, lang }) {
                 {visibleFamilies.map((f) => (
                   <span key={f.id} style={{
                     padding: '2px 8px', borderRadius: 100,
-                    background: 'white', border: '1px solid var(--sm)',
+                    background: 'var(--w, #fff)', border: '1px solid var(--sm)',
                     fontSize: 11, fontWeight: 600,
                   }}>{f.emoji} {f.name}</span>
                 ))}
@@ -589,3 +589,4 @@ function AbsenceViewOnly({ absence, members = [], families = [], t, lang }) {
       </div>
     </div>
   );
+}
