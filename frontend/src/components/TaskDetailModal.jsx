@@ -41,6 +41,80 @@ export default function TaskDetailModal({
   // Per le istanze di ricorrenze l'id è "<orig>__<date>": le mutazioni DEVONO
   // andare sull'orig id, non sul finto id.
   const realTaskId = task._origId || task.id;
+
+  // === Duplica incarico: copia task + checklist + assegnatari ===
+  const [dupBusy, setDupBusy] = useState(false);
+  const duplicateTask = async () => {
+    if (dupBusy) return;
+    setDupBusy(true);
+    try {
+      const { data: orig } = await supabase.from('tasks')
+        .select('*').eq('id', realTaskId).single();
+      if (!orig) { setDupBusy(false); return; }
+      const copy = {
+        family_id: orig.family_id,
+        title: orig.title,
+        note: orig.note,
+        category: orig.category,
+        location: orig.location,
+        priority: orig.priority,
+        visibility: orig.visibility || 'all',
+        author_id: me?.id || orig.author_id,
+        status: 'todo',
+        // La copia riparte pulita: senza scadenza, non ricorrente
+        due_date: null, due_time: null,
+        recurring_days: null, recurring_until: null,
+      };
+      const { data: created, error } = await supabase.from('tasks')
+        .insert(copy).select().single();
+      if (error || !created) { setDupBusy(false); return; }
+      // Assegnatari uguali all'originale
+      const { data: ass } = await supabase.from('task_assignees')
+        .select('member_id').eq('task_id', realTaskId);
+      if (ass?.length) {
+        await supabase.from('task_assignees')
+          .insert(ass.map((a) => ({ task_id: created.id, member_id: a.member_id })));
+      }
+      // Checklist copiata, tutta da spuntare
+      const { data: subs } = await supabase.from('task_subtasks')
+        .select('text, order_index').eq('task_id', realTaskId)
+        .order('order_index', { ascending: true });
+      if (subs?.length) {
+        await supabase.from('task_subtasks')
+          .insert(subs.map((s) => ({ task_id: created.id, text: s.text, order_index: s.order_index })));
+      }
+      onChanged();
+      onClosed();
+    } finally {
+      setDupBusy(false);
+    }
+  };
+
+  // === Condividi fuori dall'app (share nativo, fallback WhatsApp) ===
+  const shareTask = async () => {
+    const { data: subs } = await supabase.from('task_subtasks')
+      .select('text, done').eq('task_id', realTaskId)
+      .order('order_index', { ascending: true });
+    const lines = [`📌 ${task.title}`];
+    if (task.due_date) {
+      const d = new Date(task.due_date).toLocaleDateString(undefined,
+        { weekday: 'long', day: 'numeric', month: 'long' });
+      lines.push(`📅 ${d}${task.due_time ? ` · 🕐 ${String(task.due_time).slice(0, 5)}` : ''}`);
+    }
+    if (task.location) lines.push(`📍 ${task.location}`);
+    if (task.note) lines.push(task.note);
+    if (subs?.length) {
+      lines.push('');
+      for (const s of subs) lines.push(`${s.done ? '✅' : '⬜️'} ${s.text}`);
+    }
+    lines.push('', '— inviato da FAMMY 🏡');
+    const text = lines.join('\n');
+    if (navigator.share) {
+      try { await navigator.share({ text }); } catch (_) { /* annullato */ }
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
   const isRecurringInstance = !!task._isRecurringInstance;
   const occurrenceDate = task._occurrenceDate || null;
   const [comments, setComments] = useState([]);
@@ -581,7 +655,7 @@ export default function TaskDetailModal({
           }}>
           <div onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'white', borderRadius: 14, maxWidth: 360, width: '100%',
+              background: 'var(--w, #fff)', borderRadius: 14, maxWidth: 360, width: '100%',
               padding: 20, boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
             }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🗑️</div>
@@ -594,7 +668,7 @@ export default function TaskDetailModal({
               <button onClick={doStopRecurrence} disabled={busy}
                 style={{
                   padding: '12px 14px', borderRadius: 12,
-                  border: '1.5px solid var(--ac)', background: 'white',
+                  border: '1.5px solid var(--ac)', background: 'var(--w, #fff)',
                   color: 'var(--ac)', fontSize: 13, fontWeight: 700,
                   cursor: 'pointer', textAlign: 'left',
                 }}>
@@ -618,7 +692,7 @@ export default function TaskDetailModal({
               <button onClick={() => setShowDeleteConfirm(false)} disabled={busy}
                 style={{
                   padding: '10px 14px', borderRadius: 12,
-                  border: '1.5px solid var(--sm)', background: 'white',
+                  border: '1.5px solid var(--sm)', background: 'var(--w, #fff)',
                   color: 'var(--km)', fontSize: 13, fontWeight: 600,
                   cursor: 'pointer', marginTop: 4,
                 }}>
@@ -636,6 +710,25 @@ export default function TaskDetailModal({
           <span style={{ fontSize: 30, flexShrink: 0, marginTop: 2 }}>{CAT_EMOJI[task.category] || '📌'}</span>
           <h2 style={{ flex: 1, margin: 0, lineHeight: 1.2 }} data-testid="task-detail-title">{title}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <button
+              type="button"
+              data-testid="task-detail-share-icon"
+              onClick={shareTask}
+              title={t('td_share') || 'Condividi'}
+              aria-label={t('td_share') || 'Condividi'}
+              style={iconBtnStyle}>
+              📤
+            </button>
+            <button
+              type="button"
+              data-testid="task-detail-duplicate-icon"
+              onClick={duplicateTask}
+              disabled={dupBusy}
+              title={t('td_duplicate') || 'Duplica'}
+              aria-label={t('td_duplicate') || 'Duplica'}
+              style={{ ...iconBtnStyle, opacity: dupBusy ? 0.5 : 1 }}>
+              ⧉
+            </button>
             <button
               type="button"
               data-testid="task-detail-edit-icon"
@@ -710,7 +803,7 @@ export default function TaskDetailModal({
           <div data-testid="task-detail-pane-details">
         {/* Checklist/subtasks — sempre in cima al tab Dettagli */}
         <div style={{
-          marginTop: 12, padding: 12, background: 'white',
+          marginTop: 12, padding: 12, background: 'var(--w, #fff)',
           border: '1px solid var(--sm)', borderRadius: 12,
         }}>
           <SubtaskList taskId={realTaskId} me={me} />
@@ -823,7 +916,7 @@ export default function TaskDetailModal({
                 disabled={busy}
                 style={{
                   padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--ac)',
-                  background: 'white', color: 'var(--ac)', fontSize: 13, fontWeight: 700,
+                  background: 'var(--w, #fff)', color: 'var(--ac)', fontSize: 13, fontWeight: 700,
                   cursor: 'pointer',
                 }}
               >
@@ -1298,7 +1391,7 @@ export default function TaskDetailModal({
                   data-testid={`task-chat-qr-${qr.slice(0, 8)}`}
                   style={{
                     padding: '6px 12px', borderRadius: 100,
-                    border: '1px solid var(--sm)', background: 'white',
+                    border: '1px solid var(--sm)', background: 'var(--w, #fff)',
                     color: 'var(--km)', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', whiteSpace: 'nowrap',
                   }}>
@@ -1344,7 +1437,7 @@ export default function TaskDetailModal({
             <div style={{
               display: 'flex', gap: 8, alignItems: 'center',
               padding: '8px 10px',
-              background: 'white', border: '1.5px solid var(--sm)',
+              background: 'var(--w, #fff)', border: '1.5px solid var(--sm)',
               borderRadius: 100,
               boxShadow: '0 2px 6px rgba(28,22,17,0.04)',
             }}>
@@ -1475,7 +1568,7 @@ export default function TaskDetailModal({
 
 const iconBtnStyle = {
   width: 36, height: 36, borderRadius: 10,
-  border: '1px solid var(--sm)', background: 'white',
+  border: '1px solid var(--sm)', background: 'var(--w, #fff)',
   fontSize: 16, cursor: 'pointer', padding: 0,
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   transition: 'background 0.15s ease',
@@ -1494,7 +1587,7 @@ function primaryBtnStyle(busy) {
 function secondaryBtnStyle(busy) {
   return {
     padding: '12px 16px', borderRadius: 12,
-    border: '1.5px solid var(--sm)', background: 'white',
+    border: '1.5px solid var(--sm)', background: 'var(--w, #fff)',
     color: 'var(--km)', fontSize: 13, fontWeight: 600,
     cursor: 'pointer', opacity: busy ? 0.6 : 1,
   };
@@ -1535,7 +1628,7 @@ function AssignGrid({ title, members, onPick, busy }) {
           <button key={m.id} onClick={() => onPick(m.id)} disabled={busy}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center',
-              gap: 6, padding: '10px 12px', background: 'white',
+              gap: 6, padding: '10px 12px', background: 'var(--w, #fff)',
               border: '1.5px solid var(--sm)', borderRadius: 12,
               cursor: 'pointer', opacity: busy ? 0.6 : 1,
             }}>
