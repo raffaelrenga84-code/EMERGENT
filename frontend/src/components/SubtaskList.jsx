@@ -73,17 +73,24 @@ export default function SubtaskList({ taskId, me, onCountsChange }) {
   }, [items, onCountsChange]);
 
   const addItem = async () => {
-    const text = newText.trim();
-    if (!text || busy) return;
+    const raw = newText.trim();
+    if (!raw || busy) return;
     setBusy(true);
-    const nextOrder = (items.reduce((m, i) => Math.max(m, i.order_index || 0), 0)) + 1;
+    // Aggiunta multipla: "latte, pane, uova" (o testo su più righe)
+    // crea una voce per ciascun elemento, in un solo invio.
+    const parts = raw.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean).slice(0, 50);
+    let nextOrder = (items.reduce((m, i) => Math.max(m, i.order_index || 0), 0)) + 1;
+    const rows = parts.map((text) => ({ task_id: taskId, text, order_index: nextOrder++ }));
     const { data, error } = await supabase
       .from('task_subtasks')
-      .insert({ task_id: taskId, text, order_index: nextOrder })
-      .select().single();
-    if (!error && data) {
+      .insert(rows)
+      .select();
+    if (!error && data?.length) {
       // Aggiunta optimistic se la realtime non ha già fatto in tempo
-      setItems((prev) => prev.some((p) => p.id === data.id) ? prev : [...prev, data]);
+      setItems((prev) => {
+        const fresh = data.filter((d) => !prev.some((p) => p.id === d.id));
+        return [...prev, ...fresh];
+      });
       setNewText('');
       // Riposiziona focus per inserimenti rapidi
       inputRef.current?.focus();
@@ -178,9 +185,12 @@ export default function SubtaskList({ taskId, me, onCountsChange }) {
         </div>
       )}
 
-      {/* Lista voci */}
+      {/* Lista voci: le cose ancora da fare in alto, le fatte in fondo */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {items.map((item, idx) => (
+        {[...items].sort((a, b) =>
+          ((a.done ? 1 : 0) - (b.done ? 1 : 0)) ||
+          ((a.order_index || 0) - (b.order_index || 0))
+        ).map((item, idx) => (
           <SubtaskRow key={item.id}
             item={item}
             isFirst={idx === 0}
@@ -219,7 +229,7 @@ export default function SubtaskList({ taskId, me, onCountsChange }) {
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }}
-          placeholder={t('subtask_add_ph') || 'Aggiungi voce + Invio'}
+          placeholder={t('subtask_add_ph2') || 'Aggiungi voci (anche: latte, pane, uova) + Invio'}
           data-testid="subtask-new-input"
           style={{
             flex: 1, border: 'none', outline: 'none', background: 'transparent',
