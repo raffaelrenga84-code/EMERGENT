@@ -27,6 +27,7 @@ export default function MedicalProfileSection({ member, me }) {
   const [ecRelation, setEcRelation] = useState('');
   const [doctorName, setDoctorName] = useState('');
   const [doctorPhone, setDoctorPhone] = useState('');
+  const [doctorEmail, setDoctorEmail] = useState('');
   const [healthCard, setHealthCard] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -48,6 +49,7 @@ export default function MedicalProfileSection({ member, me }) {
       setEcRelation(data?.emergency_contact_relation || '');
       setDoctorName(data?.doctor_name || '');
       setDoctorPhone(data?.doctor_phone || '');
+      setDoctorEmail(data?.doctor_email || '');
       setHealthCard(data?.health_card_number || '');
       setNotes(data?.notes || '');
       setEdited(false);
@@ -69,6 +71,7 @@ export default function MedicalProfileSection({ member, me }) {
       emergency_contact_relation: ecRelation.trim() || null,
       doctor_name: doctorName.trim() || null,
       doctor_phone: doctorPhone.trim() || null,
+      doctor_email: doctorEmail.trim() || null,
       health_card_number: healthCard.trim() || null,
       notes: notes.trim() || null,
       updated_by: me?.id || null,
@@ -185,6 +188,11 @@ export default function MedicalProfileSection({ member, me }) {
           placeholder={t('mp_doctor_phone_ph') || 'Telefono medico'}
           style={{ marginTop: 6 }}
           data-testid="mp-doc-phone" />
+        <input className="input" type="email" value={doctorEmail}
+          onChange={(e) => onChange(setDoctorEmail)(e.target.value)}
+          placeholder={t('mp_doctor_email_ph') || 'Email medico (per richiedere ricette)'}
+          style={{ marginTop: 6 }}
+          data-testid="mp-doc-email" />
       </div>
 
       <Section label={t('mp_health_card_label') || 'Tessera sanitaria'}>
