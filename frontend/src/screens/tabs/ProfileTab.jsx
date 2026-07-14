@@ -25,7 +25,7 @@ import DonateModal from '../../components/DonateModal.jsx';
 import FeedbackModal from '../../components/FeedbackModal.jsx';
 import FeedbackInbox from '../../components/FeedbackInbox.jsx';
 import NotificationsHealthCheck from '../../components/NotificationsHealthCheck.jsx';
-import CalendarFeedCard from '../../components/CalendarFeedCard.jsx';
+import ExportAllCalendarsModal from '../../components/ExportAllCalendarsModal.jsx';
 import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
@@ -33,6 +33,7 @@ const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C'
 export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, onNewFamily, onOpenAI, openInboxSignal = 0, notificationControl = {} }) {
   const { t, lang, setLang } = useT();
   const [view, setView] = useState('main'); // main | plans | theme | a11y | privacy
+  const [showExportCal, setShowExportCal] = useState(false);
   // Preferenza schermata iniziale (per-dispositivo, come il tema)
   const [startTab, setStartTab] = useState(() => {
     try {
@@ -349,7 +350,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
         <span style={{
           position: 'absolute', bottom: -5, right: -5,
           width: 26, height: 26, borderRadius: 100,
-          background: 'white', border: '1px solid var(--sm)',
+          background: 'var(--w, #fff)', border: '1px solid var(--sm)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 13, boxShadow: '0 1px 4px rgba(28,22,17,.15)',
         }}>📷</span>
@@ -864,10 +865,34 @@ export default function ProfileTab({ session, profile, families = [], members = 
           <span style={{ color: 'var(--km)', fontSize: 18 }}>›</span>
         </button>
 
-        {/* Calendar feed ICS — link da sincronizzare con Apple/Google Calendar */}
-        <div style={{ marginTop: 8 }}>
-          <CalendarFeedCard session={session} />
-        </div>
+        {/* Esporta calendario — stesso flusso unificato dell'Agenda:
+            link di sottoscrizione webcal/Google per famiglia (niente
+            download di file, impossibile su PWA iOS). */}
+        <button
+          type="button"
+          className="btn full secondary"
+          onClick={() => setShowExportCal(true)}
+          data-testid="profile-export-calendar-btn"
+          style={{ textAlign: 'left', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+          <span style={{ fontSize: 22 }}>📅</span>
+          <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--k)' }}>
+              {t('export_cal_h') || 'Esporta calendario'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>
+              {t('export_cal_s') || 'Sincronizza FAMMY con Apple Calendar o Google Calendar'}
+            </div>
+          </div>
+          <span style={{ color: 'var(--km)', fontSize: 18 }}>›</span>
+        </button>
+
+        {showExportCal && (
+          <ExportAllCalendarsModal
+            families={families}
+            onClose={() => setShowExportCal(false)}
+            onChanged={onChanged}
+          />
+        )}
       </ProfileGroup>
 
       {/* GRUPPO 7: INVITA UN AMICO */}
@@ -999,7 +1024,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
             onClick={(e) => e.stopPropagation()}
             data-testid="profile-meds-picker-sheet"
             style={{
-              width: '100%', maxWidth: 520, background: 'white',
+              width: '100%', maxWidth: 520, background: 'var(--w, #fff)',
               borderTopLeftRadius: 22, borderTopRightRadius: 22,
               padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
               boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
@@ -1057,7 +1082,7 @@ export default function ProfileTab({ session, profile, families = [], members = 
               data-testid="profile-meds-picker-cancel"
               style={{
                 marginTop: 6, padding: '12px', borderRadius: 12,
-                border: '1px solid var(--sm)', background: 'white',
+                border: '1px solid var(--sm)', background: 'var(--w, #fff)',
                 fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
               }}>{t('cancel') || 'Annulla'}</button>
           </div>
@@ -1369,7 +1394,7 @@ function PushDiagnosticCard({ session }) {
         <button type="button" onClick={() => setRefreshKey((k) => k + 1)}
           style={{
             padding: '4px 10px', border: '1px solid var(--sm)', borderRadius: 100,
-            background: 'white', cursor: 'pointer', fontSize: 11, color: 'var(--km)',
+            background: 'var(--w, #fff)', cursor: 'pointer', fontSize: 11, color: 'var(--km)',
           }}
           data-testid="push-diagnostic-refresh">↻</button>
       </div>
