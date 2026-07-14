@@ -30,9 +30,12 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
     loadTokens();
   }, [families]);
 
+  // Palette famiglie allineata al design system Organic & Earthy
+  // (niente blu/viola generici: terracotta, ocra, salvia, argilla,
+  //  erica, grigio-azzurro polvere, bruno).
   const FAMILY_COLORS = {
-    0: '#3674D9', 1: '#E8A500', 2: '#C84A36', 3: '#3D8F5E',
-    4: '#D97A42', 5: '#7C3AED', 6: '#E91E8C',
+    0: '#C1624B', 1: '#D4A35B', 2: '#7C8E76', 3: '#B84A4A',
+    4: '#7A6E8C', 5: '#6E87A0', 6: '#8C7A5B',
   };
   const getFamilyColor = (index) => FAMILY_COLORS[index % Object.keys(FAMILY_COLORS).length];
 
@@ -124,11 +127,11 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={handleSelectAll}
-                style={{ padding: '4px 8px', fontSize: 11, background: 'white', border: '1px solid var(--sm)', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+                style={{ padding: '4px 8px', fontSize: 11, background: 'var(--w, #fff)', border: '1px solid var(--sm)', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
                 Tutte
               </button>
               <button type="button" onClick={handleSelectNone}
-                style={{ padding: '4px 8px', fontSize: 11, background: 'white', border: '1px solid var(--sm)', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+                style={{ padding: '4px 8px', fontSize: 11, background: 'var(--w, #fff)', border: '1px solid var(--sm)', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
                 Nessuna
               </button>
             </div>
@@ -136,7 +139,7 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {families.map((f, idx) => (
               <label key={f.id}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: 8, background: 'white', borderRadius: 6, border: '1px solid var(--sm)' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: 8, background: 'var(--w, #fff)', borderRadius: 6, border: '1px solid var(--sm)' }}>
                 <input type="checkbox" checked={selected[f.id] || false} onChange={() => handleToggle(f.id)}
                   style={{ cursor: 'pointer', width: 18, height: 18 }} />
                 <div style={{ width: 12, height: 12, borderRadius: 3, background: getFamilyColor(idx), flexShrink: 0 }} />
@@ -167,7 +170,7 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
               const familyIdx = families.findIndex((f) => f.id === t.family.id);
               return (
                 <div key={t.family.id}
-                  style={{ marginBottom: 12, padding: 12, background: 'white', border: '1px solid var(--sm)', borderRadius: 8 }}>
+                  style={{ marginBottom: 12, padding: 12, background: 'var(--w, #fff)', border: '1px solid var(--sm)', borderRadius: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <div style={{ width: 12, height: 12, borderRadius: 3, background: getFamilyColor(familyIdx) }} />
                     <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>
