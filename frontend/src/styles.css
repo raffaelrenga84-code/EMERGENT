@@ -821,3 +821,23 @@ html[data-theme="dark"] .gift-card { background: var(--sm); }
 /* Skeleton shimmer for loading states */
 .skeleton { background: linear-gradient(90deg, var(--sm) 0%, var(--s) 50%, var(--sm) 100%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 12px; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+/* =====================================================================
+   FAMMY — Blocco da INCOLLARE IN FONDO a frontend/src/styles.css
+   (non sostituire il file: solo aggiungere queste righe alla fine)
+   ===================================================================== */
+
+/* Fix iOS: i campi data/ora non si restringono e creano lo scroll
+   orizzontale nei modal (es. Dal/Al affiancati). */
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+input::-webkit-date-and-time-value { text-align: left; }
+
+/* Superficie "bianca" tema-aware: i componenti nuovi usano var(--w)
+   al posto del bianco fisso, così in dark mode diventano scuri. */
+:root { --w: #FFFFFF; }
+html[data-theme="dark"] { --w: #262624; }
