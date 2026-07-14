@@ -57,9 +57,13 @@ export default function AddTaskModal({
   );
   const [dueDate, setDueDate] = useState(editingTask?.due_date || initialDueDate || '');
   const [dueTime, setDueTime] = useState(editingTask?.due_time || initialDueTime || '');
+  // Anticipo del promemoria in minuti (0 = all'orario di scadenza)
+  const [remindLead, setRemindLead] = useState(Number(editingTask?.remind_lead_min) || 0);
   const [location, setLocation] = useState(editingTask?.location || initialLocation || '');
   const [assignees, setAssignees] = useState([]);
   const [recurringDays, setRecurringDays] = useState(editingTask?.recurring_days || []);
+  // Rotazione turni: gli assegnatari si alternano a ogni completamento
+  const [rotationEnabled, setRotationEnabled] = useState(!!(editingTask?.rotation_member_ids?.length));
   const [recurringUntil, setRecurringUntil] = useState(editingTask?.recurring_until || '');
   const [taskFamily, setTaskFamily] = useState(editingTask?.family_id || familyId);
   const [busy, setBusy] = useState(false);
@@ -74,6 +78,9 @@ export default function AddTaskModal({
   });
   const [expandRecurring, setExpandRecurring] = useState(!!(editingTask?.recurring_days && editingTask.recurring_days.length > 0));
   const [onlyForMe, setOnlyForMe] = useState(false);
+  // In modalità "Solo per me" la lista famiglie è nascosta (promemoria
+  // personale). Questo flag la rivela se l'utente vuole condividere.
+  const [showFamiliesWhilePersonal, setShowFamiliesWhilePersonal] = useState(false);
   const [recurrenceScope, setRecurrenceScope] = useState(editingTask?.recurring_until ? 'thisMonth' : 'forever');
 
   const scrollableRef = useRef(null);
@@ -260,6 +267,29 @@ export default function AddTaskModal({
       }
     }
 
+    // === Visibilità: incarico PRIVATO o condiviso? ===
+    // "Solo per me" senza altri membri = promemoria personale → 'private':
+    // invisibile alle famiglie (RLS lato database) e senza notifiche.
+    // Se oltre a me è selezionato anche solo un altro membro → 'all'.
+    const myUid = members.find((m) => m.id === authorMemberId)?.user_id || null;
+    const selectedMembers = members.filter((m) => assignees.includes(m.id));
+    let iAmTheAuthor = true;
+    if (isEdit && editingTask?.author_id) {
+      const authorUid = members.find((m) => m.id === editingTask.author_id)?.user_id;
+      // Se non riusciamo a verificare l'autore, per sicurezza NON privatizziamo.
+      iAmTheAuthor = !!authorUid && authorUid === myUid;
+    }
+    const taskVisibility = (
+      iAmTheAuthor &&
+      myUid &&
+      selectedMembers.length > 0 &&
+      selectedMembers.length === assignees.length &&
+      selectedMembers.every((m) => m.user_id === myUid)
+    ) ? 'private' : 'all';
+
+    // Rotazione turni: ha senso solo con ricorrenza e almeno 2 assegnatari.
+    const rotationActive = rotationEnabled && recurringDays.length > 0 && assignees.length >= 2;
+
     const payloadCommon = {
       title: title.trim(),
       note: note.trim() || null,
@@ -268,14 +298,17 @@ export default function AddTaskModal({
       urgent: priority === 'high',
       due_date: dueDate || null,
       due_time: dueTime || null,
+      remind_lead_min: dueTime ? (Number(remindLead) || 0) : 0,
       location: location.trim() || null,
       recurring_days: recurringDays.length > 0 ? recurringDays : null,
       recurring_until: recurringDays.length > 0 ? computedUntil : null,
+      rotation_member_ids: rotationActive ? assignees : null,
     };
 
     if (isEdit) {
       const { error: e1 } = await supabase.from('tasks').update({
         family_id: finalFamilyId,
+        visibility: taskVisibility,
         ...payloadCommon,
       }).eq('id', editingTask.id);
 
@@ -284,7 +317,10 @@ export default function AddTaskModal({
       await supabase.from('task_assignees').delete().eq('task_id', editingTask.id);
       if (assignees.length > 0) {
         markSelfAssignment(editingTask.id);
-        const rows = assignees.map((memberId) => ({ task_id: editingTask.id, member_id: memberId }));
+        // Con rotazione attiva parte (o riparte) il primo della lista;
+        // gli altri entreranno a turno a ogni completamento.
+        const toInsert = rotationActive ? assignees.slice(0, 1) : assignees;
+        const rows = toInsert.map((memberId) => ({ task_id: editingTask.id, member_id: memberId }));
         await supabase.from('task_assignees').insert(rows);
       }
 
@@ -320,7 +356,7 @@ export default function AddTaskModal({
       family_id: finalFamilyId,
       ...payloadCommon,
       status: initialStatus,
-      visibility: 'all',
+      visibility: taskVisibility,
       author_id: finalAuthorId,
       assigned_to: assignees[0] || null,
     }).select().single();
@@ -329,7 +365,9 @@ export default function AddTaskModal({
 
     if (assignees.length > 0) {
       markSelfAssignment(task.id);
-      const rows = assignees.map((memberId) => ({ task_id: task.id, member_id: memberId }));
+      // Con rotazione attiva il primo turno è del primo selezionato
+      const toInsert = rotationActive ? assignees.slice(0, 1) : assignees;
+      const rows = toInsert.map((memberId) => ({ task_id: task.id, member_id: memberId }));
       await supabase.from('task_assignees').insert(rows);
     }
 
@@ -370,7 +408,7 @@ export default function AddTaskModal({
             }} data-testid="add-task-assignee-alert">
             <div onClick={(e) => e.stopPropagation()}
               style={{
-                background: 'white', borderRadius: 16, maxWidth: 360, width: '100%',
+                background: 'var(--w, #fff)', borderRadius: 16, maxWidth: 360, width: '100%',
                 padding: 22, boxShadow: '0 18px 48px rgba(0,0,0,0.3)',
               }}>
               <div style={{ fontSize: 38, marginBottom: 8 }}>👥</div>
@@ -527,12 +565,41 @@ export default function AddTaskModal({
                     title={t('clear_time') || 'Rimuovi orario'}
                     style={{
                       width: 44, borderRadius: 12,
-                      border: '1.5px solid var(--sm)', background: 'white',
+                      border: '1.5px solid var(--sm)', background: 'var(--w, #fff)',
                       color: 'var(--km)', fontSize: 16, fontWeight: 700,
                       cursor: 'pointer', flexShrink: 0,
                     }}>✕</button>
                 )}
               </div>
+              {/* Promemoria anticipato: quando ricevere la notifica */}
+              {dueTime && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 4 }}>
+                    🔔 {t('remind_when_label') || 'Quando avvisarti?'}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {[
+                      { v: 0,   label: t('remind_at_time') || "All'orario" },
+                      { v: 30,  label: t('remind_30') || '30 min prima' },
+                      { v: 60,  label: t('remind_60') || '1 ora prima' },
+                      { v: 180, label: t('remind_180') || '3 ore prima' },
+                    ].map((opt) => (
+                      <button key={opt.v} type="button"
+                        onClick={() => setRemindLead(opt.v)}
+                        data-testid={`add-task-remind-${opt.v}`}
+                        style={{
+                          padding: '5px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600,
+                          border: remindLead === opt.v ? '1.5px solid var(--ac)' : '1px solid var(--sm)',
+                          background: remindLead === opt.v ? 'var(--ac)' : 'white',
+                          color: remindLead === opt.v ? 'white' : 'var(--k)',
+                          cursor: 'pointer',
+                        }}>
+                        {remindLead === opt.v ? '✓ ' : ''}{opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* === LUOGO === */}
@@ -567,8 +634,23 @@ export default function AddTaskModal({
                   onClick={() => {
                     const newOnlyForMe = !onlyForMe;
                     setOnlyForMe(newOnlyForMe);
-                    if (newOnlyForMe && authorMemberId) {
-                      setAssignees([authorMemberId]);
+                    setShowFamiliesWhilePersonal(false);
+                    if (newOnlyForMe) {
+                      // Seleziona il MIO membro nella famiglia giusta, in ordine:
+                      // 1) la famiglia attualmente aperta nell'app (taskFamily);
+                      // 2) altrimenti (vista "Tutte") la PRIMA famiglia della
+                      //    lista qui sotto, così il chip evidenziato è visibile
+                      //    e l'utente vede/decide dove finisce il promemoria.
+                      // Senza questo, veniva scelto un mio membro in una
+                      // famiglia arbitraria → incarico nella famiglia sbagliata.
+                      const myUid = members.find((m) => m.id === authorMemberId)?.user_id;
+                      const isMine = (m) => m.user_id && myUid && m.user_id === myUid;
+                      const mine =
+                        (taskFamily && members.find((m) => m.family_id === taskFamily && isMine(m))) ||
+                        byFamily.map((g) => g.members.find(isMine)).find(Boolean) ||
+                        members.find((m) => m.id === authorMemberId) ||
+                        null;
+                      setAssignees(mine ? [mine.id] : []);
                     } else {
                       setAssignees([]);
                     }
@@ -584,6 +666,38 @@ export default function AddTaskModal({
                 </button>
               </div>
 
+              {onlyForMe && !showFamiliesWhilePersonal ? (
+                <div data-testid="add-task-personal-box" style={{
+                  padding: '14px 16px', borderRadius: 12,
+                  background: 'rgba(140, 157, 134, 0.12)',
+                  border: '1px solid rgba(140, 157, 134, 0.35)',
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--k)', marginBottom: 4 }}>
+                    🔒 {t('personal_reminder_h') || 'Promemoria personale'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--km)', lineHeight: 1.45 }}>
+                    {t('personal_reminder_p') ||
+                      'Visibile solo a te: nessuna famiglia lo vedrà e nessuno riceverà notifiche.'}
+                  </div>
+                  <button type="button"
+                    data-testid="add-task-personal-share-btn"
+                    onClick={() => setShowFamiliesWhilePersonal(true)}
+                    style={{
+                      marginTop: 10, padding: '8px 12px', borderRadius: 100,
+                      border: '1.5px solid var(--sm)', background: 'var(--w, #fff)',
+                      color: 'var(--k)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}>
+                    ＋ {t('personal_reminder_share') || 'Condividi con altri membri…'}
+                  </button>
+                </div>
+              ) : (
+              <>
+              {onlyForMe && (
+                <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 8, lineHeight: 1.4 }}>
+                  {t('personal_reminder_share_hint') ||
+                    'Se selezioni altri membri, l\u2019incarico diventa condiviso e visibile a loro.'}
+                </div>
+              )}
               {byFamily.map((g) => {
                 // expandedFamilies è:
                 //   null (creazione) → tutte aperte di default
@@ -604,7 +718,7 @@ export default function AddTaskModal({
                       }))}
                       style={{
                         width: '100%', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8,
-                        background: 'white', border: 'none', cursor: 'pointer', textAlign: 'left',
+                        background: 'var(--w, #fff)', border: 'none', cursor: 'pointer', textAlign: 'left',
                       }}>
                       <span style={{ fontSize: 18 }}>{g.family.emoji}</span>
                       <div style={{ flex: 1 }}>
@@ -668,6 +782,8 @@ export default function AddTaskModal({
                   </div>
                 );
               })}
+              </>
+              )}
             </div>
 
             {/* Info "Da seguire": appare quando hai assegnato a qualcun altro
@@ -701,7 +817,7 @@ export default function AddTaskModal({
                 data-testid="add-task-toggle-recurrence"
                 style={{
                   width: '100%', padding: '10px 14px', borderRadius: 12,
-                  border: '1.5px solid var(--sm)', background: 'white',
+                  border: '1.5px solid var(--sm)', background: 'var(--w, #fff)',
                   cursor: 'pointer', fontSize: 13, fontWeight: 600,
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 }}>
@@ -752,8 +868,32 @@ export default function AddTaskModal({
                     />
                   </div>
 
+                  {recurringDays.length > 0 && assignees.length >= 2 && (
+                    <div style={{
+                      marginTop: 16, padding: 12, background: 'var(--w, #fff)',
+                      border: rotationEnabled ? '1.5px solid var(--ac)' : '1.5px solid var(--sm)',
+                      borderRadius: 12,
+                    }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={rotationEnabled}
+                          onChange={(e) => setRotationEnabled(e.target.checked)}
+                          data-testid="add-task-rotation-toggle"
+                          style={{ marginTop: 2 }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--k)' }}>
+                            🔁 {t('rotation_h') || 'A turno'}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--km)', lineHeight: 1.4 }}>
+                            {t('rotation_p') ||
+                              `I ${assignees.length} assegnatari si alternano: dopo ogni completamento tocca al prossimo, che riceve la notifica. Si parte dal primo selezionato.`}
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
                   {recurringDays.length > 0 && (
-                    <div style={{ marginTop: 16, padding: 12, background: 'white', border: '1.5px solid var(--sm)', borderRadius: 12 }}>
+                    <div style={{ marginTop: 16, padding: 12, background: 'var(--w, #fff)', border: '1.5px solid var(--sm)', borderRadius: 12 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', marginBottom: 8, textTransform: 'uppercase' }}>
                         🔄 Per quanto tempo si ripete?
                       </div>
@@ -837,7 +977,7 @@ export default function AddTaskModal({
                   data-testid="add-task-attach-photo-btn"
                   style={{
                     width: '100%', padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
-                    background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                    background: 'var(--w, #fff)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
                     color: 'var(--ac)',
                   }}>
                   {t('take_or_attach_photo')}
@@ -848,7 +988,7 @@ export default function AddTaskModal({
                     data-testid="add-task-camera-btn"
                     style={{
                       flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
-                      background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                      background: 'var(--w, #fff)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
                       color: 'var(--ac)',
                     }}>
                     📷 {t('take_photo') || 'Foto'}
@@ -857,7 +997,7 @@ export default function AddTaskModal({
                     data-testid="add-task-attach-photo-btn"
                     style={{
                       flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
-                      background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                      background: 'var(--w, #fff)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
                       color: 'var(--ac)',
                     }}>
                     🖼️ {t('from_gallery') || 'Galleria'}
@@ -866,7 +1006,7 @@ export default function AddTaskModal({
                     data-testid="add-task-attach-file-btn"
                     style={{
                       flex: 1, padding: 14, borderRadius: 12, border: '2px dashed var(--sm)',
-                      background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                      background: 'var(--w, #fff)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
                       color: 'var(--ac)',
                     }}>
                     📎 File
