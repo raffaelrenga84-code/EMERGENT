@@ -8,7 +8,7 @@ import CareReportShare from './CareReportShare.jsx';
 import HealthTrendsCard from './HealthTrendsCard.jsx';
 import { getCanonicalMember } from '../lib/personScope.js';
 import { toLocalYMD } from '../lib/dateUtils.js';
-import { activeTimesForToday } from '../lib/medSchedule.js';
+import { activeTimesForToday, isMedDueOn } from '../lib/medSchedule.js';
 
 /**
  * MedicationsModal (alias Care Hub) — modale unica per la gestione delle
@@ -30,6 +30,7 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
   const [activeTab, setActiveTab] = useState(initialTab);
   const [meds, setMeds] = useState([]);
   const [todayLogs, setTodayLogs] = useState([]);
+  const [doctorInfo, setDoctorInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -83,7 +84,7 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
 
   const load = async () => {
     setLoading(true);
-    const [{ data: m }, { data: logs }] = await Promise.all([
+    const [{ data: m }, { data: logs }, { data: mp }] = await Promise.all([
       supabase.from('medications')
         .select('*').eq('member_id', member.id).eq('active', true)
         .order('created_at'),
@@ -92,9 +93,13 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
         .gte('scheduled_at', startOfToday().toISOString())
         .lte('scheduled_at', endOfToday().toISOString())
         .order('scheduled_at', { ascending: false }),
+      supabase.from('medical_profiles')
+        .select('doctor_name, doctor_phone, doctor_email')
+        .eq('member_id', member.id).maybeSingle(),
     ]);
     setMeds(m || []);
     setTodayLogs(logs || []);
+    setDoctorInfo(mp || null);
     setLoading(false);
   };
 
@@ -246,6 +251,8 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
                         <MedicationCard key={med.id} med={med}
                           member={member}
                           meId={me?.id}
+                          doctor={doctorInfo}
+                          onRefresh={load}
                           todayLogs={todayLogs.filter((l) => l.medication_id === med.id)}
                           onEdit={() => setEditing(med)}
                           onRemove={() => removeMed(med)} />
@@ -314,8 +321,70 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
   );
 }
 
-function MedicationCard({ med, member, meId, todayLogs, onEdit, onRemove }) {
+function MedicationCard({ med, member, meId, todayLogs, doctor, onRefresh, onEdit, onRemove }) {
   const { t } = useT();
+  // === Scorte: giorni rimanenti stimati ===
+  // dosi/giorno = orari di oggi ÷ intervallo (es. 2 orari a giorni alterni = 1/die)
+  const supplyInfo = (() => {
+    if (med.supply_left === null || med.supply_left === undefined) return null;
+    const left = Number(med.supply_left);
+    const todayY0 = toLocalYMD(new Date());
+    const perDue = activeTimesForToday(med, todayY0).length;
+    const interval = Number(med.interval_days) || 1;
+    const rate = perDue > 0 ? perDue / interval : 0;
+    const daysLeft = rate > 0 ? Math.floor(left / rate) : null;
+    const low = (daysLeft !== null && daysLeft <= 7) || left <= 5;
+    return { left, daysLeft, low };
+  })();
+
+  const refillSupply = async () => {
+    const total = Number(med.supply_total) || 0;
+    const newLeft = total > 0 ? Number(med.supply_left || 0) + total : Number(med.supply_total || med.supply_left || 0);
+    await supabase.from('medications')
+      .update({ supply_left: newLeft, supply_alert_sent: false })
+      .eq('id', med.id);
+    onRefresh?.();
+  };
+
+  const doctorMsg = () => {
+    const days = supplyInfo?.daysLeft;
+    return (
+      `Buongiorno${doctor?.doctor_name ? ' ' + doctor.doctor_name : ' dottore'}, ` +
+      `la medicina ${med.name}${med.dose ? ` (${med.dose})` : ''} di ${member.name} ` +
+      `sta per terminare${days !== null && days !== undefined ? ` (circa ${days} giorni di scorte)` : ''}. ` +
+      `Potrebbe cortesemente preparare una nuova prescrizione? Grazie mille!`
+    );
+  };
+  const waHref = () => {
+    const phone = (doctor?.doctor_phone || '').replace(/[^\d+]/g, '').replace(/^\+/, '');
+    return `https://wa.me/${phone}?text=${encodeURIComponent(doctorMsg())}`;
+  };
+  const mailHref = () =>
+    `mailto:${doctor?.doctor_email}?subject=${encodeURIComponent(`Richiesta ricetta: ${med.name} per ${member.name}`)}&body=${encodeURIComponent(doctorMsg())}`;
+
+  // === Storico ultimi 14 giorni (caricato solo quando si apre) ===
+  const [histOpen, setHistOpen] = useState(false);
+  const [histLoading, setHistLoading] = useState(false);
+  const [histLogs, setHistLogs] = useState(null);
+
+  const toggleHistory = async () => {
+    if (histOpen) { setHistOpen(false); return; }
+    setHistOpen(true);
+    if (histLogs !== null) return; // già caricato
+    setHistLoading(true);
+    const since = new Date();
+    since.setDate(since.getDate() - 13);
+    since.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('medication_logs')
+      .select('scheduled_at, acted_at, action, note')
+      .eq('medication_id', med.id)
+      .gte('scheduled_at', since.toISOString())
+      .order('scheduled_at', { ascending: false });
+    setHistLogs(data || []);
+    setHistLoading(false);
+  };
+
   // Per ogni `time_of_day`, controlla se è già stato preso oggi
   const todayTakenTimes = new Set(
     todayLogs
@@ -333,8 +402,29 @@ function MedicationCard({ med, member, meId, todayLogs, onEdit, onRemove }) {
               {med.dose}
             </div>
           )}
+          {Number(med.interval_days) > 1 && (
+            <div style={{ fontSize: 12, color: 'var(--ac)', fontWeight: 600, marginTop: 2 }}>
+              📆 {Number(med.interval_days) === 2
+                ? (t('med_interval_alt') || 'A giorni alterni')
+                : `${t('med_interval_every') || 'Ogni'} ${med.interval_days} ${t('med_interval_days') || 'giorni'}`}
+            </div>
+          )}
+          {supplyInfo && !supplyInfo.low && (
+            <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>
+              📦 {supplyInfo.left} {t('med_supply_doses') || 'dosi'}
+              {supplyInfo.daysLeft !== null && ` · ~${supplyInfo.daysLeft} ${t('med_interval_days') || 'giorni'}`}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <button type="button" onClick={toggleHistory}
+            data-testid={`med-history-${med.id}`}
+            style={{
+              padding: '4px 8px', borderRadius: 6,
+              background: histOpen ? 'var(--ac)' : 'var(--ab)',
+              border: histOpen ? '1px solid var(--ac)' : '1px solid var(--sm)',
+              fontSize: 12, cursor: 'pointer',
+            }}>📊</button>
           <button type="button" onClick={onEdit}
             data-testid={`med-edit-${med.id}`}
             style={{
@@ -357,6 +447,7 @@ function MedicationCard({ med, member, meId, todayLogs, onEdit, onRemove }) {
         const ended = med.end_date && med.end_date < today;
         const notStarted = med.start_date && med.start_date > today;
         const todayTimes = activeTimesForToday(med, today);
+        const dueToday = isMedDueOn(med, today);
         const fmtD = (ymd) => new Date(ymd + 'T12:00:00')
           .toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
         const futurePhases = (Array.isArray(med.schedule_phases) ? med.schedule_phases : [])
@@ -372,7 +463,11 @@ function MedicationCard({ med, member, meId, todayLogs, onEdit, onRemove }) {
                   : `📅 ${med.start_date ? fmtD(med.start_date) : '…'} → ${med.end_date ? fmtD(med.end_date) : '∞'}`}
               </div>
             )}
-            {!ended && !notStarted && todayTimes.length > 0 ? (
+            {!ended && !notStarted && !dueToday ? (
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--km)', fontWeight: 600 }}>
+                💤 {t('med_not_due_today') || 'Oggi non va presa'}
+              </div>
+            ) : !ended && !notStarted && todayTimes.length > 0 ? (
               <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {todayTimes.map((time) => {
                   const taken = todayTakenTimes.has(time);
@@ -405,6 +500,163 @@ function MedicationCard({ med, member, meId, todayLogs, onEdit, onRemove }) {
         );
       })()}
 
+      {/* === Scorte in esaurimento: chiedi la ricetta con un tocco === */}
+      {supplyInfo?.low && (
+        <div style={{
+          marginTop: 10, padding: '10px 12px', borderRadius: 10,
+          background: 'rgba(212,163,91,0.14)',
+          border: '1px solid rgba(212,163,91,0.45)',
+        }} data-testid={`med-supply-low-${med.id}`}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#B36E00', marginBottom: 2 }}>
+            📦 {t('med_supply_low_h') || 'Sta per finire'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--k)', marginBottom: 8 }}>
+            {supplyInfo.left} {t('med_supply_doses') || 'dosi'}
+            {supplyInfo.daysLeft !== null &&
+              ` (~${supplyInfo.daysLeft} ${t('med_interval_days') || 'giorni'})`}
+            {' — '}{t('med_supply_low_p') || 'chiedi la nuova ricetta al medico:'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {doctor?.doctor_phone && (
+              <a href={waHref()} target="_blank" rel="noreferrer"
+                data-testid={`med-supply-wa-${med.id}`}
+                style={{
+                  padding: '8px 12px', borderRadius: 100, textDecoration: 'none',
+                  background: '#25D366', color: 'white', fontSize: 12, fontWeight: 700,
+                }}>
+                💬 WhatsApp {doctor.doctor_name ? `a ${doctor.doctor_name}` : (t('med_supply_doctor') || 'al medico')}
+              </a>
+            )}
+            {doctor?.doctor_email && (
+              <a href={mailHref()}
+                data-testid={`med-supply-mail-${med.id}`}
+                style={{
+                  padding: '8px 12px', borderRadius: 100, textDecoration: 'none',
+                  background: 'var(--ac)', color: 'white', fontSize: 12, fontWeight: 700,
+                }}>
+                ✉️ Email
+              </a>
+            )}
+            <button type="button" onClick={refillSupply}
+              data-testid={`med-supply-refill-${med.id}`}
+              style={{
+                padding: '8px 12px', borderRadius: 100,
+                background: 'var(--w, #fff)', border: '1px solid var(--sm)',
+                color: 'var(--k)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}>
+              ✅ {t('med_supply_refill') || 'Ricomprata'}
+            </button>
+          </div>
+          {!doctor?.doctor_phone && !doctor?.doctor_email && (
+            <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 6 }}>
+              💡 {t('med_supply_no_doctor') ||
+                'Aggiungi telefono o email del medico nel Profilo medico per inviare la richiesta con un tocco.'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === Storico ultimi 14 giorni === */}
+      {histOpen && (
+        <div style={{
+          marginTop: 10, padding: 10, borderRadius: 10,
+          background: 'var(--ab)', border: '1px solid var(--sm)',
+        }} data-testid={`med-history-panel-${med.id}`}>
+          {histLoading || histLogs === null ? (
+            <div style={{ fontSize: 12, color: 'var(--km)' }}>⏳ {t('loading') || 'Caricamento…'}</div>
+          ) : (() => {
+            // Costruisce gli ultimi 14 giorni (dal più vecchio a oggi)
+            const days = [];
+            for (let i = 13; i >= 0; i--) {
+              const d = new Date();
+              d.setDate(d.getDate() - i);
+              days.push(toLocalYMD(d));
+            }
+            const todayY = toLocalYMD(new Date());
+            // Log raggruppati per giorno locale
+            const byDay = new Map();
+            for (const l of histLogs) {
+              const ymd = toLocalYMD(new Date(l.scheduled_at));
+              const arr = byDay.get(ymd) || [];
+              arr.push(l);
+              byDay.set(ymd, arr);
+            }
+            let expTot = 0;
+            let takenTot = 0;
+            const cells = days.map((ymd) => {
+              const due = isMedDueOn(med, ymd);
+              const expected = due ? activeTimesForToday(med, ymd).length : 0;
+              const dayLogs = byDay.get(ymd) || [];
+              const takenN = dayLogs.filter((l) => l.action === 'taken').length;
+              const skippedN = dayLogs.filter((l) => l.action === 'skipped').length;
+              if (expected > 0) { expTot += expected; takenTot += Math.min(takenN, expected); }
+              let bg = 'white', color = 'var(--km)', label = '·', border = '1px solid var(--sm)';
+              if (!due || expected === 0) {
+                label = '·';                                   // giorno di pausa / al bisogno
+              } else if (takenN >= expected) {
+                bg = 'var(--gn)'; color = 'white'; label = '✓'; border = '1px solid var(--gn)';
+              } else if (takenN > 0) {
+                bg = '#D4A35B'; color = 'white'; label = '½'; border = '1px solid #D4A35B';
+              } else if (skippedN > 0) {
+                bg = 'var(--rd)'; color = 'white'; label = '✕'; border = '1px solid var(--rd)';
+              } else if (ymd === todayY) {
+                label = '…';                                    // oggi, ancora in corso
+              } else {
+                label = '○';                                    // nessuna registrazione
+              }
+              const dayNum = Number(ymd.slice(8, 10));
+              return (
+                <div key={ymd} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: 6, background: bg, color,
+                    border, fontSize: 11, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>{label}</div>
+                  <div style={{ fontSize: 8, color: 'var(--km)' }}>{dayNum}</div>
+                </div>
+              );
+            });
+            const pct = expTot > 0 ? Math.round((takenTot / expTot) * 100) : null;
+            const notedLogs = histLogs.filter((l) => l.note).slice(0, 5);
+            const fmtDT = (iso) => new Date(iso)
+              .toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+            const actIcon = { taken: '✅', skipped: '⏭️', snoozed: '⏰' };
+            return (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', marginBottom: 6 }}>
+                  📊 {t('med_hist_h') || 'Ultimi 14 giorni'}
+                  {pct !== null && (
+                    <span style={{
+                      marginLeft: 6, padding: '2px 8px', borderRadius: 100,
+                      background: pct >= 80 ? 'var(--gnB)' : 'rgba(212,163,91,0.18)',
+                      color: pct >= 80 ? 'var(--gn)' : '#B36E00',
+                    }}>
+                      {pct}% {t('med_hist_taken_pct') || 'prese'}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 2 }}>{cells}</div>
+                <div style={{ fontSize: 9, color: 'var(--km)', marginTop: 6 }}>
+                  ✓ {t('med_hist_lg_taken') || 'presa'} · ½ {t('med_hist_lg_partial') || 'in parte'} · ✕ {t('med_hist_lg_skipped') || 'saltata'} · ○ {t('med_hist_lg_none') || 'non registrata'} · &nbsp;·&nbsp; {t('med_hist_lg_pause') || 'non prevista'}
+                </div>
+                {notedLogs.length > 0 && (
+                  <div style={{ marginTop: 8, borderTop: '1px dashed var(--sd)', paddingTop: 6 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--km)', marginBottom: 4 }}>
+                      📝 {t('med_hist_notes') || 'Note recenti'}
+                    </div>
+                    {notedLogs.map((l, i) => (
+                      <div key={i} style={{ fontSize: 11, color: 'var(--k)', marginBottom: 3, lineHeight: 1.35 }}>
+                        {actIcon[l.action] || '•'} <strong>{fmtDT(l.scheduled_at)}</strong> — {l.note}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
       {med.notes && (
         <div style={{
           marginTop: 8, fontSize: 12, color: 'var(--km)',
@@ -436,6 +688,13 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
   const [dose, setDose] = useState(med?.dose || '');
   const [notes, setNotes] = useState(med?.notes || '');
   const [times, setTimes] = useState(med?.times_of_day || []);
+  // Intervallo giorni: 1 = ogni giorno, 2 = a giorni alterni, N = ogni N giorni.
+  // L'intervallo si conta a partire dalla data "Dal" (start_date).
+  const [intervalDays, setIntervalDays] = useState(Number(med?.interval_days) || 1);
+  // Scorte: dosi per confezione e dosi rimanenti (facoltativo).
+  // supply_left si decrementa da solo a ogni "✅ Presa" (trigger DB).
+  const [supplyTotal, setSupplyTotal] = useState(med?.supply_total ?? '');
+  const [supplyLeft, setSupplyLeft] = useState(med?.supply_left ?? '');
   const [newTime, setNewTime] = useState('08:00');
   // true se l'utente ha toccato il time-picker senza premere "+ Aggiungi":
   // in quel caso l'orario viene incluso comunque al salvataggio (bug fix:
@@ -472,13 +731,16 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
       JSON.stringify(times) !== initial.times ||
       startDate !== initial.startDate ||
       endDate !== initial.endDate ||
+      intervalDays !== (Number(med?.interval_days) || 1) ||
+      String(supplyTotal ?? '') !== String(med?.supply_total ?? '') ||
+      String(supplyLeft ?? '') !== String(med?.supply_left ?? '') ||
       phasesCmp !== initial.phases ||
       // Orario nel picker toccato ma non ancora aggiunto
       (newTimeTouched && !times.includes(newTime))
     );
     onDirtyChange?.(dirty);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, dose, notes, times, startDate, endDate, phases, newTime, newTimeTouched]);
+  }, [name, dose, notes, times, startDate, endDate, intervalDays, supplyTotal, supplyLeft, phases, newTime, newTimeTouched]);
 
   const addTime = () => {
     if (!newTime) return;
@@ -529,8 +791,16 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
       dose: dose.trim() || null,
       notes: notes.trim() || null,
       times_of_day: finalTimes,
-      start_date: startDate || null,
+      // Con intervallo > 1 serve una data di ancoraggio: se manca, oggi.
+      start_date: startDate || (intervalDays > 1 ? toLocalYMD(new Date()) : null),
       end_date: endDate || null,
+      interval_days: Math.max(1, Number(intervalDays) || 1),
+      supply_total: supplyTotal === '' || supplyTotal === null ? null : Math.max(1, Number(supplyTotal) || 1),
+      supply_left: supplyLeft === '' || supplyLeft === null ? null : Math.max(0, Number(supplyLeft) || 0),
+      // Se le scorte sono state ricaricate, l'avviso "sta per finire" si riarma
+      ...(supplyLeft !== '' && supplyLeft !== null &&
+          Number(supplyLeft) > Number(med?.supply_left ?? -1)
+        ? { supply_alert_sent: false } : {}),
       schedule_phases: cleanPhases.length > 0 ? cleanPhases : null,
       ...(med ? {} : { created_by: me?.id || null }),
     };
@@ -628,6 +898,93 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
         {t('med_period_hint') || 'Lascia vuoto "Al" se la cura è continuativa.'}
       </p>
 
+      {/* Frequenza in giorni: ogni giorno / giorni alterni / ogni N giorni */}
+      <label style={{ marginTop: 10 }}>📆 {t('med_interval_label') || 'Ogni quanti giorni'}</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        {[
+          { v: 1, label: t('med_interval_daily') || 'Ogni giorno' },
+          { v: 2, label: t('med_interval_alt') || 'A giorni alterni' },
+        ].map((opt) => (
+          <button key={opt.v} type="button"
+            onClick={() => setIntervalDays(opt.v)}
+            data-testid={`med-interval-${opt.v}`}
+            style={{
+              padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+              border: intervalDays === opt.v ? '1.5px solid var(--ac)' : '1.5px solid var(--sm)',
+              background: intervalDays === opt.v ? 'var(--ac)' : 'white',
+              color: intervalDays === opt.v ? 'white' : 'var(--k)',
+              cursor: 'pointer',
+            }}>
+            {intervalDays === opt.v ? '✓ ' : ''}{opt.label}
+          </button>
+        ))}
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '4px 8px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+          border: intervalDays > 2 ? '1.5px solid var(--ac)' : '1.5px solid var(--sm)',
+          background: intervalDays > 2 ? 'rgba(193,98,75,0.10)' : 'white',
+          color: 'var(--k)',
+        }}>
+          {t('med_interval_every') || 'Ogni'}
+          <input type="number" min="1" max="60" inputMode="numeric"
+            value={intervalDays > 2 ? intervalDays : ''}
+            placeholder="N"
+            onChange={(e) => {
+              const n = Math.max(1, Math.min(60, Number(e.target.value) || 1));
+              setIntervalDays(n);
+            }}
+            data-testid="med-interval-custom"
+            style={{
+              width: 40, border: 'none', outline: 'none', background: 'transparent',
+              fontSize: 12, fontWeight: 700, textAlign: 'center', color: 'var(--ac)',
+            }} />
+          {t('med_interval_days') || 'giorni'}
+        </span>
+      </div>
+      {intervalDays > 1 && (
+        <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+          {t('med_interval_hint') ||
+            'Il conteggio parte dalla data "Dal": quel giorno la medicina va presa, poi ogni'}
+          {' '}{intervalDays}{' '}{t('med_interval_days') || 'giorni'}.
+        </p>
+      )}
+
+      {/* Scorte (facoltativo) */}
+      <label style={{ marginTop: 10 }}>📦 {t('med_supply_label') || 'Scorte (facoltativo)'}</label>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 2 }}>
+            {t('med_supply_total') || 'Dosi per confezione'}
+          </div>
+          <input type="number" min="1" max="500" inputMode="numeric" className="input"
+            value={supplyTotal}
+            placeholder={t('med_supply_ph') || 'es. 30'}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSupplyTotal(v);
+              // Prima compilazione: le rimanenti partono dalla confezione piena
+              if (v && (supplyLeft === '' || supplyLeft === null)) setSupplyLeft(v);
+            }}
+            style={{ width: '100%', minWidth: 0 }}
+            data-testid="med-form-supply-total" />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 2 }}>
+            {t('med_supply_left') || 'Dosi rimanenti ora'}
+          </div>
+          <input type="number" min="0" max="999" inputMode="numeric" className="input"
+            value={supplyLeft}
+            placeholder="—"
+            onChange={(e) => setSupplyLeft(e.target.value)}
+            style={{ width: '100%', minWidth: 0 }}
+            data-testid="med-form-supply-left" />
+        </div>
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+        {t('med_supply_hint') ||
+          'Si aggiorna da solo a ogni "✅ Presa". Quando restano ~7 giorni ti avvisiamo e potrai chiedere la ricetta al medico con un tocco.'}
+      </p>
+
       {/* Cambi di frequenza nel tempo */}
       <label style={{ marginTop: 10 }}>🔁 {t('med_phases_label') || 'Cambi di frequenza'}</label>
       {phases.map((p, idx) => (
@@ -656,7 +1013,7 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
               <span key={time} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '4px 10px', borderRadius: 100,
-                background: 'white', border: '1px solid var(--sm)',
+                background: 'var(--w, #fff)', border: '1px solid var(--sm)',
                 fontSize: 12, fontWeight: 600,
               }}>
                 🕒 {time}
@@ -703,7 +1060,7 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
       <div className="row" style={{
         marginTop: 16,
         position: 'sticky', bottom: 0,
-        background: 'white',
+        background: 'var(--w, #fff)',
         padding: '12px 0 calc(8px + env(safe-area-inset-bottom, 0px))',
         borderTop: '1px solid var(--sm)',
         marginLeft: -4, marginRight: -4,
