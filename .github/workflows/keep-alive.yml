@@ -3,7 +3,7 @@ name: Supabase Keep Alive
 on:
   schedule:
     - cron: '0 8 */2 * *'   # ogni 2 giorni alle 8:00 UTC
-  workflow_dispatch:          # permette avvio manuale per test
+  workflow_dispatch:          # avvio manuale per test
 
 jobs:
   ping:
@@ -11,8 +11,21 @@ jobs:
     steps:
       - name: Ping Supabase
         run: |
-          curl -s -f \
+          if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "ERRORE: il secret SUPABASE_ANON_KEY risulta VUOTO."
+            echo "Il nome del secret su GitHub non corrisponde a quello nel workflow."
+            exit 1
+          fi
+          code=$(curl -s -o /tmp/resp.txt -w "%{http_code}" \
             "https://jwzoymvtxjzpymaywjtw.supabase.co/rest/v1/families?select=id&limit=1" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
-          echo "Ping OK"
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "HTTP status: $code"
+          echo "Risposta di Supabase:"
+          cat /tmp/resp.txt
+          echo ""
+          if [ "$code" = "200" ]; then
+            echo "Ping OK — progetto sveglio."
+          else
+            exit 1
+          fi
