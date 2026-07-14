@@ -24,6 +24,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const allMembers = members;
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
+  // Prefill per "Fare la spesa" dal FAB (titolo + categoria già impostati)
+  const [addPrefill, setAddPrefill] = useState(null);
   const [showAbsence, setShowAbsence] = useState(false);
   const [medsForMember, setMedsForMember] = useState(null);
   const [showMedsPicker, setShowMedsPicker] = useState(false);
@@ -297,6 +299,33 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     onChanged();
   };
 
+  // === Task in ritardo: azioni rapide ===
+  const localTodayYMD = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  // In ritardo = scadenza passata, non fatto, non ricorrente
+  // (le ricorrenze hanno il loro workflow e non vanno "spostate").
+  const isOverdueTask = (x) =>
+    x.due_date && x.due_date < localTodayYMD() &&
+    x.status !== 'done' && !x._origId &&
+    !(x.recurring_days && x.recurring_days.length > 0);
+
+  const quickMoveToToday = async (task) => {
+    await supabase.from('tasks').update({ due_date: localTodayYMD() }).eq('id', task.id);
+    onChanged();
+  };
+
+  // Rimanda a domani (solo task singoli con scadenza, non ricorrenti)
+  const quickPostponeTomorrow = async (task) => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    await supabase.from('tasks').update({ due_date: ymd }).eq('id', task.id);
+    notifyQuickAction(task, `📅 ${myFirstName()} ${tf('push_act_postponed', 'ha rimandato a domani')}`);
+    onChanged();
+  };
+
   const quickAssignMe = async (task) => {
     if (!me) return;
     const id = task._origId || task.id;
@@ -386,8 +415,21 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     return (a.name || '').localeCompare(b.name || '');
   });
 
+  // Il mio membro (per aprire le mie medicine anche senza assistiti)
+  const myMemberForMeds = () => {
+    const mine = (members || []).filter((m) => m.user_id === session.user.id);
+    if (mine.length === 0) return null;
+    if (familyId) return mine.find((m) => m.family_id === familyId) || mine[0];
+    return mine[0];
+  };
+
   const onClickNewMed = () => {
-    if (assistedMembers.length === 0) return;
+    if (assistedMembers.length === 0) {
+      // Nessun assistito: apri direttamente le MIE medicine.
+      const self = myMemberForMeds();
+      if (self) setMedsForMember(self);
+      return;
+    }
     if (assistedMembers.length === 1) {
       setMedsForMember(assistedMembers[0]);
     } else {
@@ -400,9 +442,20 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const buildFabActions = (testidPrefix) => {
     const list = [
       { id: 'task',    icon: '📋', label: t('fab_new_task') || 'Nuovo incarico', onClick: () => setShowAdd(true), testid: `${testidPrefix}-new-task` },
+      { id: 'shopping', icon: '🛒',
+        label: t('fab_new_shopping') || 'Fare la spesa',
+        onClick: () => {
+          setAddPrefill({ title: t('shopping_task_title') || 'Spesa', category: 'spese' });
+          setShowAdd(true);
+        },
+        testid: `${testidPrefix}-new-shopping`,
+        color: '#6E87A0',
+      },
       { id: 'absence', icon: '✈️', label: t('fab_new_absence') || 'Nuova assenza', onClick: () => setShowAbsence(true), testid: `${testidPrefix}-new-absence` },
     ];
-    if (assistedMembers.length > 0) {
+    // "Nuova medicina" è sempre disponibile: con assistiti apre il picker,
+    // senza assistiti apre direttamente le medicine dell'utente stesso.
+    if (assistedMembers.length > 0 || myMemberForMeds()) {
       list.push({
         id: 'med', icon: '💊',
         label: t('fab_new_med') || 'Nuova medicina',
@@ -456,6 +509,19 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
                 testid: `swipe-done-${task.id}`,
                 onAction: () => quickToggleDone(task),
               },
+              // "→ Domani" solo per task singoli con scadenza: rimandare
+              // è un'azione di chi se ne occupa. Le ricorrenze sono escluse
+              // (hanno il loro calendario) e senza scadenza non ha senso.
+              ...(task.due_date && !task._origId && !(task.recurring_days && task.recurring_days.length > 0)
+                ? [{
+                    id: 'tomorrow',
+                    icon: '📅',
+                    label: tf('swipe_tomorrow', '→ Domani'),
+                    color: '#6E87A0',
+                    testid: `swipe-tomorrow-${task.id}`,
+                    onAction: () => quickPostponeTomorrow(task),
+                  }]
+                : []),
               {
                 id: 'unexpected',
                 icon: '🚨',
@@ -582,8 +648,10 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           <AddTaskModal familyId={targetFamilyId} families={families} members={allMembers}
             authorMemberId={me?.id}
             absences={absences}
-            onClose={() => setShowAdd(false)}
-            onCreated={() => { setShowAdd(false); onChanged(); }} />
+            initialTitle={addPrefill?.title || ''}
+            initialCategory={addPrefill?.category || null}
+            onClose={() => { setShowAdd(false); setAddPrefill(null); }}
+            onCreated={() => { setShowAdd(false); setAddPrefill(null); onChanged(); }} />
         )}
         {showAbsence && (
           <AbsenceModal session={session} profile={profile} families={families}
@@ -666,15 +734,82 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
 
       {/* Lista task: prima le mie, poi le altre (no più sotto-sezioni:
           i filtri rapidi qui sopra forniscono già il filtering UX) */}
-      {(visibleMyTasks.length + visibleOtherTasks.length) === 0 ? (
-        <FilterEmptyState
-          filter={quickFilter}
-          onResetFilter={() => setQuickFilter('todo')}
-          t={t}
-        />
-      ) : (
-        renderTaskList(sortByNews([...visibleMyTasks, ...visibleOtherTasks]))
-      )}
+      {(() => {
+        const combined = sortByNews([...visibleMyTasks, ...visibleOtherTasks]);
+        const overdue = combined
+          .filter(isOverdueTask)
+          .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
+        const rest = combined.filter((x) => !isOverdueTask(x));
+        const fmtShort = (ymd) => {
+          const [y, mo, da] = (ymd || '').split('-').map(Number);
+          return new Date(y, mo - 1, da)
+            .toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+        };
+        return (
+          <>
+            {overdue.length > 0 && (
+              <div style={{
+                marginBottom: 12, padding: '10px 12px', borderRadius: 14,
+                background: 'rgba(184,74,74,0.07)',
+                border: '1px solid rgba(184,74,74,0.30)',
+              }} data-testid="overdue-section">
+                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--rd)', marginBottom: 8 }}>
+                  ⏰ {tf('overdue_h', 'In ritardo')} ({overdue.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {overdue.map((task) => (
+                    <div key={task.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'var(--w, #fff)', border: '1px solid var(--sm)',
+                      borderRadius: 10, padding: '8px 10px',
+                    }} data-testid={`overdue-row-${task.id}`}>
+                      <div style={{ flex: 1, minWidth: 0 }}
+                        onClick={() => setSelTask(task)}>
+                        <div style={{
+                          fontSize: 13, fontWeight: 700, color: 'var(--k)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{task.title}</div>
+                        <div style={{ fontSize: 11, color: 'var(--rd)' }}>
+                          📅 {tf('overdue_was_due', 'scadeva')} {fmtShort(task.due_date)}
+                        </div>
+                      </div>
+                      <button type="button"
+                        onClick={() => quickMoveToToday(task)}
+                        data-testid={`overdue-today-${task.id}`}
+                        style={{
+                          flexShrink: 0, padding: '7px 10px', borderRadius: 100,
+                          border: '1px solid var(--sm)', background: 'var(--w, #fff)',
+                          fontSize: 11, fontWeight: 700, color: 'var(--k)', cursor: 'pointer',
+                        }}>
+                        → {tf('overdue_to_today', 'Oggi')}
+                      </button>
+                      <button type="button"
+                        onClick={() => quickToggleDone(task)}
+                        data-testid={`overdue-done-${task.id}`}
+                        style={{
+                          flexShrink: 0, padding: '7px 10px', borderRadius: 100,
+                          border: 'none', background: 'var(--gn)',
+                          fontSize: 11, fontWeight: 700, color: 'white', cursor: 'pointer',
+                        }}>
+                        ✓ {tf('overdue_done', 'Fatto')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(rest.length + overdue.length) === 0 ? (
+              <FilterEmptyState
+                filter={quickFilter}
+                onResetFilter={() => setQuickFilter('todo')}
+                t={t}
+              />
+            ) : (
+              renderTaskList(rest)
+            )}
+          </>
+        );
+      })()}
 
       {/* Sezione "Fatti": SEMPRE visibile (a prescindere dal filtro "Da fare")
           ma rispetta gli altri filtri (Solo mie, Urgenti, Da seguire).
@@ -831,7 +966,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
             data-testid="meds-picker-sheet"
             style={{
               width: '100%', maxWidth: 520,
-              background: 'white',
+              background: 'var(--w, #fff)',
               borderTopLeftRadius: 22, borderTopRightRadius: 22,
               padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
               boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
@@ -897,7 +1032,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
               data-testid="meds-picker-cancel"
               style={{
                 marginTop: 6, padding: '12px', borderRadius: 12,
-                border: '1px solid var(--sm)', background: 'white',
+                border: '1px solid var(--sm)', background: 'var(--w, #fff)',
                 fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
               }}>{t('cancel') || 'Annulla'}</button>
           </div>
@@ -923,7 +1058,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
               data-testid="priority-sheet"
               style={{
                 width: '100%', maxWidth: 520,
-                background: 'white',
+                background: 'var(--w, #fff)',
                 borderTopLeftRadius: 22, borderTopRightRadius: 22,
                 padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
                 boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
@@ -952,7 +1087,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
                 data-testid="priority-sheet-cancel"
                 style={{
                   marginTop: 6, padding: '12px', borderRadius: 12,
-                  border: '1px solid var(--sm)', background: 'white',
+                  border: '1px solid var(--sm)', background: 'var(--w, #fff)',
                   fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
                 }}>{t('cancel') || 'Annulla'}</button>
             </div>
@@ -1410,7 +1545,7 @@ function FilterEmptyState({ filter, onResetFilter, t }) {
           onClick={onResetFilter}
           style={{
             marginTop: 18, padding: '8px 18px', borderRadius: 100,
-            border: '1.5px solid var(--sm)', background: 'white',
+            border: '1.5px solid var(--sm)', background: 'var(--w, #fff)',
             color: 'var(--ac)', fontWeight: 600, fontSize: 13, cursor: 'pointer',
           }}>
           ← {t('empty_back_to_todo') || 'Vedi tutti i da fare'}
