@@ -13,7 +13,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from './supabase.js';
-import { activeTimesForToday, isMedActiveOn } from './medSchedule.js';
+import { activeTimesForToday, isMedActiveOn, isMedDueOn } from './medSchedule.js';
 import { toLocalYMD } from './dateUtils.js';
 
 const POLL_MS = 60_000; // check ogni minuto
@@ -99,7 +99,7 @@ export function useMedicationReminders(members = [], meId = null) {
   const todayYMD = toLocalYMD(now);
   for (const med of medications) {
     // Periodo di assunzione (start/end) + fasi di frequenza variabile
-    if (!isMedActiveOn(med, todayYMD)) continue;
+    if (!isMedDueOn(med, todayYMD)) continue;
     for (const time of activeTimesForToday(med, todayYMD)) {
       const scheduledAt = hhmmToTodayDate(time);
       // Check snooze
@@ -159,12 +159,13 @@ export function useMedicationReminders(members = [], meId = null) {
     await refresh();
   };
 
-  const skip = async (rem) => {
+  const skip = async (rem, note) => {
     await supabase.from('medication_logs').insert({
       medication_id: rem.medication.id,
       member_id: rem.medication.member_id,
       scheduled_at: rem.scheduledAt.toISOString(),
       action: 'skipped',
+      note: (typeof note === 'string' && note.trim()) ? note.trim() : null,
       recorded_by: meId || null,
     });
     await refresh();
