@@ -15,6 +15,9 @@ export default function MedicationReminderToast({ reminders, onTaken, onSnooze, 
   const { t } = useT();
   const [idx, setIdx] = useState(0);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
+  // Pannello "Salta con nota": motivo rapido o testo libero (facoltativo)
+  const [skipOpen, setSkipOpen] = useState(false);
+  const [skipNote, setSkipNote] = useState('');
 
   if (!reminders || reminders.length === 0) return null;
   const safeIdx = Math.min(idx, reminders.length - 1);
@@ -31,7 +34,7 @@ export default function MedicationReminderToast({ reminders, onTaken, onSnooze, 
       style={{
         position: 'fixed',
         bottom: 84, left: 12, right: 12,
-        background: 'white',
+        background: 'var(--w, #fff)',
         borderRadius: 16,
         boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
         border: '2px solid var(--ac)',
@@ -86,7 +89,7 @@ export default function MedicationReminderToast({ reminders, onTaken, onSnooze, 
       )}
 
       {/* Azioni principali */}
-      {!snoozeOpen ? (
+      {!snoozeOpen && !skipOpen ? (
         <div style={{ display: 'flex', gap: 6 }}>
           <button
             type="button"
@@ -106,7 +109,7 @@ export default function MedicationReminderToast({ reminders, onTaken, onSnooze, 
             data-testid="med-reminder-snooze"
             style={{
               flex: 1, padding: '10px 8px', borderRadius: 10,
-              background: 'white', color: 'var(--k)',
+              background: 'var(--w, #fff)', color: 'var(--k)',
               border: '1px solid var(--sm)', fontWeight: 700, fontSize: 13,
               cursor: 'pointer',
             }}>
@@ -114,16 +117,70 @@ export default function MedicationReminderToast({ reminders, onTaken, onSnooze, 
           </button>
           <button
             type="button"
-            onClick={() => onSkip(rem)}
+            onClick={() => { setSkipOpen(true); setSkipNote(''); }}
             data-testid="med-reminder-skip"
             style={{
               flex: 1, padding: '10px 8px', borderRadius: 10,
-              background: 'white', color: 'var(--km)',
+              background: 'var(--w, #fff)', color: 'var(--km)',
               border: '1px solid var(--sm)', fontWeight: 700, fontSize: 13,
               cursor: 'pointer',
             }}>
             ⏭️ {t('med_skip_btn') || 'Salta'}
           </button>
+        </div>
+      ) : skipOpen ? (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--km)', marginBottom: 6 }}>
+            {t('med_skip_why') || 'Perché la salti? (facoltativo, utile per il medico)'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+            {[
+              `🤢 ${t('med_skip_r1') || 'Non mi sento bene'}`,
+              `📦 ${t('med_skip_r2') || 'Medicina finita'}`,
+              `🚗 ${t('med_skip_r3') || 'Fuori casa'}`,
+              `🩺 ${t('med_skip_r4') || 'Indicazione del medico'}`,
+            ].map((r) => (
+              <button key={r} type="button"
+                onClick={() => setSkipNote(r)}
+                style={{
+                  padding: '5px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600,
+                  border: skipNote === r ? '1.5px solid var(--ac)' : '1px solid var(--sm)',
+                  background: skipNote === r ? 'rgba(193,98,75,0.10)' : 'white',
+                  color: 'var(--k)', cursor: 'pointer',
+                }}>
+                {r}
+              </button>
+            ))}
+          </div>
+          <input type="text" value={skipNote}
+            onChange={(e) => setSkipNote(e.target.value)}
+            placeholder={t('med_skip_note_ph') || 'Oppure scrivi una nota…'}
+            data-testid="med-reminder-skip-note"
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '8px 10px',
+              borderRadius: 10, border: '1px solid var(--sm)', fontSize: 13,
+              marginBottom: 8, outline: 'none',
+            }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button"
+              onClick={() => { onSkip(rem, skipNote); setSkipOpen(false); setSkipNote(''); }}
+              data-testid="med-reminder-skip-confirm"
+              style={{
+                flex: 2, padding: '10px 12px', borderRadius: 10,
+                background: 'var(--ac)', color: 'white',
+                border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              }}>
+              ⏭️ {t('med_skip_confirm') || 'Salta'}
+            </button>
+            <button type="button" onClick={() => { setSkipOpen(false); setSkipNote(''); }}
+              style={{
+                flex: 1, padding: '10px 12px', borderRadius: 10,
+                background: 'var(--w, #fff)', border: '1px solid var(--sm)',
+                cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--km)',
+              }}>
+              {t('cancel') || 'Annulla'}
+            </button>
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 6 }}>
@@ -144,7 +201,7 @@ export default function MedicationReminderToast({ reminders, onTaken, onSnooze, 
           <button type="button" onClick={() => setSnoozeOpen(false)}
             style={{
               padding: '10px 12px', borderRadius: 10,
-              background: 'white', border: '1px solid var(--sm)',
+              background: 'var(--w, #fff)', border: '1px solid var(--sm)',
               cursor: 'pointer', fontSize: 13,
             }}>✕</button>
         </div>
