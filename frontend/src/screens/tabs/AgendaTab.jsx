@@ -8,7 +8,6 @@ import EventDetailModal from '../../components/EventDetailModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import CalendarShareModal from '../../components/CalendarShareModal.jsx';
 import ExportAllCalendarsModal from '../../components/ExportAllCalendarsModal.jsx';
-import ExportSheet from '../../components/ExportSheet.jsx';
 import FamilySwitcher from '../../components/FamilySwitcher.jsx';
 import FabSpeedDial from '../../components/FabSpeedDial.jsx';
 import AbsenceModal from '../../components/AbsenceModal.jsx';
@@ -128,7 +127,7 @@ function ActionRow({ icon, label, onClick, accent, testid }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 14,
         padding: '14px 16px', borderRadius: 14,
-        border: '1px solid var(--sm)', background: 'white',
+        border: '1px solid var(--sm)', background: 'var(--w, #fff)',
         textAlign: 'left', cursor: 'pointer',
         borderLeft: accent ? `3px solid ${accent}` : '1px solid var(--sm)',
       }}>
@@ -150,6 +149,8 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
   const dateLocale = localeMap[lang] || 'it-IT';
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
+  // Prefill per "Fare la spesa" dal menu azioni rapide
+  const [addPrefill, setAddPrefill] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [selTask, setSelTask] = useState(null);
   const [selEvent, setSelEvent] = useState(null);
@@ -157,7 +158,6 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
   const [showExportAll, setShowExportAll] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState(null);
   const [showAbsence, setShowAbsence] = useState(false);
-  const [showExportSheet, setShowExportSheet] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1);
   });
@@ -218,8 +218,20 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
     return (a.name || '').localeCompare(b.name || '');
   });
 
+  // Il mio membro (per aprire le mie medicine anche senza assistiti)
+  const myMemberForMeds = () => {
+    const mine = (members || []).filter((m) => m.user_id === session.user.id);
+    if (mine.length === 0) return null;
+    if (familyId) return mine.find((m) => m.family_id === familyId) || mine[0];
+    return mine[0];
+  };
+
   const onClickNewMed = () => {
-    if (assistedMembers.length === 0) return;
+    if (assistedMembers.length === 0) {
+      const self = myMemberForMeds();
+      if (self) setMedsForMember(self);
+      return;
+    }
     if (assistedMembers.length === 1) setMedsForMember(assistedMembers[0]);
     else setShowMedsPicker(true);
   };
@@ -456,7 +468,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
           <button
             type="button"
             data-testid="agenda-export-btn"
-            onClick={() => setShowExportSheet(true)}
+            onClick={() => setShowExportAll(true)}
             title={t('export_sheet_title') || 'Esporta calendario'}
             aria-label={t('export_sheet_title') || 'Esporta calendario'}
             style={{
@@ -711,7 +723,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
             onClick={(e) => e.stopPropagation()}
             data-testid="agenda-quick-actions-sheet"
             style={{
-              width: '100%', maxWidth: 520, background: 'white',
+              width: '100%', maxWidth: 520, background: 'var(--w, #fff)',
               borderTopLeftRadius: 22, borderTopRightRadius: 22,
               padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
               boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
@@ -722,10 +734,18 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
             <ActionRow icon="📋" label={t('fab_new_task') || 'Nuovo incarico'}
               testid="agenda-action-task"
               onClick={() => { setShowQuickActions(false); setShowAddTask(true); }} />
+            <ActionRow icon="🛒" label={t('fab_new_shopping') || 'Fare la spesa'}
+              accent="#6E87A0"
+              testid="agenda-action-shopping"
+              onClick={() => {
+                setShowQuickActions(false);
+                setAddPrefill({ title: t('shopping_task_title') || 'Spesa', category: 'spese' });
+                setShowAddTask(true);
+              }} />
             <ActionRow icon="✈️" label={t('fab_new_absence') || 'Nuova assenza'}
               testid="agenda-action-absence"
               onClick={() => { setShowQuickActions(false); setShowAbsence(true); }} />
-            {assistedMembers.length > 0 && (
+            {(assistedMembers.length > 0 || myMemberForMeds()) && (
               <ActionRow icon="💊" label={t('fab_new_med') || 'Nuova medicina'}
                 accent="var(--gn)"
                 testid="agenda-action-med"
@@ -737,7 +757,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
               data-testid="agenda-actions-cancel"
               style={{
                 marginTop: 6, padding: '12px', borderRadius: 12,
-                border: '1px solid var(--sm)', background: 'white',
+                border: '1px solid var(--sm)', background: 'var(--w, #fff)',
                 fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
               }}>{t('cancel') || 'Annulla'}</button>
           </div>
@@ -750,13 +770,15 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
           families={families}
           members={members}
           authorMemberId={me?.id}
+          initialTitle={addPrefill?.title || ''}
+          initialCategory={addPrefill?.category || null}
           /* Prefill: se l'utente ha cliccato un giorno nel calendario,
              quel giorno viene precaricato come scadenza del task. */
           initialDueDate={selectedDay
             ? `${selectedDay.getFullYear()}-${String(selectedDay.getMonth()+1).padStart(2,'0')}-${String(selectedDay.getDate()).padStart(2,'0')}`
             : null}
-          onClose={() => setShowAddTask(false)}
-          onCreated={() => { setShowAddTask(false); onChanged(); }}
+          onClose={() => { setShowAddTask(false); setAddPrefill(null); }}
+          onCreated={() => { setShowAddTask(false); setAddPrefill(null); onChanged(); }}
         />
       )}
 
@@ -818,23 +840,13 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
         />
       )}
 
-      {showExportAll && families.length > 1 && (
+      {showExportAll && families.length > 0 && (
         <ExportAllCalendarsModal
           families={families}
           onClose={() => setShowExportAll(false)}
           onChanged={onChanged}
         />
       )}
-
-      <ExportSheet
-        open={showExportSheet}
-        onClose={() => setShowExportSheet(false)}
-        families={families || []}
-        isAll={isAll}
-        targetFamily={targetFamily}
-        events={expandedEvents}
-        tasks={dueTasks}
-      />
 
       {showAbsence && (
         <AbsenceModal
@@ -875,7 +887,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
             onClick={(e) => e.stopPropagation()}
             data-testid="meds-picker-sheet"
             style={{
-              width: '100%', maxWidth: 520, background: 'white',
+              width: '100%', maxWidth: 520, background: 'var(--w, #fff)',
               borderTopLeftRadius: 22, borderTopRightRadius: 22,
               padding: '14px 18px calc(28px + env(safe-area-inset-bottom, 0px))',
               boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
@@ -936,7 +948,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
               data-testid="meds-picker-cancel"
               style={{
                 marginTop: 6, padding: '12px', borderRadius: 12,
-                border: '1px solid var(--sm)', background: 'white',
+                border: '1px solid var(--sm)', background: 'var(--w, #fff)',
                 fontSize: 14, fontWeight: 700, color: 'var(--km)', cursor: 'pointer',
               }}>{t('cancel') || 'Annulla'}</button>
           </div>
@@ -983,7 +995,7 @@ function AbsenceCard({ absence, memberName, isMine, isOngoing, onClick }) {
           {isMine && (
             <span style={{
               padding: '1px 8px', borderRadius: 100,
-              background: 'white', border: `1px solid ${tone.color}`,
+              background: 'var(--w, #fff)', border: `1px solid ${tone.color}`,
               color: tone.color, fontSize: 10, fontWeight: 700,
             }}>({t('you') || 'tu'})</span>
           )}
@@ -1612,4 +1624,3 @@ function MonthWeekToggle({ viewMode, onChange, t }) {
     </div>
   );
 }
-
