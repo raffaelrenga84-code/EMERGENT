@@ -13,9 +13,17 @@ import { useT } from '../lib/i18n.jsx';
  *
  * onSaved: callback per refreshare lo state di App.jsx (profile + members).
  */
-export default function NamePromptModal({ session, profile, onSaved }) {
-  const { t } = useT();
-  const [name, setName] = useState('');
+export default function NamePromptModal({ session, profile, nameKnown = false, onSaved }) {
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  // Onboarding in 3 passi (alla Seremy): nome → compleanno → indirizzo.
+  // Solo il nome è obbligatorio; gli altri si possono saltare.
+  // Se il nome lo sappiamo già (Google o placeholder), si parte dal compleanno
+  const [step, setStep] = useState(nameKnown ? 2 : 1);
+  const [name, setName] = useState(nameKnown ? (profile?.display_name || '') : '');
+  const [birthDate, setBirthDate] = useState('');
+  const [address, setAddress] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -67,6 +75,19 @@ export default function NamePromptModal({ session, profile, onSaved }) {
         }
       }
 
+      // 3) Compleanno + indirizzo (facoltativi): profilo + membri.
+      //    L'indirizzo viene propagato ai members dal trigger DB.
+      const extraProfile = {};
+      if (address.trim()) extraProfile.address = address.trim();
+      if (Object.keys(extraProfile).length > 0) {
+        await supabase.from('profiles').update(extraProfile).eq('id', session.user.id);
+      }
+      if (birthDate) {
+        await supabase.from('members')
+          .update({ birth_date: birthDate })
+          .eq('user_id', session.user.id);
+      }
+
       onSaved && onSaved();
     } catch (e) {
       setErr(e?.message || 'Errore');
@@ -97,35 +118,91 @@ export default function NamePromptModal({ session, profile, onSaved }) {
           background: 'linear-gradient(135deg, var(--ac), var(--am))',
           alignItems: 'center', justifyContent: 'center',
           fontSize: 30, margin: '0 auto 14px', display: 'flex',
-        }}>👋</div>
+        }}>{step === 1 ? '👋' : step === 2 ? '🎂' : '📍'}</div>
+
+        {/* Indicatore di avanzamento */}
+        <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 12 }}>
+          {(nameKnown ? [2, 3] : [1, 2, 3]).map((i) => (
+            <span key={i} style={{
+              width: i === step ? 22 : 7, height: 7, borderRadius: 100,
+              background: i <= step ? 'var(--ac)' : 'var(--sm)',
+              transition: 'all 200ms ease',
+            }} />
+          ))}
+        </div>
 
         <h2 style={{
           margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--k)',
           textAlign: 'center',
-        }}>{t('name_prompt_title') || 'Come ti chiami?'}</h2>
+        }}>
+          {step === 1 ? (t('name_prompt_title') || 'Come ti chiami?')
+           : step === 2 ? (t('ob_bday_title') || 'Quando è il tuo compleanno?')
+           : (t('ob_addr_title') || 'Dove abiti?')}
+        </h2>
         <p style={{
           margin: '6px 0 18px', fontSize: 13, color: 'var(--km)',
           textAlign: 'center', lineHeight: 1.5,
-        }}>{t('name_prompt_subtitle') ||
-          'La famiglia ti vedrà con questo nome. Puoi cambiarlo in qualsiasi momento dal profilo.'}</p>
+        }}>
+          {step === 1 ? (t('name_prompt_subtitle') ||
+            'La famiglia ti vedrà con questo nome. Puoi cambiarlo in qualsiasi momento dal profilo.')
+           : step === 2 ? (t('ob_bday_why') ||
+            'Serve solo per ricordare il tuo compleanno alla famiglia: la mattina riceveranno gli auguri da fare, e una settimana prima un promemoria per il regalo.')
+           : (t('ob_addr_why') ||
+            'Visibile solo alla tua famiglia: serve a chi ti deve raggiungere o mandare qualcosa. Un tocco e si apre in Mappe.')}
+        </p>
 
-        <input
-          type="text"
-          data-testid="name-prompt-input"
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') save(); }}
-          placeholder={t('name_prompt_placeholder') || 'Il tuo nome'}
-          maxLength={40}
-          style={{
-            width: '100%', padding: '14px 16px',
-            borderRadius: 14, border: '2px solid var(--sm)',
-            fontSize: 17, fontWeight: 600, color: 'var(--k)',
-            background: 'var(--ab)', outline: 'none',
-            textAlign: 'center', marginBottom: 8,
-            fontFamily: 'inherit',
-          }} />
+        {step === 1 && (
+          <input
+            type="text"
+            data-testid="name-prompt-input"
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && name.trim().length >= 2) setStep(2); }}
+            placeholder={t('name_prompt_placeholder') || 'Il tuo nome'}
+            maxLength={40}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '14px 16px',
+              borderRadius: 14, border: '2px solid var(--sm)',
+              fontSize: 17, fontWeight: 600, color: 'var(--k)',
+              background: 'var(--ab)', outline: 'none',
+              textAlign: 'center', marginBottom: 8, fontFamily: 'inherit',
+            }} />
+        )}
+
+        {step === 2 && (
+          <input
+            type="date"
+            data-testid="ob-bday-input"
+            value={birthDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setBirthDate(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '14px 16px',
+              borderRadius: 14, border: '2px solid var(--sm)',
+              fontSize: 17, fontWeight: 600, color: 'var(--k)',
+              background: 'var(--ab)', outline: 'none',
+              marginBottom: 8, fontFamily: 'inherit', minWidth: 0,
+            }} />
+        )}
+
+        {step === 3 && (
+          <input
+            type="text"
+            data-testid="ob-addr-input"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') save(); }}
+            placeholder={t('ob_addr_ph') || 'es. Via Roma 1, Padova'}
+            maxLength={120}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '14px 16px',
+              borderRadius: 14, border: '2px solid var(--sm)',
+              fontSize: 15, fontWeight: 600, color: 'var(--k)',
+              background: 'var(--ab)', outline: 'none',
+              marginBottom: 8, fontFamily: 'inherit',
+            }} />
+        )}
 
         {err && (
           <div style={{
@@ -137,21 +214,55 @@ export default function NamePromptModal({ session, profile, onSaved }) {
 
         <button
           type="button"
-          onClick={save}
-          disabled={busy || name.trim().length < 2}
+          onClick={() => {
+            if (step === 1) {
+              if (name.trim().length < 2) {
+                setErr(t('name_prompt_too_short') || 'Inserisci almeno 2 caratteri.');
+                return;
+              }
+              setErr(''); setStep(2);
+            } else if (step === 2) {
+              setStep(3);
+            } else {
+              save();
+            }
+          }}
+          disabled={busy || (step === 1 && name.trim().length < 2)}
           data-testid="name-prompt-save"
           style={{
             width: '100%', padding: '14px 16px', borderRadius: 14,
-            background: name.trim().length >= 2 ? 'var(--ac)' : 'var(--sm)',
+            background: (step !== 1 || name.trim().length >= 2) ? 'var(--ac)' : 'var(--sm)',
             color: 'white', border: 'none',
-            cursor: busy ? 'wait' : (name.trim().length >= 2 ? 'pointer' : 'not-allowed'),
+            cursor: busy ? 'wait' : ((step !== 1 || name.trim().length >= 2) ? 'pointer' : 'not-allowed'),
             fontSize: 15, fontWeight: 700,
             opacity: busy ? 0.7 : 1, marginTop: 6,
-            boxShadow: name.trim().length >= 2 ? '0 2px 8px rgba(193,98,75,0.3)' : 'none',
+            boxShadow: (step !== 1 || name.trim().length >= 2) ? '0 2px 8px rgba(193,98,75,0.3)' : 'none',
             transition: 'all 180ms ease',
           }}>
-          {busy ? (t('name_prompt_saving') || 'Salvataggio…') : (t('name_prompt_save') || 'Salva e continua')}
+          {busy ? (t('name_prompt_saving') || 'Salvataggio…')
+            : step === 3 ? (t('ob_finish') || 'Fine, iniziamo!')
+            : (t('ob_next') || 'Avanti')}
         </button>
+
+        {/* Passi 2 e 3 facoltativi: si possono saltare (e compilare dopo dal Profilo) */}
+        {step > 1 && !busy && (
+          <button type="button"
+            onClick={() => {
+              if (step === 2) { setStep(3); return; }
+              // Passo 3 saltato: rinvio di 7 giorni (non "mai più")
+              try { localStorage.setItem('fammy_onboarding_done', String(Date.now())); }
+              catch { /* ignore */ }
+              onSaved && onSaved();
+            }}
+            data-testid="ob-skip"
+            style={{
+              width: '100%', padding: '10px', marginTop: 8,
+              background: 'transparent', border: 'none',
+              color: 'var(--km)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>
+            {t('ob_skip') || 'Lo faccio dopo'}
+          </button>
+        )}
       </div>
     </div>
   );
