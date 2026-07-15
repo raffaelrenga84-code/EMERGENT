@@ -19,7 +19,9 @@ import { useT } from '../lib/i18n.jsx';
  *   onCountsChange?: ({ total, done }) => void — per badge nella card
  */
 export default function SubtaskList({ taskId, me, onCountsChange }) {
-  const { t } = useT();
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const [items, setItems] = useState([]);
   const [newText, setNewText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -75,6 +77,10 @@ export default function SubtaskList({ taskId, me, onCountsChange }) {
   const addItem = async () => {
     const raw = newText.trim();
     if (!raw || busy) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      alert(t('offline_warn') || "⚠️ Nessuna connessione: l'azione non è stata salvata. Riprova quando sei online.");
+      return;
+    }
     setBusy(true);
     // Aggiunta multipla: "latte, pane, uova" (o testo su più righe)
     // crea una voce per ciascun elemento, in un solo invio.
