@@ -36,6 +36,10 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url || '');
   const [uploading, setUploading] = useState(false);
   const [birthDate, setBirthDate] = useState(member.birth_date || '');
+  // Indirizzo: compilabile SOLO per i membri senza account (chi ha
+  // l'account lo gestisce dal proprio Profilo, che poi lo propaga).
+  const [address, setAddress] = useState(member.address || '');
+  const hasAccount = !!member.user_id;
   const [isAssisted, setIsAssisted] = useState(!!member.is_assisted);
   const [caredBy, setCaredBy] = useState(member.cared_by || []);
   const [familyMembers, setFamilyMembers] = useState([]);
@@ -114,6 +118,7 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
       };
       if (withAvatarUrl) payload.avatar_url = avatarUrl || null;
       if (withBirth) payload.birth_date = birthDate || null;
+      if (!hasAccount) payload.address = address.trim() || null;
       // Toggle "è assistito": sblocca la sezione medicine nel profilo.
       payload.is_assisted = isAssisted;
       // Caregiver assegnati (chi si occupa di questo assistito).
@@ -328,6 +333,22 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
             <label htmlFor="birthDate">{t('addmember_birthdate')}</label>
             <input id="birthDate" type="date" className="input"
               value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+
+            {!hasAccount && (
+              <div style={{ marginTop: 14 }}>
+                <label htmlFor="memberAddr">📍 {t('member_addr_label') || 'Indirizzo'}</label>
+                <input id="memberAddr" className="input"
+                  data-testid="edit-member-address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder={t('ob_addr_ph') || 'es. Via Roma 1, Padova'}
+                  maxLength={120} />
+                <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+                  {t('member_addr_hint') ||
+                    'Visibile alla famiglia. Quando questa persona avrà un account, potrà gestirlo dal suo profilo.'}
+                </p>
+              </div>
+            )}
             {birthDate && (
               <button
                 type="button"
