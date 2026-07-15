@@ -708,6 +708,10 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
   // Intervallo giorni: 1 = ogni giorno, 2 = a giorni alterni, N = ogni N giorni.
   // L'intervallo si conta a partire dalla data "Dal" (start_date).
   const [intervalDays, setIntervalDays] = useState(Number(med?.interval_days) || 1);
+  // Campo "Ogni N giorni": stato testuale separato (si può svuotare/riscrivere)
+  const [customDays, setCustomDays] = useState(
+    (Number(med?.interval_days) || 1) > 2 ? String(med.interval_days) : ''
+  );
   // Giorni della settimana specifici (0=Dom … 6=Sab) — es. lun e gio
   const [dowDays, setDowDays] = useState(Array.isArray(med?.days_of_week) ? med.days_of_week : []);
   // Ciclo: N giorni di assunzione, M di pausa (es. pillola 21/7)
@@ -938,7 +942,7 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
           { v: 2, label: t('med_interval_alt') || 'A giorni alterni' },
         ].map((opt) => (
           <button key={opt.v} type="button"
-            onClick={() => setIntervalDays(opt.v)}
+            onClick={() => { setIntervalDays(opt.v); setCustomDays(''); }}
             data-testid={`med-interval-${opt.v}`}
             style={{
               padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
@@ -954,20 +958,31 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
           display: 'inline-flex', alignItems: 'center', gap: 4,
           padding: '4px 8px', borderRadius: 100, fontSize: 12, fontWeight: 600,
           border: intervalDays > 2 ? '1.5px solid var(--ac)' : '1.5px solid var(--sm)',
-          background: intervalDays > 2 ? 'rgba(193,98,75,0.10)' : 'white',
+          background: intervalDays > 2 ? 'rgba(193,98,75,0.10)' : 'var(--w, #fff)',
           color: 'var(--k)',
         }}>
           {t('med_interval_every') || 'Ogni'}
-          <input type="number" min="1" max="60" inputMode="numeric"
-            value={intervalDays > 2 ? intervalDays : ''}
+          <input type="number" min="3" max="60" inputMode="numeric"
+            value={customDays}
             placeholder="N"
             onChange={(e) => {
-              const n = Math.max(1, Math.min(60, Number(e.target.value) || 1));
-              setIntervalDays(n);
+              // Stato locale: l'utente deve poter cancellare e riscrivere
+              const raw = e.target.value;
+              setCustomDays(raw);
+              const n = Number(raw);
+              if (n >= 3 && n <= 60) setIntervalDays(n);
+            }}
+            onBlur={() => {
+              const n = Number(customDays);
+              if (!(n >= 3 && n <= 60)) {
+                // Valore non valido → torna a "Ogni giorno" e svuota
+                setCustomDays('');
+                if (intervalDays > 2) setIntervalDays(1);
+              }
             }}
             data-testid="med-interval-custom"
             style={{
-              width: 40, border: 'none', outline: 'none', background: 'transparent',
+              width: 44, border: 'none', outline: 'none', background: 'transparent',
               fontSize: 12, fontWeight: 700, textAlign: 'center', color: 'var(--ac)',
             }} />
           {t('med_interval_days') || 'giorni'}
