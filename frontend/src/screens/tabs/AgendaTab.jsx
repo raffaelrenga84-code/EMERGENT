@@ -228,15 +228,23 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
     return mine[0];
   };
 
+  // Le MIE medicine sono sempre accessibili, anche se non sono "assistito":
+  // chiunque può avere una terapia. Se ci sono anche assistiti, il picker
+  // li mostra tutti insieme a me.
+  const medTargets = (() => {
+    const self = myMemberForMeds();
+    const list = [...assistedMembers];
+    if (self && !list.some((m) => m.id === self.id)) list.unshift(self);
+    return list;
+  })();
+
   const onClickNewMed = () => {
-    if (assistedMembers.length === 0) {
-      const self = myMemberForMeds();
-      if (self) setMedsForMember(self);
-      return;
-    }
-    if (assistedMembers.length === 1) setMedsForMember(assistedMembers[0]);
+    if (medTargets.length === 0) return;
+    if (medTargets.length === 1) setMedsForMember(medTargets[0]);
     else setShowMedsPicker(true);
   };
+
+
 
   const expandedEvents = expandEvents(events);
   // Task con due_date che non sono done, da mostrare in calendario/agenda.
@@ -747,7 +755,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
             <ActionRow icon="✈️" label={t('fab_new_absence') || 'Nuova assenza'}
               testid="agenda-action-absence"
               onClick={() => { setShowQuickActions(false); setShowAbsence(true); }} />
-            {(assistedMembers.length > 0 || myMemberForMeds()) && (
+            {medTargets.length > 0 && (
               <ActionRow icon="💊" label={t('fab_new_med') || 'Nuova medicina'}
                 accent="var(--gn)"
                 testid="agenda-action-med"
@@ -907,7 +915,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
             }}>
               {t('meds_picker_h') || 'Per chi vuoi aggiungere medicine?'}
             </div>
-            {assistedMembers.map((m) => {
+            {medTargets.map((m) => {
               const isSelf = m.user_id && m.user_id === session.user.id;
               const fam = families?.find((f) => f.id === m.family_id);
               const displayName = isSelf
