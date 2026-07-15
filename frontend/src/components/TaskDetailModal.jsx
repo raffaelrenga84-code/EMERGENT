@@ -22,7 +22,9 @@ export default function TaskDetailModal({
   onEdit,              // (task) => void  -> apre AddTaskModal in edit mode
   onOpenExpense,       // (task) => void  -> switch a Spese + apri spesa per task
 }) {
-  const { t } = useT();
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   useAndroidBack(true, onClose);
   // Solo 3 stati cliccabili. 'taken' viene impostato automaticamente
   // quando si fa "Me ne occupo io".
