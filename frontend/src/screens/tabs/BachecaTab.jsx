@@ -865,8 +865,12 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           members={allMembers}
           authorMemberId={me?.id}
           absences={absences}
-          onClose={() => setShowAdd(false)}
-          onCreated={() => { setShowAdd(false); onChanged(); }}
+          initialTitle={addPrefill?.title || ''}
+          initialCategory={addPrefill?.category || null}
+          shoppingMode={!!addPrefill?.shopping}
+          initialChecklistOpen={!!addPrefill?.shopping}
+          onClose={() => { setShowAdd(false); setAddPrefill(null); }}
+          onCreated={() => { setShowAdd(false); setAddPrefill(null); onChanged(); }}
         />
       )}
 
