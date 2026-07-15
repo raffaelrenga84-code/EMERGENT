@@ -4,12 +4,12 @@
 // Include: anagrafica, grafici andamento 30 giorni (pressione + peso),
 // profilo medico, terapia in corso, diario recente e — nell'angolo in
 // basso a destra — il branding FAMMY con QR code verso il sito (viral loop).
-
+ 
 import QRCode from 'qrcode';
 import { activeTimesForToday } from './medSchedule.js';
 import { toLocalYMD } from './dateUtils.js';
 import { bpDailyAvg, getBpReadings, isBpHigh, BP_SYS_LIMIT, BP_DIA_LIMIT } from './bp.js';
-
+ 
 const W = 1240;        // larghezza canvas (A4-ish @150dpi)
 const M = 70;          // margine
 const INK = '#2C302A';
@@ -18,10 +18,10 @@ const ACCENT = '#C1624B';
 const LINE = '#E5E1D8';
 const SOFT = '#F7F5F0';
 const ALERT = '#C0392B';   // rosso per valori pressione fuori soglia
-
+ 
 const FONT = (size, weight = 400) =>
   `${weight} ${size}px -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif`;
-
+ 
 export async function generateDoctorReport({ member, profile, meds, diary, t }) {
   // diary: array ASC per data (ultimi 30 giorni)
   const work = document.createElement('canvas');
@@ -30,9 +30,9 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
   const ctx = work.getContext('2d');
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, W, work.height);
-
+ 
   let y = 90;
-
+ 
   const hr = (pad = 0) => {
     ctx.strokeStyle = LINE; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(M, y + pad); ctx.lineTo(W - M, y + pad); ctx.stroke();
@@ -77,7 +77,7 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
     }
     y += lineH;
   };
-
+ 
   // ---------- HEADER ----------
   ctx.fillStyle = ACCENT; ctx.font = FONT(36, 800);
   ctx.fillText('🏡 FAMMY', M, y);
@@ -90,10 +90,10 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
   y += 46;
   ctx.font = FONT(30, 700);
   const sub = `👤 ${member.name}` +
-    (member.birthday ? `   ·   🎂 ${new Date(member.birthday).toLocaleDateString()}` : '');
+    ((member.birth_date || member.birthday) ? `   ·   🎂 ${new Date(String(member.birth_date || member.birthday) + 'T12:00:00').toLocaleDateString()}` : '');
   ctx.fillText(sub, M, y);
   y += 22; hr(8);
-
+ 
   // ---------- GRAFICI 30 GIORNI ----------
   // Più misurazioni/giorno → il grafico usa la media giornaliera
   const bpData = diary
@@ -118,7 +118,7 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
     }
     y = cy + chartH + 30;
   }
-
+ 
   // ---------- PROFILO MEDICO ----------
   if (profile) {
     section(`🩺 ${t('crs_section_profile') || 'Profilo medico'}`);
@@ -135,7 +135,7 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
     field(`🆔 ${t('mp_health_card_label') || 'Tessera sanitaria'}`, profile.health_card_number);
     if (profile.notes) field(`📝 ${t('dd_notes_label') || 'Note'}`, profile.notes);
   }
-
+ 
   // ---------- TERAPIA ----------
   if (meds.length > 0) {
     section(`💊 ${t('crs_section_meds') || 'Terapia in corso'}`);
@@ -159,7 +159,7 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
       y += 8;
     }
   }
-
+ 
   // ---------- DIARIO RECENTE ----------
   const recent = [...diary].reverse().slice(0, 14); // più recenti prima
   if (recent.length > 0) {
@@ -197,7 +197,7 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
         M, W - 2 * M, 30, FONT(20, 700), ALERT);
     }
   }
-
+ 
   // ---------- CANVAS FINALE + FOOTER BRANDING ----------
   const footerH = 170;
   const finalH = Math.max(y + footerH + 30, 1754);
@@ -207,14 +207,14 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
   c2.fillStyle = '#FFFFFF';
   c2.fillRect(0, 0, W, finalH);
   c2.drawImage(work, 0, 0);
-
+ 
   // Footer
   const fy = finalH - footerH;
   c2.fillStyle = SOFT;
   c2.fillRect(0, fy, W, footerH);
   c2.strokeStyle = LINE; c2.lineWidth = 2;
   c2.beginPath(); c2.moveTo(0, fy); c2.lineTo(W, fy); c2.stroke();
-
+ 
   // QR code → sito FAMMY (angolo in basso a destra)
   try {
     const qr = document.createElement('canvas');
@@ -224,38 +224,38 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
     });
     c2.drawImage(qr, W - M - 120, fy + 24);
   } catch (_) { /* QR opzionale */ }
-
+ 
   c2.fillStyle = ACCENT; c2.font = FONT(28, 800);
   c2.fillText('🏡 FAMMY', M, fy + 58);
   c2.fillStyle = INK; c2.font = FONT(22, 600);
   c2.fillText(t('dr_tagline') || "L'app che organizza la famiglia — anche la salute di chi ami.", M, fy + 96);
   c2.fillStyle = MUTED; c2.font = FONT(20);
   c2.fillText(t('dr_scan') || 'Scansiona il QR per provarla · farxer.com', M, fy + 128);
-
+ 
   return new Promise((resolve) => out.toBlob(resolve, 'image/png'));
 }
-
+ 
 // Mini line-chart su canvas. series: [{color, pts: [{x:'YYYY-MM-DD', v:number}]}]
 function drawChart(ctx, x, y0, w, h, title, series) {
   ctx.fillStyle = SOFT;
   roundRect(ctx, x, y0, w, h, 14); ctx.fill();
   ctx.fillStyle = MUTED; ctx.font = FONT(20, 700);
   ctx.fillText(title, x + 16, y0 + 32);
-
+ 
   const all = series.flatMap((s) => s.pts.map((p) => p.v));
   if (all.length === 0) return;
   let min = Math.min(...all), max = Math.max(...all);
   if (min === max) { min -= 1; max += 1; }
   const pad = (max - min) * 0.15;
   min -= pad; max += pad;
-
+ 
   const dates = [...new Set(series.flatMap((s) => s.pts.map((p) => p.x)))].sort();
   const ix = new Map(dates.map((d, i) => [d, i]));
   const n = Math.max(dates.length - 1, 1);
-
+ 
   const px = (d) => x + 20 + (ix.get(d) / n) * (w - 40);
   const py = (v) => y0 + h - 24 - ((v - min) / (max - min)) * (h - 76);
-
+ 
   // Linee soglia tratteggiate (es. ipertensione) — solo se nel range visibile
   for (const s of series) {
     if (s.limit == null || s.limit < min || s.limit > max) continue;
@@ -268,7 +268,7 @@ function drawChart(ctx, x, y0, w, h, title, series) {
     ctx.fillStyle = ALERT; ctx.font = FONT(15, 700);
     ctx.fillText(String(s.limit), x + 16, py(s.limit) - 5);
   }
-
+ 
   for (const s of series) {
     const pts = [...s.pts].sort((a, b) => a.x.localeCompare(b.x));
     ctx.strokeStyle = s.color; ctx.lineWidth = 3.5;
@@ -288,7 +288,7 @@ function drawChart(ctx, x, y0, w, h, title, series) {
     ctx.font = FONT(19, 800);
     ctx.fillText(String(last.v), Math.min(px(last.x) + 8, x + w - 50), py(last.v) - 8);
   }
-
+ 
   // etichette range date
   ctx.fillStyle = MUTED; ctx.font = FONT(16);
   const fmtShort = (ymd) => new Date(ymd + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
@@ -296,7 +296,7 @@ function drawChart(ctx, x, y0, w, h, title, series) {
   const lastLbl = fmtShort(dates[dates.length - 1]);
   ctx.fillText(lastLbl, x + w - 16 - ctx.measureText(lastLbl).width, y0 + h - 8);
 }
-
+ 
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
