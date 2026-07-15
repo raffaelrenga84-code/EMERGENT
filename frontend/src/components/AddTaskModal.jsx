@@ -33,10 +33,14 @@ export default function AddTaskModal({
   editingTask = null,
   // Prefill iniziale (usato es. dalle azioni dell'AI assistant)
   initialTitle = '', initialCategory = null, initialDueDate = '',
+  initialChecklistOpen = false,
+  shoppingMode = false,
   initialDueTime = '', initialLocation = '',
   onClose, onCreated, onUpdated,
 }) {
-  const { t } = useT();
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const isEdit = !!editingTask;
 
   const CATEGORIES = [
@@ -59,6 +63,19 @@ export default function AddTaskModal({
   const [dueTime, setDueTime] = useState(editingTask?.due_time || initialDueTime || '');
   // Anticipo del promemoria in minuti (0 = all'orario di scadenza)
   const [remindLead, setRemindLead] = useState(Number(editingTask?.remind_lead_min) || 0);
+  // Checklist iniziale (solo in creazione): voci salvate in task_subtasks
+  // insieme al task. Aperta di default per "Fare la spesa".
+  const [checkOpen, setCheckOpen] = useState(initialChecklistOpen);
+  const [checkItems, setCheckItems] = useState([]);
+  const [checkInput, setCheckInput] = useState('');
+  // Spesa: apri il foglio di condivisione nativo dopo il salvataggio
+  const [shareAfterSave, setShareAfterSave] = useState(false);
+  const addCheckItems = () => {
+    const parts = checkInput.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+    setCheckItems((prev) => [...prev, ...parts].slice(0, 50));
+    setCheckInput('');
+  };
   const [location, setLocation] = useState(editingTask?.location || initialLocation || '');
   const [assignees, setAssignees] = useState([]);
   const [recurringDays, setRecurringDays] = useState(editingTask?.recurring_days || []);
@@ -363,6 +380,27 @@ export default function AddTaskModal({
 
     if (e1) { setErr(e1.message); setBusy(false); return; }
 
+    // Checklist iniziale → task_subtasks (best-effort)
+    const pendingCheck = [...checkItems, ...checkInput.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean)].slice(0, 50);
+    if (pendingCheck.length > 0) {
+      try {
+        await supabase.from('task_subtasks').insert(
+          pendingCheck.map((text, i) => ({ task_id: task.id, text, order_index: i + 1 }))
+        );
+      } catch (_) { /* la checklist si può sempre aggiungere dal dettaglio */ }
+    }
+
+    // 📤 Spesa: condivisione nativa subito dopo il salvataggio
+    if (shoppingMode && shareAfterSave && navigator.share) {
+      const lines = [`🛒 ${title.trim() || 'Spesa'}`];
+      if (dueDate) {
+        lines.push(`📅 ${new Date(dueDate).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}`);
+      }
+      for (const it of pendingCheck) lines.push(`⬜️ ${it}`);
+      lines.push('', '— inviato da FAMMY 🏡');
+      try { await navigator.share({ text: lines.join('\n') }); } catch (_) { /* annullato */ }
+    }
+
     if (assignees.length > 0) {
       markSelfAssignment(task.id);
       // Con rotazione attiva il primo turno è del primo selezionato
@@ -453,6 +491,7 @@ export default function AddTaskModal({
 
         <form onSubmit={submit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div ref={scrollableRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+            {!shoppingMode && (<>
             {/* === CATEGORIA === */}
             <div>
               <label>{t('addtask_cat_label')}</label>
@@ -499,6 +538,8 @@ export default function AddTaskModal({
               </div>
             </div>
 
+            </>)}
+
             {/* === TITOLO + AI HINT === */}
             <div style={{ marginTop: 20 }}>
               <label htmlFor="title">{t('addtask_title_label')}</label>
@@ -525,6 +566,70 @@ export default function AddTaskModal({
                 />
               )}
             </div>
+
+            {/* === CHECKLIST INIZIALE (solo creazione) === */}
+            {!isEdit && shoppingMode && (
+              <div style={{ marginTop: 16 }}>
+                {!checkOpen ? (
+                  <button type="button"
+                    onClick={() => setCheckOpen(true)}
+                    data-testid="add-task-checklist-toggle"
+                    style={{
+                      width: '100%', padding: '12px 14px', borderRadius: 12,
+                      border: '1.5px dashed var(--sm)', background: 'transparent',
+                      color: 'var(--km)', fontSize: 13, fontWeight: 600,
+                      textAlign: 'left', cursor: 'pointer',
+                    }}>
+                    ✓ ➕ {t('add_checklist_btn') || 'Aggiungi checklist (es. lista della spesa)'}
+                  </button>
+                ) : (
+                  <div style={{
+                    padding: 12, borderRadius: 12,
+                    border: '1.5px solid var(--sm)', background: 'var(--w, #fff)',
+                  }}>
+                    <label>✓ {t('add_checklist_label') || 'Checklist'}{checkItems.length > 0 ? ` (${checkItems.length})` : ''}</label>
+                    {checkItems.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                        {checkItems.map((it, i) => (
+                          <span key={i} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '5px 10px', borderRadius: 100,
+                            background: 'var(--ab)', color: 'var(--k)',
+                            fontSize: 12, fontWeight: 600,
+                          }}>
+                            {it}
+                            <button type="button"
+                              onClick={() => setCheckItems((prev) => prev.filter((_, j) => j !== i))}
+                              style={{ border: 'none', background: 'transparent', color: 'var(--rd)', cursor: 'pointer', padding: 0, fontSize: 13 }}>
+                              ✕
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <input className="input"
+                      data-testid="add-task-checklist-input"
+                      placeholder={t('add_checklist_ph') || 'es. latte, pane, uova + Invio'}
+                      value={checkInput}
+                      onChange={(e) => setCheckInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCheckItems(); } }}
+                      onBlur={addCheckItems} />
+                    <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+                      {t('add_checklist_hint') || 'Più voci insieme separate da virgola. Potrai spuntarle nel dettaglio dell\u2019incarico.'}
+                    </p>
+                  </div>
+                )}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={shareAfterSave}
+                    onChange={(e) => setShareAfterSave(e.target.checked)}
+                    data-testid="add-task-share-after" />
+                  <span style={{ fontSize: 12, color: 'var(--k)', fontWeight: 600 }}>
+                    📤 {t('shopping_share_after') || 'Dopo il salvataggio apri la condivisione (WhatsApp, ecc.)'}
+                  </span>
+                </label>
+              </div>
+            )}
+
 
             {/* === QUANDO (data + ora) === */}
             <div style={{ marginTop: 20 }}>
@@ -602,6 +707,62 @@ export default function AddTaskModal({
               )}
             </div>
 
+            {/* === CHECKLIST INIZIALE (solo creazione) === */}
+            {!isEdit && !shoppingMode && (
+              <div style={{ marginTop: 16 }}>
+                {!checkOpen ? (
+                  <button type="button"
+                    onClick={() => setCheckOpen(true)}
+                    data-testid="add-task-checklist-toggle"
+                    style={{
+                      width: '100%', padding: '12px 14px', borderRadius: 12,
+                      border: '1.5px dashed var(--sm)', background: 'transparent',
+                      color: 'var(--km)', fontSize: 13, fontWeight: 600,
+                      textAlign: 'left', cursor: 'pointer',
+                    }}>
+                    ✓ ➕ {t('add_checklist_btn') || 'Aggiungi checklist (es. lista della spesa)'}
+                  </button>
+                ) : (
+                  <div style={{
+                    padding: 12, borderRadius: 12,
+                    border: '1.5px solid var(--sm)', background: 'var(--w, #fff)',
+                  }}>
+                    <label>✓ {t('add_checklist_label') || 'Checklist'}{checkItems.length > 0 ? ` (${checkItems.length})` : ''}</label>
+                    {checkItems.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                        {checkItems.map((it, i) => (
+                          <span key={i} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '5px 10px', borderRadius: 100,
+                            background: 'var(--ab)', color: 'var(--k)',
+                            fontSize: 12, fontWeight: 600,
+                          }}>
+                            {it}
+                            <button type="button"
+                              onClick={() => setCheckItems((prev) => prev.filter((_, j) => j !== i))}
+                              style={{ border: 'none', background: 'transparent', color: 'var(--rd)', cursor: 'pointer', padding: 0, fontSize: 13 }}>
+                              ✕
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <input className="input"
+                      data-testid="add-task-checklist-input"
+                      placeholder={t('add_checklist_ph') || 'es. latte, pane, uova + Invio'}
+                      value={checkInput}
+                      onChange={(e) => setCheckInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCheckItems(); } }}
+                      onBlur={addCheckItems} />
+                    <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+                      {t('add_checklist_hint') || 'Più voci insieme separate da virgola. Potrai spuntarle nel dettaglio dell\u2019incarico.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!shoppingMode && (<>
             {/* === LUOGO === */}
             <div style={{ marginTop: 16 }}>
               <label htmlFor="loc">{t('addtask_loc_label')}</label>
@@ -610,6 +771,8 @@ export default function AddTaskModal({
                 placeholder={t('addtask_loc_ph')}
                 value={location} onChange={(e) => setLocation(e.target.value)} />
             </div>
+
+            </>)}
 
             {/* === ASSEGNATARI === */}
             <div ref={assigneesRef} style={{
@@ -811,6 +974,7 @@ export default function AddTaskModal({
               </div>
             )}
 
+            {!shoppingMode && (<>
             {/* === RICORRENZA === */}
             <div style={{ marginTop: 20 }}>
               <button type="button" onClick={() => setExpandRecurring((v) => !v)}
@@ -943,6 +1107,8 @@ export default function AddTaskModal({
                 </div>
               )}
             </div>
+
+            </>)}
 
             {/* === NOTA === */}
             <div style={{ marginTop: 20 }}>
@@ -1163,4 +1329,3 @@ function MonthCalendarPicker({ selectedDays, onToggleDay, anchorDay = null }) {
     </div>
   );
 }
-
