@@ -822,32 +822,14 @@ html[data-theme="dark"] .gift-card { background: var(--sm); }
 .skeleton { background: linear-gradient(90deg, var(--sm) 0%, var(--s) 50%, var(--sm) 100%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 12px; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 /* =====================================================================
-   FAMMY — Blocco da INCOLLARE IN FONDO a frontend/src/styles.css
-   (non sostituire il file: solo aggiungere queste righe alla fine)
-   ===================================================================== */
 
-/* Fix iOS: i campi data/ora non si restringono e creano lo scroll
-   orizzontale nei modal (es. Dal/Al affiancati). */
-input[type="date"],
-input[type="time"] {
-  -webkit-appearance: none;
-  appearance: none;
-  min-width: 0;
-  max-width: 100%;
-}
-input::-webkit-date-and-time-value { text-align: left; }
-
-/* Superficie "bianca" tema-aware: i componenti nuovi usano var(--w)
-   al posto del bianco fisso, così in dark mode diventano scuri. */
-:root { --w: #FFFFFF; }
-html[data-theme="dark"] { --w: #262624; }
 /* =====================================================================
-   FAMMY — Blocco da INCOLLARE IN FONDO a frontend/src/styles.css
-   (versione aggiornata: sostituisce il blocco precedente se già incollato)
+   FAMMY — Aggiunte sessione luglio 2026
    ===================================================================== */
 
 /* Fix iOS: i campi data/ora non si restringono e creano lo scroll
-   orizzontale nei modal (es. Dal/Al affiancati). */
+   orizzontale. La regola .modal input[...] qui sopra copre i modal;
+   questa estende la protezione a tutta l'app (form inline compresi). */
 input[type="date"],
 input[type="time"] {
   -webkit-appearance: none;
@@ -862,11 +844,10 @@ input::-webkit-date-and-time-value { text-align: left; }
 :root { --w: #FFFFFF; }
 html[data-theme="dark"] { --w: #262624; }
 
-/* Fix iPhone: il foglio modal non deve MAI finire sotto l'orologio /
-   notch, nemmeno quando la tastiera lo spinge verso l'alto. */
-.modal {
-  margin-top: max(env(safe-area-inset-top, 0px), 12px);
-  max-height: calc(100dvh - max(env(safe-area-inset-top, 0px), 12px) - 8px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+/* iPhone: garantisce SEMPRE spazio per orologio/Dynamic Island in cima
+   al foglio modal, anche quando iOS riporta safe-area-inset-top = 0
+   (succede in PWA con la tastiera aperta). Solo mobile: su desktop il
+   modal resta centrato senza padding. */
+@media (max-width: 767px) {
+  .modal-bg { padding-top: max(env(safe-area-inset-top, 0px), 44px); }
 }
