@@ -33,7 +33,9 @@ export default function AbsenceModal({
   editingAbsence = null, tasks = [], members = [],
   onClose, onSaved, onDeleted,
 }) {
-  const { t, lang } = useT();
+  const { t: __t0, lang } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const isEdit = !!editingAbsence;
   // L'assenza appartiene all'utente loggato? Se no, l'apertura del modal
   // è in modalità "read-only" (per leggere e commentare l'assenza altrui).
