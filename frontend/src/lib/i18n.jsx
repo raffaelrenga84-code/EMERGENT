@@ -17,6 +17,20 @@ export const LANGS = [
 export const T = {
   it: {
     // === Chiavi aggiunte (sessione luglio 2026) ===
+    med_recipients_label: 'Chi riceve il promemoria',
+    med_recipients_auto: 'Automatico',
+    med_recipients_auto_hint: 'Automatico: l\'assistito e i suoi caregiver.',
+    med_recipients_manual_hint: 'Solo le persone selezionate riceveranno il promemoria.',
+
+    ob_bday_title: 'Quando è il tuo compleanno?',
+    ob_bday_why: 'Serve solo per ricordare il tuo compleanno alla famiglia: la mattina riceveranno gli auguri da fare, e una settimana prima un promemoria per il regalo.',
+    ob_addr_title: 'Dove abiti?',
+    ob_addr_why: 'Visibile solo alla tua famiglia: serve a chi ti deve raggiungere o mandare qualcosa. Un tocco e si apre in Mappe.',
+    ob_addr_ph: 'es. Via Roma 1, Padova',
+    ob_next: 'Avanti',
+    ob_finish: 'Fine, iniziamo!',
+    ob_skip: 'Lo faccio dopo',
+
     care_hub_title: 'Care Hub',
     care_hub_sub_self: 'Le tue medicine, il profilo medico e il diario',
     cg_today: 'oggi',
@@ -1311,6 +1325,20 @@ export const T = {
 
   en: {
     // === Chiavi aggiunte (sessione luglio 2026) ===
+    med_recipients_label: 'Who gets the reminder',
+    med_recipients_auto: 'Automatic',
+    med_recipients_auto_hint: 'Automatic: the person and their caregivers.',
+    med_recipients_manual_hint: 'Only the selected people will get the reminder.',
+
+    ob_bday_title: 'When is your birthday?',
+    ob_bday_why: 'Only used to remind your family: on the day they\'ll get a nudge to wish you well, and a week before a reminder about the gift.',
+    ob_addr_title: 'Where do you live?',
+    ob_addr_why: 'Visible only to your family: it helps whoever needs to reach you or send something. One tap opens it in Maps.',
+    ob_addr_ph: 'e.g. 1 Rome St, Padua',
+    ob_next: 'Next',
+    ob_finish: 'Done, let\'s go!',
+    ob_skip: 'I\'ll do it later',
+
     care_hub_title: 'Care Hub',
     care_hub_sub_self: 'Your medicines, medical profile and diary',
     cg_today: 'today',
@@ -2579,6 +2607,20 @@ export const T = {
 
   fr: {
     // === Chiavi aggiunte (sessione luglio 2026) ===
+    med_recipients_label: 'Qui reçoit le rappel',
+    med_recipients_auto: 'Automatique',
+    med_recipients_auto_hint: 'Automatique : la personne et ses aidants.',
+    med_recipients_manual_hint: 'Seules les personnes sélectionnées recevront le rappel.',
+
+    ob_bday_title: 'Quand est ton anniversaire ?',
+    ob_bday_why: 'Sert uniquement à le rappeler à ta famille : le matin même ils penseront à te souhaiter, et une semaine avant ils recevront un rappel pour le cadeau.',
+    ob_addr_title: 'Où habites-tu ?',
+    ob_addr_why: 'Visible seulement par ta famille : utile à qui doit te rejoindre ou t\'envoyer quelque chose. Un geste et ça s\'ouvre dans Plans.',
+    ob_addr_ph: 'ex. 1 rue de Rome, Padoue',
+    ob_next: 'Suivant',
+    ob_finish: 'C\'est parti !',
+    ob_skip: 'Je le ferai plus tard',
+
     care_hub_title: 'Care Hub',
     care_hub_sub_self: 'Tes médicaments, profil médical et journal',
     cg_today: 'aujourd\'hui',
@@ -3828,6 +3870,20 @@ export const T = {
 
   de: {
     // === Chiavi aggiunte (sessione luglio 2026) ===
+    med_recipients_label: 'Wer die Erinnerung erhält',
+    med_recipients_auto: 'Automatisch',
+    med_recipients_auto_hint: 'Automatisch: die Person und ihre Pflegenden.',
+    med_recipients_manual_hint: 'Nur die ausgewählten Personen erhalten die Erinnerung.',
+
+    ob_bday_title: 'Wann hast du Geburtstag?',
+    ob_bday_why: 'Nur dafür da, deine Familie zu erinnern: am Morgen bekommen sie einen Hinweis zum Gratulieren, eine Woche vorher eine Erinnerung ans Geschenk.',
+    ob_addr_title: 'Wo wohnst du?',
+    ob_addr_why: 'Nur für deine Familie sichtbar: hilft allen, die dich erreichen oder dir etwas schicken möchten. Ein Tipp öffnet Karten.',
+    ob_addr_ph: 'z. B. Romstraße 1, Padua',
+    ob_next: 'Weiter',
+    ob_finish: 'Fertig, los geht\'s!',
+    ob_skip: 'Mache ich später',
+
     care_hub_title: 'Care Hub',
     care_hub_sub_self: 'Deine Medikamente, das Profil und das Tagebuch',
     cg_today: 'heute',
