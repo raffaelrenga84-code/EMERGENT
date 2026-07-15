@@ -440,19 +440,23 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     return mine[0];
   };
 
+  // Le MIE medicine sono sempre accessibili, anche se non sono "assistito":
+  // chiunque può avere una terapia. Se ci sono anche assistiti, il picker
+  // li mostra tutti insieme a me.
+  const medTargets = (() => {
+    const self = myMemberForMeds();
+    const list = [...assistedMembers];
+    if (self && !list.some((m) => m.id === self.id)) list.unshift(self);
+    return list;
+  })();
+
   const onClickNewMed = () => {
-    if (assistedMembers.length === 0) {
-      // Nessun assistito: apri direttamente le MIE medicine.
-      const self = myMemberForMeds();
-      if (self) setMedsForMember(self);
-      return;
-    }
-    if (assistedMembers.length === 1) {
-      setMedsForMember(assistedMembers[0]);
-    } else {
-      setShowMedsPicker(true);
-    }
+    if (medTargets.length === 0) return;
+    if (medTargets.length === 1) setMedsForMember(medTargets[0]);
+    else setShowMedsPicker(true);
   };
+
+
 
   // Costruisce le actions del FAB. La voce "Nuova medicina" appare solo
   // se ci sono membri assistiti accessibili (anche se sei tu stesso).
@@ -472,7 +476,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     ];
     // "Nuova medicina" è sempre disponibile: con assistiti apre il picker,
     // senza assistiti apre direttamente le medicine dell'utente stesso.
-    if (assistedMembers.length > 0 || myMemberForMeds()) {
+    if (medTargets.length > 0) {
       list.push({
         id: 'med', icon: '💊',
         label: t('fab_new_med') || 'Nuova medicina',
@@ -1008,7 +1012,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
             }}>
               {t('meds_picker_h') || 'Per chi vuoi aggiungere medicine?'}
             </div>
-            {assistedMembers.map((m) => {
+            {medTargets.map((m) => {
               const isSelf = m.user_id && m.user_id === session.user.id;
               const fam = families?.find((f) => f.id === m.family_id);
               const displayName = isSelf
