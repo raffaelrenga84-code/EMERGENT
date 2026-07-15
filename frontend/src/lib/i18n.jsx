@@ -17,6 +17,9 @@ export const LANGS = [
 export const T = {
   it: {
     // === Chiavi aggiunte (sessione luglio 2026) ===
+    member_addr_label: 'Indirizzo',
+    member_addr_hint: 'Visibile alla famiglia. Quando questa persona avrà un account, potrà gestirlo dal suo profilo.',
+
     med_recipients_label: 'Chi riceve il promemoria',
     med_recipients_auto: 'Automatico',
     med_recipients_auto_hint: 'Automatico: l\'assistito e i suoi caregiver.',
@@ -1325,6 +1328,9 @@ export const T = {
 
   en: {
     // === Chiavi aggiunte (sessione luglio 2026) ===
+    member_addr_label: 'Address',
+    member_addr_hint: 'Visible to the family. Once this person has an account, they can manage it from their profile.',
+
     med_recipients_label: 'Who gets the reminder',
     med_recipients_auto: 'Automatic',
     med_recipients_auto_hint: 'Automatic: the person and their caregivers.',
@@ -2607,6 +2613,9 @@ export const T = {
 
   fr: {
     // === Chiavi aggiunte (sessione luglio 2026) ===
+    member_addr_label: 'Adresse',
+    member_addr_hint: 'Visible par la famille. Quand cette personne aura un compte, elle pourra la gérer depuis son profil.',
+
     med_recipients_label: 'Qui reçoit le rappel',
     med_recipients_auto: 'Automatique',
     med_recipients_auto_hint: 'Automatique : la personne et ses aidants.',
@@ -3870,6 +3879,9 @@ export const T = {
 
   de: {
     // === Chiavi aggiunte (sessione luglio 2026) ===
+    member_addr_label: 'Adresse',
+    member_addr_hint: 'Für die Familie sichtbar. Sobald diese Person ein Konto hat, kann sie sie im eigenen Profil verwalten.',
+
     med_recipients_label: 'Wer die Erinnerung erhält',
     med_recipients_auto: 'Automatisch',
     med_recipients_auto_hint: 'Automatisch: die Person und ihre Pflegenden.',
