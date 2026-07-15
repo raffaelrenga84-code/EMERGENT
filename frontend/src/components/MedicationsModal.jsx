@@ -948,7 +948,7 @@ function MedicationForm({ member, me, med, familyMembers = [], onCancel, onSaved
           { v: 2, label: t('med_interval_alt') || 'A giorni alterni' },
         ].map((opt) => (
           <button key={opt.v} type="button"
-            onClick={() => { setIntervalDays(opt.v); setCustomDays(''); }}
+            onClick={() => { setIntervalDays(opt.v); setCustomDays(''); if (opt.v > 1) setDowDays([]); }}
             data-testid={`med-interval-${opt.v}`}
             style={{
               padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
@@ -976,7 +976,7 @@ function MedicationForm({ member, me, med, familyMembers = [], onCancel, onSaved
               const raw = e.target.value;
               setCustomDays(raw);
               const n = Number(raw);
-              if (n >= 3 && n <= 60) setIntervalDays(n);
+              if (n >= 3 && n <= 60) { setIntervalDays(n); setDowDays([]); }
             }}
             onBlur={() => {
               const n = Number(customDays);
@@ -1002,7 +1002,10 @@ function MedicationForm({ member, me, med, familyMembers = [], onCancel, onSaved
         </p>
       )}
 
-      {/* Giorni della settimana specifici */}
+      {/* Giorni della settimana: alternativi all'intervallo, non cumulabili.
+          Con "a giorni alterni" o "ogni N giorni" il calendario è già
+          deciso dal conteggio, quindi la sezione non ha senso e sparisce. */}
+      {intervalDays <= 1 && (<>
       <label style={{ marginTop: 10 }}>🗓️ {t('med_freq_dow') || 'Giorni della settimana'}</label>
       <div style={{ display: 'flex', gap: 4 }}>
         {[1, 2, 3, 4, 5, 6, 0].map((d) => {
@@ -1030,6 +1033,8 @@ function MedicationForm({ member, me, med, familyMembers = [], onCancel, onSaved
           ? (t('med_freq_dow_on') || 'La medicina va presa solo nei giorni selezionati.')
           : (t('med_freq_dow_off') || 'Nessun giorno selezionato = tutti i giorni.')}
       </p>
+
+      </>)}
 
       {/* Ciclo: N giorni sì, M di pausa */}
       <label style={{ marginTop: 10 }}>🔁 {t('med_freq_cycle') || 'Ciclo'} <span style={{ fontWeight: 400, color: 'var(--km)' }}>({t('optional') || 'facoltativo'})</span></label>
