@@ -228,7 +228,7 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
           ) : (
             <>
               {showForm || editing ? (
-                <MedicationForm
+                <MedicationForm familyMembers={familyMembers}
                   member={member}
                   me={me}
                   med={editing}
@@ -697,7 +697,7 @@ function MedicationCard({ med, member, meId, todayLogs, doctor, onRefresh, onEdi
   );
 }
 
-function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
+function MedicationForm({ member, me, med, familyMembers = [], onCancel, onSaved, onDirtyChange }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
   const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
@@ -719,6 +719,10 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
   const [cycleOff, setCycleOff] = useState(med?.cycle_off_days ?? '');
   // Notifica positiva ai caregiver a ogni "Presa"
   const [notifyTaken, setNotifyTaken] = useState(!!med?.notify_on_taken);
+  // Destinatari espliciti del promemoria (vuoto = automatico: assistito + caregiver)
+  const [recipients, setRecipients] = useState(
+    Array.isArray(med?.reminder_recipients) ? med.reminder_recipients : []
+  );
   // Scorte: dosi per confezione e dosi rimanenti (facoltativo).
   // supply_left si decrementa da solo a ogni "✅ Presa" (trigger DB).
   const [supplyTotal, setSupplyTotal] = useState(med?.supply_total ?? '');
@@ -764,6 +768,7 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
       String(cycleOn ?? '') !== String(med?.cycle_on_days ?? '') ||
       String(cycleOff ?? '') !== String(med?.cycle_off_days ?? '') ||
       notifyTaken !== !!med?.notify_on_taken ||
+      JSON.stringify(recipients) !== JSON.stringify(Array.isArray(med?.reminder_recipients) ? med.reminder_recipients : []) ||
       String(supplyTotal ?? '') !== String(med?.supply_total ?? '') ||
       String(supplyLeft ?? '') !== String(med?.supply_left ?? '') ||
       phasesCmp !== initial.phases ||
@@ -772,7 +777,7 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
     );
     onDirtyChange?.(dirty);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, dose, notes, times, startDate, endDate, intervalDays, dowDays, cycleOn, cycleOff, notifyTaken, supplyTotal, supplyLeft, phases, newTime, newTimeTouched]);
+  }, [name, dose, notes, times, startDate, endDate, intervalDays, dowDays, cycleOn, cycleOff, notifyTaken, recipients, supplyTotal, supplyLeft, phases, newTime, newTimeTouched]);
 
   const addTime = () => {
     if (!newTime) return;
@@ -831,6 +836,7 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
       cycle_on_days: (Number(cycleOn) > 0 && Number(cycleOff) > 0) ? Number(cycleOn) : null,
       cycle_off_days: (Number(cycleOn) > 0 && Number(cycleOff) > 0) ? Number(cycleOff) : null,
       notify_on_taken: !!notifyTaken,
+      reminder_recipients: recipients.length > 0 ? recipients : null,
       supply_total: supplyTotal === '' || supplyTotal === null ? null : Math.max(1, Number(supplyTotal) || 1),
       supply_left: supplyLeft === '' || supplyLeft === null ? null : Math.max(0, Number(supplyLeft) || 0),
       // Se le scorte sono state ricaricate, l'avviso "sta per finire" si riarma
@@ -1054,6 +1060,47 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
           {t('med_cycle_hint') || 'Il ciclo parte dalla data "Dal": es. 21 giorni di assunzione, poi 7 di pausa, e ricomincia.'}
         </p>
       )}
+
+      {/* Chi riceve il promemoria di assunzione */}
+      <label style={{ marginTop: 10 }}>🔔 {t('med_recipients_label') || 'Chi riceve il promemoria'}</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <button type="button"
+          onClick={() => setRecipients([])}
+          data-testid="med-recipients-auto"
+          style={{
+            padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+            border: recipients.length === 0 ? '1.5px solid var(--ac)' : '1px solid var(--sm)',
+            background: recipients.length === 0 ? 'var(--ac)' : 'var(--w, #fff)',
+            color: recipients.length === 0 ? 'white' : 'var(--k)', cursor: 'pointer',
+          }}>
+          {recipients.length === 0 ? '✓ ' : ''}{t('med_recipients_auto') || 'Automatico'}
+        </button>
+        {(familyMembers || [])
+          .filter((m) => m.user_id)
+          .map((m) => {
+            const on = recipients.includes(m.id);
+            return (
+              <button key={m.id} type="button"
+                onClick={() => setRecipients((prev) =>
+                  on ? prev.filter((x) => x !== m.id) : [...prev, m.id])}
+                data-testid={`med-recipient-${m.id}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+                  border: on ? '1.5px solid var(--ac)' : '1px solid var(--sm)',
+                  background: on ? 'rgba(193,98,75,0.10)' : 'var(--w, #fff)',
+                  color: 'var(--k)', cursor: 'pointer',
+                }}>
+                {on ? '✓ ' : ''}{m.id === member.id ? (t('meds_picker_self_name') || 'Per me') : m.name}
+              </button>
+            );
+          })}
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+        {recipients.length === 0
+          ? (t('med_recipients_auto_hint') || 'Automatico: l\u2019assistito e i suoi caregiver.')
+          : (t('med_recipients_manual_hint') || 'Solo le persone selezionate riceveranno il promemoria.')}
+      </p>
 
       {/* Notifica positiva: avvisa i caregiver a ogni "Presa" */}
       <div style={{
