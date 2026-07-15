@@ -22,7 +22,9 @@ const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese
 
 export default function BachecaTab({ familyId, families, tasks, members, taskAssignees = [], taskMeta = {}, absences = [], profile, me, session, isAll, onChanged, onOpenExpenseForTask, openTaskId, onTaskOpened }) {
   const allMembers = members;
-  const { t } = useT();
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const [showAdd, setShowAdd] = useState(false);
   // Prefill per "Fare la spesa" dal FAB (titolo + categoria già impostati)
   const [addPrefill, setAddPrefill] = useState(null);
@@ -286,7 +288,17 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   // tradotte in i18n.jsx.
   const tf = (key, fallback) => { const v = t(key); return (!v || v === key) ? fallback : v; };
 
+  // Azioni rapide offline: avvisa invece di fallire in silenzio
+  const guardOnline = () => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      alert(t('offline_warn') || "⚠️ Nessuna connessione: l'azione non è stata salvata. Riprova quando sei online.");
+      return false;
+    }
+    return true;
+  };
+
   const quickToggleDone = async (task) => {
+    if (!guardOnline()) return;
     // Per le istanze ricorrenti, l'id reale è in _origId (le ricorrenze
     // sono soggette a un workflow speciale; per swipe veloce trattiamo
     // l'intera serie).
@@ -312,12 +324,14 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     !(x.recurring_days && x.recurring_days.length > 0);
 
   const quickMoveToToday = async (task) => {
+    if (!guardOnline()) return;
     await supabase.from('tasks').update({ due_date: localTodayYMD() }).eq('id', task.id);
     onChanged();
   };
 
   // Rimanda a domani (solo task singoli con scadenza, non ricorrenti)
   const quickPostponeTomorrow = async (task) => {
+    if (!guardOnline()) return;
     const d = new Date();
     d.setDate(d.getDate() + 1);
     const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -327,6 +341,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   };
 
   const quickAssignMe = async (task) => {
+    if (!guardOnline()) return;
     if (!me) return;
     const id = task._origId || task.id;
     // Rimuovi assignees attuali e aggiungi me
@@ -344,6 +359,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   // messaggio di sistema in chat per notificare gli altri. Lo snapshot
   // del nome viene salvato dal trigger BEFORE INSERT (iter 16.5.24).
   const quickDecline = async (task) => {
+    if (!guardOnline()) return;
     if (!me) return;
     const id = task._origId || task.id;
     await supabase.from('task_responses').insert({
@@ -366,6 +382,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   // scrive un messaggio di sistema e notifica. Stessa semantica di
   // `unassignMe` nel modale dettagli (riassegna l'eventuale gruppo originale).
   const quickUnexpected = async (task) => {
+    if (!guardOnline()) return;
     if (!me) return;
     const id = task._origId || task.id;
     await supabase.from('task_assignees').delete().eq('task_id', id);
@@ -443,9 +460,9 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     const list = [
       { id: 'task',    icon: '📋', label: t('fab_new_task') || 'Nuovo incarico', onClick: () => setShowAdd(true), testid: `${testidPrefix}-new-task` },
       { id: 'shopping', icon: '🛒',
-        label: t('fab_new_shopping') || 'Fare la spesa',
+        label: t('fab_new_shopping') || 'Spesa',
         onClick: () => {
-          setAddPrefill({ title: t('shopping_task_title') || 'Spesa', category: 'spese' });
+          setAddPrefill({ title: t('shopping_task_title') || 'Spesa', category: 'spese', shopping: true });
           setShowAdd(true);
         },
         testid: `${testidPrefix}-new-shopping`,
@@ -650,6 +667,8 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
             absences={absences}
             initialTitle={addPrefill?.title || ''}
             initialCategory={addPrefill?.category || null}
+            shoppingMode={!!addPrefill?.shopping}
+            initialChecklistOpen={!!addPrefill?.shopping}
             onClose={() => { setShowAdd(false); setAddPrefill(null); }}
             onCreated={() => { setShowAdd(false); setAddPrefill(null); onChanged(); }} />
         )}
