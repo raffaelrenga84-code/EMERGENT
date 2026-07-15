@@ -26,7 +26,9 @@ import { activeTimesForToday, isMedDueOn } from '../lib/medSchedule.js';
  *   - initialTab?: 'meds' | 'profile' | 'diary' (default 'meds')
  */
 export default function MedicationsModal({ member: rawMember, me, onClose, initialTab = 'meds' }) {
-  const { t } = useT();
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const [activeTab, setActiveTab] = useState(initialTab);
   const [meds, setMeds] = useState([]);
   const [todayLogs, setTodayLogs] = useState([]);
@@ -322,7 +324,9 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
 }
 
 function MedicationCard({ med, member, meId, todayLogs, doctor, onRefresh, onEdit, onRemove }) {
-  const { t } = useT();
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   // === Scorte: giorni rimanenti stimati ===
   // dosi/giorno = orari di oggi ÷ intervallo (es. 2 orari a giorni alterni = 1/die)
   const supplyInfo = (() => {
@@ -400,6 +404,17 @@ function MedicationCard({ med, member, meId, todayLogs, doctor, onRefresh, onEdi
           {med.dose && (
             <div style={{ fontSize: 12, color: 'var(--km)', marginTop: 2 }}>
               {med.dose}
+            </div>
+          )}
+          {Array.isArray(med.days_of_week) && med.days_of_week.length > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--ac)', fontWeight: 600, marginTop: 2, textTransform: 'capitalize' }}>
+              🗓️ {[1, 2, 3, 4, 5, 6, 0].filter((d) => med.days_of_week.includes(d))
+                .map((d) => new Date(2026, 5, 7 + d).toLocaleDateString(undefined, { weekday: 'short' })).join(', ')}
+            </div>
+          )}
+          {Number(med.cycle_on_days) > 0 && Number(med.cycle_off_days) > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--ac)', fontWeight: 600, marginTop: 2 }}>
+              🔁 {med.cycle_on_days} {t('med_cycle_on_short') || 'sì'} / {med.cycle_off_days} {t('med_cycle_off_short') || 'pausa'}
             </div>
           )}
           {Number(med.interval_days) > 1 && (
@@ -683,7 +698,9 @@ function MedicationCard({ med, member, meId, todayLogs, doctor, onRefresh, onEdi
 }
 
 function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
-  const { t } = useT();
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const [name, setName] = useState(med?.name || '');
   const [dose, setDose] = useState(med?.dose || '');
   const [notes, setNotes] = useState(med?.notes || '');
@@ -691,6 +708,13 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
   // Intervallo giorni: 1 = ogni giorno, 2 = a giorni alterni, N = ogni N giorni.
   // L'intervallo si conta a partire dalla data "Dal" (start_date).
   const [intervalDays, setIntervalDays] = useState(Number(med?.interval_days) || 1);
+  // Giorni della settimana specifici (0=Dom … 6=Sab) — es. lun e gio
+  const [dowDays, setDowDays] = useState(Array.isArray(med?.days_of_week) ? med.days_of_week : []);
+  // Ciclo: N giorni di assunzione, M di pausa (es. pillola 21/7)
+  const [cycleOn, setCycleOn] = useState(med?.cycle_on_days ?? '');
+  const [cycleOff, setCycleOff] = useState(med?.cycle_off_days ?? '');
+  // Notifica positiva ai caregiver a ogni "Presa"
+  const [notifyTaken, setNotifyTaken] = useState(!!med?.notify_on_taken);
   // Scorte: dosi per confezione e dosi rimanenti (facoltativo).
   // supply_left si decrementa da solo a ogni "✅ Presa" (trigger DB).
   const [supplyTotal, setSupplyTotal] = useState(med?.supply_total ?? '');
@@ -732,6 +756,10 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
       startDate !== initial.startDate ||
       endDate !== initial.endDate ||
       intervalDays !== (Number(med?.interval_days) || 1) ||
+      JSON.stringify(dowDays) !== JSON.stringify(Array.isArray(med?.days_of_week) ? med.days_of_week : []) ||
+      String(cycleOn ?? '') !== String(med?.cycle_on_days ?? '') ||
+      String(cycleOff ?? '') !== String(med?.cycle_off_days ?? '') ||
+      notifyTaken !== !!med?.notify_on_taken ||
       String(supplyTotal ?? '') !== String(med?.supply_total ?? '') ||
       String(supplyLeft ?? '') !== String(med?.supply_left ?? '') ||
       phasesCmp !== initial.phases ||
@@ -740,7 +768,7 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
     );
     onDirtyChange?.(dirty);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, dose, notes, times, startDate, endDate, intervalDays, supplyTotal, supplyLeft, phases, newTime, newTimeTouched]);
+  }, [name, dose, notes, times, startDate, endDate, intervalDays, dowDays, cycleOn, cycleOff, notifyTaken, supplyTotal, supplyLeft, phases, newTime, newTimeTouched]);
 
   const addTime = () => {
     if (!newTime) return;
@@ -792,9 +820,13 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
       notes: notes.trim() || null,
       times_of_day: finalTimes,
       // Con intervallo > 1 serve una data di ancoraggio: se manca, oggi.
-      start_date: startDate || (intervalDays > 1 ? toLocalYMD(new Date()) : null),
+      start_date: startDate || ((intervalDays > 1 || (Number(cycleOn) > 0 && Number(cycleOff) > 0)) ? toLocalYMD(new Date()) : null),
       end_date: endDate || null,
       interval_days: Math.max(1, Number(intervalDays) || 1),
+      days_of_week: dowDays.length > 0 ? dowDays : null,
+      cycle_on_days: (Number(cycleOn) > 0 && Number(cycleOff) > 0) ? Number(cycleOn) : null,
+      cycle_off_days: (Number(cycleOn) > 0 && Number(cycleOff) > 0) ? Number(cycleOff) : null,
+      notify_on_taken: !!notifyTaken,
       supply_total: supplyTotal === '' || supplyTotal === null ? null : Math.max(1, Number(supplyTotal) || 1),
       supply_left: supplyLeft === '' || supplyLeft === null ? null : Math.max(0, Number(supplyLeft) || 0),
       // Se le scorte sono state ricaricate, l'avviso "sta per finire" si riarma
@@ -948,6 +980,87 @@ function MedicationForm({ member, me, med, onCancel, onSaved, onDirtyChange }) {
           {' '}{intervalDays}{' '}{t('med_interval_days') || 'giorni'}.
         </p>
       )}
+
+      {/* Giorni della settimana specifici */}
+      <label style={{ marginTop: 10 }}>🗓️ {t('med_freq_dow') || 'Giorni della settimana'}</label>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {[1, 2, 3, 4, 5, 6, 0].map((d) => {
+          const lbl = new Date(2026, 5, 7 + d).toLocaleDateString(undefined, { weekday: 'short' });
+          const on = dowDays.includes(d);
+          return (
+            <button key={d} type="button"
+              onClick={() => setDowDays((prev) => on ? prev.filter((x) => x !== d) : [...prev, d])}
+              data-testid={`med-dow-${d}`}
+              style={{
+                flex: 1, minWidth: 0, padding: '7px 0', borderRadius: 8,
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                border: on ? '1.5px solid var(--ac)' : '1px solid var(--sm)',
+                background: on ? 'var(--ac)' : 'var(--w, #fff)',
+                color: on ? 'white' : 'var(--k)',
+                textTransform: 'capitalize',
+              }}>
+              {lbl}
+            </button>
+          );
+        })}
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+        {dowDays.length > 0
+          ? (t('med_freq_dow_on') || 'La medicina va presa solo nei giorni selezionati.')
+          : (t('med_freq_dow_off') || 'Nessun giorno selezionato = tutti i giorni.')}
+      </p>
+
+      {/* Ciclo: N giorni sì, M di pausa */}
+      <label style={{ marginTop: 10 }}>🔁 {t('med_freq_cycle') || 'Ciclo'} <span style={{ fontWeight: 400, color: 'var(--km)' }}>({t('optional') || 'facoltativo'})</span></label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 2 }}>
+            {t('med_cycle_on') || 'Giorni di assunzione'}
+          </div>
+          <input type="number" min="1" max="60" inputMode="numeric" className="input"
+            value={cycleOn} placeholder="es. 21"
+            onChange={(e) => setCycleOn(e.target.value)}
+            style={{ width: '100%', minWidth: 0 }}
+            data-testid="med-cycle-on" />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 2 }}>
+            {t('med_cycle_off') || 'Giorni di pausa'}
+          </div>
+          <input type="number" min="1" max="60" inputMode="numeric" className="input"
+            value={cycleOff} placeholder="es. 7"
+            onChange={(e) => setCycleOff(e.target.value)}
+            style={{ width: '100%', minWidth: 0 }}
+            data-testid="med-cycle-off" />
+        </div>
+      </div>
+      {(Number(cycleOn) > 0 || Number(cycleOff) > 0) && (
+        <p style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+          {t('med_cycle_hint') || 'Il ciclo parte dalla data "Dal": es. 21 giorni di assunzione, poi 7 di pausa, e ricomincia.'}
+        </p>
+      )}
+
+      {/* Notifica positiva: avvisa i caregiver a ogni "Presa" */}
+      <div style={{
+        marginTop: 12, padding: '10px 12px', borderRadius: 12,
+        border: notifyTaken ? '1.5px solid var(--gn)' : '1px solid var(--sm)',
+        background: 'var(--w, #fff)',
+      }}>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={notifyTaken}
+            onChange={(e) => setNotifyTaken(e.target.checked)}
+            data-testid="med-notify-taken"
+            style={{ marginTop: 2 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--k)' }}>
+              🔔 {t('med_notify_taken_h') || 'Avvisa quando viene presa'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--km)', lineHeight: 1.4 }}>
+              {t('med_notify_taken_p') || 'I caregiver ricevono una notifica a ogni "✅ Presa" registrata.'}
+            </div>
+          </div>
+        </label>
+      </div>
 
       {/* Scorte (facoltativo) */}
       <label style={{ marginTop: 10 }}>📦 {t('med_supply_label') || 'Scorte (facoltativo)'}</label>
