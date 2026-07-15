@@ -696,9 +696,23 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
         </div>
 
         {/* Riga 3: Compleanno (se presente) */}
-        {member.birthday && (
+        {(member.birth_date || member.birthday) && (
           <div style={{ color: 'var(--km)', fontSize: 11 }}>
-            🎂 {new Date(member.birthday).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}
+            🎂 {(() => {
+              const b = String(member.birth_date || member.birthday);
+              const d = new Date(b.length <= 10 ? b + 'T12:00:00' : b);
+              const label = d.toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
+              // Età solo se l'anno è verosimile (non un placeholder)
+              const y = Number(b.slice(0, 4));
+              if (y > 1900) {
+                const now = new Date();
+                let age = now.getFullYear() - y;
+                const bd = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+                if (bd > now) age -= 1;
+                return `${label} · ${age} ${'anni'}`;
+              }
+              return label;
+            })()}
           </div>
         )}
 
