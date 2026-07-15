@@ -77,7 +77,9 @@ export default function AddTaskModal({
     setCheckInput('');
   };
   const [location, setLocation] = useState(editingTask?.location || initialLocation || '');
-  const [assignees, setAssignees] = useState([]);
+  const [assignees, setAssignees] = useState(
+    shoppingMode && authorMemberId ? [authorMemberId] : []
+  );
   const [recurringDays, setRecurringDays] = useState(editingTask?.recurring_days || []);
   // Rotazione turni: gli assegnatari si alternano a ogni completamento
   const [rotationEnabled, setRotationEnabled] = useState(!!(editingTask?.rotation_member_ids?.length));
@@ -94,7 +96,8 @@ export default function AddTaskModal({
     return null; // null = auto-aperto (logica esistente: `!== false`)
   });
   const [expandRecurring, setExpandRecurring] = useState(!!(editingTask?.recurring_days && editingTask.recurring_days.length > 0));
-  const [onlyForMe, setOnlyForMe] = useState(false);
+  // In modalità spesa parte già su "Solo per me": un tocco in meno
+  const [onlyForMe, setOnlyForMe] = useState(!!shoppingMode);
   // In modalità "Solo per me" la lista famiglie è nascosta (promemoria
   // personale). Questo flag la rivela se l'utente vuole condividere.
   const [showFamiliesWhilePersonal, setShowFamiliesWhilePersonal] = useState(false);
