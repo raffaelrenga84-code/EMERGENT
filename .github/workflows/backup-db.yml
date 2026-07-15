@@ -36,9 +36,18 @@ jobs:
 
       - name: Installa client PostgreSQL 17
         run: |
+          # Il runner ha di serie il client 16: pg_dump si rifiuta di
+          # esportare da un server 17 ("server version mismatch").
+          # Installiamo il client 17 dal repo ufficiale PostgreSQL e lo
+          # mettiamo davanti nel PATH.
           sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
-          sudo apt-get update && sudo apt-get install -y postgresql-client-17
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Versione del client (deve essere 17.x)
+        run: pg_dump --version
 
       - name: Dump del database
         run: |
