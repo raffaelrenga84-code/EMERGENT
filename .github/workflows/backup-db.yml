@@ -1,0 +1,38 @@
+name: FAMMY Backup DB
+
+# Backup settimanale del database su GitHub (retention 90 giorni).
+# PREREQUISITO: crea il secret SUPABASE_DB_URL con la connection string
+# che trovi in Supabase → Project Settings → Database → Connection string
+# → URI (usa il "Session pooler" se la connessione diretta non passa).
+# Formato: postgresql://postgres.[ref]:[PASSWORD]@aws-0-...pooler.supabase.com:5432/postgres
+
+on:
+  schedule:
+    - cron: '30 2 * * 0'   # ogni domenica alle 02:30 UTC
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Installa client PostgreSQL 17
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update && sudo apt-get install -y postgresql-client-17
+
+      - name: Dump del database
+        run: |
+          STAMP=$(date +%Y-%m-%d)
+          pg_dump "${{ secrets.SUPABASE_DB_URL }}" \
+            --no-owner --no-privileges --clean --if-exists \
+            -f "fammy-backup-$STAMP.sql"
+          gzip "fammy-backup-$STAMP.sql"
+          ls -lh fammy-backup-*.sql.gz
+
+      - name: Carica il backup come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fammy-backup
+          path: fammy-backup-*.sql.gz
+          retention-days: 90
