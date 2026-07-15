@@ -144,7 +144,9 @@ function ActionRow({ icon, label, onClick, accent, testid }) {
 
 
 export default function AgendaTab({ familyId, families, events, tasks = [], taskAssignees = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily, onOpenAI }) {
-  const { t, lang } = useT();
+  const { t: __t0, lang } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const localeMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' };
   const dateLocale = localeMap[lang] || 'it-IT';
   const [showAdd, setShowAdd] = useState(false);
@@ -734,12 +736,12 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
             <ActionRow icon="📋" label={t('fab_new_task') || 'Nuovo incarico'}
               testid="agenda-action-task"
               onClick={() => { setShowQuickActions(false); setShowAddTask(true); }} />
-            <ActionRow icon="🛒" label={t('fab_new_shopping') || 'Fare la spesa'}
+            <ActionRow icon="🛒" label={t('fab_new_shopping') || 'Spesa'}
               accent="#6E87A0"
               testid="agenda-action-shopping"
               onClick={() => {
                 setShowQuickActions(false);
-                setAddPrefill({ title: t('shopping_task_title') || 'Spesa', category: 'spese' });
+                setAddPrefill({ title: t('shopping_task_title') || 'Spesa', category: 'spese', shopping: true });
                 setShowAddTask(true);
               }} />
             <ActionRow icon="✈️" label={t('fab_new_absence') || 'Nuova assenza'}
@@ -772,6 +774,8 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
           authorMemberId={me?.id}
           initialTitle={addPrefill?.title || ''}
           initialCategory={addPrefill?.category || null}
+          shoppingMode={!!addPrefill?.shopping}
+          initialChecklistOpen={!!addPrefill?.shopping}
           /* Prefill: se l'utente ha cliccato un giorno nel calendario,
              quel giorno viene precaricato come scadenza del task. */
           initialDueDate={selectedDay
@@ -967,7 +971,9 @@ const ABSENCE_TONE = {
 };
 
 function AbsenceCard({ absence, memberName, isMine, isOngoing, onClick }) {
-  const { t, lang } = useT();
+  const { t: __t0, lang } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const localeMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' };
   const tone = ABSENCE_TONE[absence.reason] || ABSENCE_TONE.other;
   const label = absenceLabel(absence);
@@ -1158,7 +1164,9 @@ function ExportFamiliesPicker({ families, selected, onChange, t }) {
 }
 
 function MonthGrid({ month, events, tasks = [], absences = [], members = [], familyId = null, selectedDay, onSelectDay, onPrev, onNext }) {
-  const { t } = useT();
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const weekdays = t('weekday_short');
   const months = t('months');
 
@@ -1500,7 +1508,9 @@ function EventCard({ event, me, family, past, onRemove, onClick }) {
 
 // Card per task con due_date mostrato in agenda
 function TaskAsEventCard({ task, family, past, onClick }) {
-  const { t } = useT();
+  const { t: __t0 } = useT();
+  // t con fallback: chiave mancante → '' → vale il testo dopo ||
+  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const due = new Date(task.due_date + 'T00:00:00');
   const priority = task.priority || (task.urgent ? 'high' : 'normal');
   const accentColor = priority === 'high' ? 'var(--rd)' : '#F39C12';
