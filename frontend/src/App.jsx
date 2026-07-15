@@ -309,8 +309,35 @@ export default function App() {
   // far usare l'app, così la famiglia non vede "*5531" o "Membro" come nome.
   const isGenericName = (n) =>
     !n || n.trim() === '' || n === 'Membro' || /^\*[0-9]{2,6}$/.test(n);
+  // Il modal serve in due casi:
+  //  a) nome generico (phone signup) → va chiesto, è obbligatorio;
+  //  b) nome già valido (Google, o placeholder di famiglia claimato) ma
+  //     profilo incompleto: mancano compleanno E indirizzo → chiediamo
+  //     SOLO quelli, saltando la domanda sul nome che sappiamo già.
+  // Caso (b) una volta sola: se l'utente sceglie "Lo faccio dopo",
+  // non lo ripresentiamo (flag locale) — i dati restano compilabili
+  // dal Profilo in qualsiasi momento.
+  // "Lo faccio dopo" = rinvio di 7 giorni, non un no definitivo: finché
+  // il profilo resta incompleto lo riproponiamo con garbo una volta a
+  // settimana. Chi compila (address valorizzato) non lo rivede mai più.
+  const OB_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+  const obDismissed = (() => {
+    try {
+      const v = localStorage.getItem('fammy_onboarding_done');
+      if (!v) return false;
+      if (v === '1') return true;                 // compilato davvero
+      const ts = Number(v);
+      return Number.isFinite(ts) && (Date.now() - ts) < OB_SNOOZE_MS;
+    } catch { return false; }
+  })();
+  // Profilo incompleto = manca l'indirizzo (proxy semplice e affidabile:
+  // il compleanno vive nei members, non nel profilo, e qui non li abbiamo).
+  const profileIncomplete = !!profile && !profile.address;
   const showNamePrompt =
-    !!session?.user?.id && !!profile && isGenericName(profile.display_name);
+    !!session?.user?.id && !!profile && (
+      isGenericName(profile.display_name) ||
+      (dataLoaded && profileIncomplete && !obDismissed)
+    );
 
   // Strategia di selezione lingua:
   const browserLang = detectBrowserLang();
@@ -452,7 +479,16 @@ export default function App() {
         <NamePromptModal
           session={session}
           profile={profile}
-          onSaved={() => refresh()}
+          nameKnown={!isGenericName(profile.display_name)}
+          onSaved={() => {
+            // '1' = completato: non riproporre mai più. Il rinvio a 7 giorni
+            // viene invece scritto dal modal stesso come timestamp.
+            try {
+              const cur = localStorage.getItem('fammy_onboarding_done');
+              if (cur !== String(Number(cur))) localStorage.setItem('fammy_onboarding_done', '1');
+            } catch { /* ignore */ }
+            refresh();
+          }}
         />
       )}
       {showA2H && (
