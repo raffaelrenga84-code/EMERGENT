@@ -841,3 +841,32 @@ input::-webkit-date-and-time-value { text-align: left; }
    al posto del bianco fisso, così in dark mode diventano scuri. */
 :root { --w: #FFFFFF; }
 html[data-theme="dark"] { --w: #262624; }
+/* =====================================================================
+   FAMMY — Blocco da INCOLLARE IN FONDO a frontend/src/styles.css
+   (versione aggiornata: sostituisce il blocco precedente se già incollato)
+   ===================================================================== */
+
+/* Fix iOS: i campi data/ora non si restringono e creano lo scroll
+   orizzontale nei modal (es. Dal/Al affiancati). */
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+input::-webkit-date-and-time-value { text-align: left; }
+
+/* Superficie "bianca" tema-aware: i componenti nuovi usano var(--w)
+   al posto del bianco fisso, così in dark mode diventano scuri. */
+:root { --w: #FFFFFF; }
+html[data-theme="dark"] { --w: #262624; }
+
+/* Fix iPhone: il foglio modal non deve MAI finire sotto l'orologio /
+   notch, nemmeno quando la tastiera lo spinge verso l'alto. */
+.modal {
+  margin-top: max(env(safe-area-inset-top, 0px), 12px);
+  max-height: calc(100dvh - max(env(safe-area-inset-top, 0px), 12px) - 8px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
