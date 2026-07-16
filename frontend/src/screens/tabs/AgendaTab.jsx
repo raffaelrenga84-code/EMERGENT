@@ -257,7 +257,53 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
 
 
 
-  const expandedEvents = expandEvents(events);
+  // Eventi-compleanno legacy nella tabella events (creati in passato dai
+  // modali membro, spesso con età ormai sbagliata): li escludiamo perché
+  // i compleanni ora sono calcolati direttamente da members.birth_date.
+  const cleanEvents = (events || []).filter(
+    (ev) => !String(ev.title || '').startsWith('🎂 Compleanno di')
+  );
+
+  // === Compleanni sintetici ===
+  // Calcolati dai membri (INCLUSI i "solo contatto": è il loro scopo),
+  // per anno scorso/corrente/prossimo così coprono la navigazione.
+  const birthdayEvents = (() => {
+    const out = [];
+    const seen = new Set();
+    const thisYear = new Date().getFullYear();
+    const p2 = (n) => String(n).padStart(2, '0');
+    for (const m of (members || [])) {
+      if (!m.birth_date) continue;
+      const inScope = familyId
+        ? m.family_id === familyId
+        : (families || []).some((f) => f.id === m.family_id);
+      if (!inScope) continue;
+      // Dedupe: la stessa persona può avere member rows in più famiglie
+      const dk = `${m.user_id || m.name}|${String(m.birth_date).slice(0, 10)}`;
+      if (seen.has(dk)) continue;
+      seen.add(dk);
+      const [by, bm, bd] = String(m.birth_date).slice(0, 10).split('-').map(Number);
+      if (!bm || !bd) continue;
+      for (const year of [thisYear - 1, thisYear, thisYear + 1]) {
+        const age = year - by;
+        if (age < 0) continue;
+        const base = __t0('bday_event_title', { name: m.name });
+        const label = base === 'bday_event_title' ? `Compleanno di ${m.name}` : base;
+        out.push({
+          id: `bday-${m.id}-${year}`,
+          _isBirthday: true,
+          family_id: m.family_id,
+          created_by: null,
+          title: `🎂 ${label}${age > 0 ? ` (${age})` : ''}`,
+          starts_at: `${year}-${p2(bm)}-${p2(bd)}T09:00:00`,
+          category: 'other',
+        });
+      }
+    }
+    return out;
+  })();
+
+  const expandedEvents = [...expandEvents(cleanEvents), ...birthdayEvents];
   // Task con due_date che non sono done, da mostrare in calendario/agenda.
   // Espandi le ricorrenze (settimanali + giorni del mese).
   const baseDueTasks = (tasks || []).filter((tk) => tk.due_date && tk.status !== 'done');
@@ -288,6 +334,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
     (taskAssignees || []).filter((a) => myMemberIdSet.has(a.member_id)).map((a) => a.task_id)
   );
   const filterEvent = (ev) => {
+    if (ev._isBirthday) return true; // i compleanni si vedono sempre, per tutti
     if (!onlyMine) return true;
     if (!me?.id) return false;
     const origId = ev._origId || ev.id;
@@ -419,8 +466,8 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
 
     return items.slice(0, 80).map((it) => it.kind === 'event' ? (
       <EventCard key={`e-${it.data.id}`} event={it.data} me={me} family={isAll ? getFamily(it.data) : null} past={past}
-        onRemove={() => removeEvent(it.data)}
-        onClick={() => setSelEvent(it.data)} />
+        onRemove={() => { if (!it.data._isBirthday) removeEvent(it.data); }}
+        onClick={() => { if (!it.data._isBirthday) setSelEvent(it.data); }} />
     ) : (
       <TaskAsEventCard key={`t-${it.data.id}`} task={it.data} family={isAll ? getFamily(it.data) : null} past={past} onClick={() => {
         // Se è un'istanza ricorrente o un task "senza data" (mappato sul
