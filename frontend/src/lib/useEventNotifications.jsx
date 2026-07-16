@@ -59,7 +59,9 @@ export function useEventNotifications(session, profile, families, events, taskAs
   // Service worker (per future push API)
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
+    // updateViaCache 'none': ad ogni check il browser scarica sw.js dal
+    // network (mai dalla HTTP cache) → gli update di versione arrivano subito.
+    navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).catch((err) => {
       console.log('SW registration failed:', err);
     });
   }, []);
