@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import CaregiverPicker from './CaregiverPicker.jsx';
-import { createBirthdayEventData } from '../lib/birthdayUtils.js';
 
 // Ruoli "preset". Lo *value* salvato nel DB resta in italiano (compat. con dati
 // esistenti); l'utente vede la traduzione `role_<id>` nella sua lingua.
@@ -166,23 +165,10 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
 
     if (error) { setErr(error.message); setBusy(false); return; }
 
-    // Se ho una birthdate, provo a creare anche l'evento compleanno ricorrente.
-    if (birthDate && created?.id && familyId) {
-      try {
-        const eventData = createBirthdayEventData({ ...created, birth_date: birthDate });
-        if (eventData) {
-          await supabase.from('events').insert({
-            family_id: familyId,
-            title: eventData.title,
-            starts_at: eventData.starts_at,
-            category: eventData.category,
-            is_recurring: eventData.is_recurring,
-            recurrence_rule: eventData.recurrence_rule,
-            created_by: created.id,
-          });
-        }
-      } catch (e) { /* non-blocking */ }
-    }
+    // NB: niente più insert dell'evento compleanno in events (le colonne
+    // is_recurring/recurrence_rule non esistono e l'insert falliva sempre).
+    // I compleanni sono ora calcolati direttamente da members.birth_date
+    // in Agenda e nel feed iCal.
 
     onCreated && onCreated();
   };
@@ -294,7 +280,7 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
           {/* Genitore: annida questo membro sotto un altro in FamilyTab */}
           {familyMembers.length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <label>{t('em_parent_label') || '👨‍👧 Figlio/a di (opzionale)'}</label>
+              <label>{t('em_parent_label') || '🔗 Fa parte di… (opzionale)'}</label>
               <select className="input" value={parentMemberId}
                 onChange={(e) => setParentMemberId(e.target.value)}
                 data-testid="addmember-parent-select">
