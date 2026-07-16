@@ -124,10 +124,11 @@ export default function FamilyInviteModal({ family, session, onClose }) {
   // Messaggio share: codice prominent + link come fallback
   const shareMessage = codeUpper
     ? `${t('invite_msg_subject')} "${family.name}" 🏡\n\n` +
+      `${t('invite_msg_what')}\n\n` +
       `${t('invite_code_label')}: ${codeUpper}\n\n` +
       `${t('invite_msg_open')}\n` +
       `${t('invite_msg_or_link')}: ${inviteUrl}`
-    : `Ti invito a unirti alla famiglia "${family.name}" su FAMMY! 🏡\n\nApri questo link:\n${inviteUrl}`;
+    : `Ti invito a unirti alla famiglia "${family.name}" su FAMMY! 🏡\n\n${t('invite_msg_what')}\n\nApri questo link:\n${inviteUrl}`;
 
   const copyToClipboard = async () => {
     try {
@@ -142,8 +143,8 @@ export default function FamilyInviteModal({ family, session, onClose }) {
       try {
         // Versione senza url per navigator.share (l'OS appende l'url da solo)
         const textWithoutUrl = codeUpper
-          ? `${t('invite_msg_subject')} "${family.name}" 🏡\n\n${t('invite_code_label')}: ${codeUpper}\n\n${t('invite_msg_open')}`
-          : `${t('invite_msg_subject')} "${family.name}" 🏡`;
+          ? `${t('invite_msg_subject')} "${family.name}" 🏡\n\n${t('invite_msg_what')}\n\n${t('invite_code_label')}: ${codeUpper}\n\n${t('invite_msg_open')}`
+          : `${t('invite_msg_subject')} "${family.name}" 🏡\n\n${t('invite_msg_what')}`;
         await navigator.share({
           title: `${t('invite_msg_subject')} ${family.name}`,
           text: textWithoutUrl,
