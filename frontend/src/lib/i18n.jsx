@@ -16,6 +16,7 @@ export const LANGS = [
 
 export const T = {
   it: {
+    bday_reminder_title: 'Tra una settimana: compleanno di {name}',
     bday_event_title: 'Compleanno di {name}',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
     em_contact_only_label: 'Solo contatto',
@@ -1358,6 +1359,7 @@ export const T = {
   },
 
   en: {
+    bday_reminder_title: 'One week to go: {name}\'s birthday',
     bday_event_title: '{name}\'s birthday',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
     em_contact_only_label: 'Contact only',
@@ -2674,6 +2676,7 @@ export const T = {
   },
 
   fr: {
+    bday_reminder_title: 'Dans une semaine : anniversaire de {name}',
     bday_event_title: 'Anniversaire de {name}',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
     em_contact_only_label: 'Contact uniquement',
@@ -3971,6 +3974,7 @@ export const T = {
   },
 
   de: {
+    bday_reminder_title: 'In einer Woche: Geburtstag von {name}',
     bday_event_title: 'Geburtstag von {name}',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
     em_contact_only_label: 'Nur Kontakt',
