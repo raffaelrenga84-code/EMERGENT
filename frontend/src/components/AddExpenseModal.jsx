@@ -546,7 +546,7 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
           <div className="row" style={{ marginTop: 20 }}>
             <button type="button" className="btn secondary" onClick={onClose}>{t('cancel')}</button>
             <button type="submit" className="btn" disabled={busy || !totalAmount}>
-              {busy ? <span className="spin" /> : t('add')}
+              {busy ? <span className="spin" /> : (editingExpense ? (t('save_changes') || 'Salva modifiche') : t('add'))}
             </button>
           </div>
         </form>
