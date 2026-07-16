@@ -210,6 +210,7 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
   const assistedMembers = dedupeByUser(
     (members || []).filter((m) => {
       if (!m.is_assisted) return false;
+      if (m.is_contact_only) return false; // solo contatto: niente medicine
       if (familyId) return m.family_id === familyId;
       return (families || []).some((f) => f.id === m.family_id);
     })
@@ -239,7 +240,17 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
   })();
 
   const onClickNewMed = () => {
-    if (medTargets.length === 0) return;
+    if (medTargets.length === 0) {
+      // Account non collegato a nessun member: spiega invece di non fare nulla.
+      window.dispatchEvent(new CustomEvent('fammy_toast', {
+        detail: {
+          text: t('meds_no_member') ||
+            'Il tuo account non è ancora collegato a un membro della famiglia. Apri la tab Famiglia e chiedi a chi ti ha invitato di collegarti al tuo profilo.',
+          tone: 'warning',
+        },
+      }));
+      return;
+    }
     if (medTargets.length === 1) setMedsForMember(medTargets[0]);
     else setShowMedsPicker(true);
   };
