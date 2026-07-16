@@ -112,7 +112,17 @@ export default function AddTaskModal({
   useKeyboardSafeModal(scrollableRef);
   useAndroidBack(true, onClose);
 
-  // Carica gli assegnatari attuali in modo edit
+  // === Visibilità ristretta ('assignees') ===
+  // true → il task è visibile solo a: autore, assegnatari, membri extra
+  // scelti (extraViewers → task_couple_members). RLS lato DB + questa UI.
+  const [restrictVisibility, setRestrictVisibility] = useState(
+    editingTask?.visibility === 'assignees' || editingTask?.visibility === 'couple'
+  );
+  const [extraViewers, setExtraViewers] = useState([]);
+  const toggleExtraViewer = (id) => setExtraViewers((p) =>
+    p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+
+  // Carica gli assegnatari attuali (e i membri extra) in modo edit
   useEffect(() => {
     if (!editingTask) return;
     let cancelled = false;
@@ -124,13 +134,23 @@ export default function AddTaskModal({
       if (!cancelled && data) {
         setAssignees(data.map((a) => a.member_id));
       }
+      try {
+        const { data: extra } = await supabase
+          .from('task_couple_members')
+          .select('member_id')
+          .eq('task_id', editingTask.id);
+        if (!cancelled && extra) {
+          setExtraViewers(extra.map((a) => a.member_id));
+        }
+      } catch (_) { /* tabella legacy assente: ignora */ }
     })();
     return () => { cancelled = true; };
   }, [editingTask?.id]);
 
   const byFamily = families.map((f) => ({
     family: f,
-    members: members.filter((m) => m.family_id === f.id),
+    // I membri "solo contatto" (compleanni) non sono assegnabili.
+    members: members.filter((m) => m.family_id === f.id && !m.is_contact_only),
   })).filter((g) => g.members.length > 0);
 
   const toggleAssignee = (id) => {
@@ -305,7 +325,7 @@ export default function AddTaskModal({
       selectedMembers.length > 0 &&
       selectedMembers.length === assignees.length &&
       selectedMembers.every((m) => m.user_id === myUid)
-    ) ? 'private' : 'all';
+    ) ? 'private' : (restrictVisibility ? 'assignees' : 'all');
 
     // Rotazione turni: ha senso solo con ricorrenza e almeno 2 assegnatari.
     const rotationActive = rotationEnabled && recurringDays.length > 0 && assignees.length >= 2;
@@ -343,6 +363,17 @@ export default function AddTaskModal({
         const rows = toInsert.map((memberId) => ({ task_id: editingTask.id, member_id: memberId }));
         await supabase.from('task_assignees').insert(rows);
       }
+
+      // Sync membri extra con visibilità (visibilità ristretta → task_couple_members)
+      try {
+        await supabase.from('task_couple_members').delete().eq('task_id', editingTask.id);
+        const extraRows = (taskVisibility === 'assignees' ? extraViewers : [])
+          .filter((id) => !assignees.includes(id))
+          .map((memberId) => ({ task_id: editingTask.id, member_id: memberId }));
+        if (extraRows.length > 0) {
+          await supabase.from('task_couple_members').insert(extraRows);
+        }
+      } catch (_) { /* best-effort */ }
 
       if (attachments.length > 0) {
         for (const att of attachments) {
@@ -410,6 +441,18 @@ export default function AddTaskModal({
       const toInsert = rotationActive ? assignees.slice(0, 1) : assignees;
       const rows = toInsert.map((memberId) => ({ task_id: task.id, member_id: memberId }));
       await supabase.from('task_assignees').insert(rows);
+    }
+
+    // Membri extra con visibilità (visibilità ristretta → task_couple_members)
+    if (taskVisibility === 'assignees' && extraViewers.length > 0) {
+      try {
+        const extraRows = extraViewers
+          .filter((id) => !assignees.includes(id))
+          .map((memberId) => ({ task_id: task.id, member_id: memberId }));
+        if (extraRows.length > 0) {
+          await supabase.from('task_couple_members').insert(extraRows);
+        }
+      } catch (_) { /* best-effort */ }
     }
 
     if (attachments.length > 0) {
@@ -951,6 +994,82 @@ export default function AddTaskModal({
               </>
               )}
             </div>
+
+            {/* === VISIBILITÀ === chi può vedere questo incarico.
+                Nascosta per i promemoria personali (già 'private'). */}
+            {assignees.length > 0 && !(onlyForMe && !showFamiliesWhilePersonal) && (
+              <div style={{ marginTop: 16 }} data-testid="add-task-visibility-box">
+                <label>{t('task_visibility_label') || 'Chi può vederlo'}</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <button type="button"
+                    data-testid="add-task-visibility-all"
+                    onClick={() => setRestrictVisibility(false)}
+                    style={{
+                      flex: 1, padding: '10px 12px', borderRadius: 12,
+                      border: `1.5px solid ${!restrictVisibility ? 'var(--ac)' : 'var(--sm)'}`,
+                      background: !restrictVisibility ? 'var(--ab)' : 'white',
+                      color: !restrictVisibility ? 'var(--ac)' : 'var(--k)',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}>
+                    👨‍👩‍👧 {t('task_visibility_all') || 'Tutta la famiglia'}
+                  </button>
+                  <button type="button"
+                    data-testid="add-task-visibility-assignees"
+                    onClick={() => setRestrictVisibility(true)}
+                    style={{
+                      flex: 1, padding: '10px 12px', borderRadius: 12,
+                      border: `1.5px solid ${restrictVisibility ? 'var(--ac)' : 'var(--sm)'}`,
+                      background: restrictVisibility ? 'var(--ab)' : 'white',
+                      color: restrictVisibility ? 'var(--ac)' : 'var(--k)',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}>
+                    🔒 {t('task_visibility_assignees') || 'Solo coinvolti'}
+                  </button>
+                </div>
+                {restrictVisibility && (
+                  <div style={{
+                    marginTop: 10, padding: '12px 14px', borderRadius: 12,
+                    background: 'rgba(140, 157, 134, 0.12)',
+                    border: '1px solid rgba(140, 157, 134, 0.35)',
+                  }}>
+                    <div style={{ fontSize: 12, color: 'var(--km)', lineHeight: 1.45 }}>
+                      {t('task_visibility_assignees_p') ||
+                        'Lo vedranno solo tu, gli assegnatari e le persone che aggiungi qui sotto. Il resto della famiglia non lo vedrà.'}
+                    </div>
+                    {(() => {
+                      const candidates = byFamily
+                        .flatMap((g) => g.members)
+                        .filter((m) => !assignees.includes(m.id) && m.id !== authorMemberId);
+                      if (candidates.length === 0) return null;
+                      return (
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--k)', marginBottom: 6 }}>
+                            {t('task_visibility_extra_h') || 'Può vederlo anche…'}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {candidates.map((m) => {
+                              const selected = extraViewers.includes(m.id);
+                              return (
+                                <button key={m.id} type="button"
+                                  data-testid={`add-task-extra-viewer-${m.id}`}
+                                  onClick={() => toggleExtraViewer(m.id)}
+                                  style={chipMember(selected)}>
+                                  {selected && <span>✓ </span>}
+                                  <span style={avatarStyle(m)}>
+                                    {m.avatar_letter || m.name.charAt(0).toUpperCase()}
+                                  </span>
+                                  {m.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Info "Da seguire": appare quando hai assegnato a qualcun altro
                 ma NON a te stesso → la task finirà in 👁️ Da seguire e
