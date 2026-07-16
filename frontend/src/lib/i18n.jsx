@@ -16,13 +16,14 @@ export const LANGS = [
 
 export const T = {
   it: {
+    bday_event_title: 'Compleanno di {name}',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
     em_contact_only_label: 'Solo contatto',
     em_contact_only_chip: 'Solo contatto',
     em_contact_only_hint: 'Non riceve incarichi né medicine. Resta in famiglia per compleanni e ricorrenze.',
-    em_parent_label: '👨‍👧 Figlio/a di (opzionale)',
+    em_parent_label: '🔗 Fa parte di… (opzionale)',
     em_parent_none: '— Nessuno —',
-    em_parent_hint: 'Verrà mostrato annidato sotto il genitore nella tab Famiglia.',
+    em_parent_hint: 'Figlio/a o partner: verrà mostrato annidato sotto questa persona nella tab Famiglia.',
     schema_missing_contacts: 'Esegui fammy-visibility-assignees-and-contacts.sql su Supabase per attivare membri contatto e gerarchia.',
     task_visibility_label: 'Chi può vederlo',
     task_visibility_all: 'Tutta la famiglia',
@@ -1357,13 +1358,14 @@ export const T = {
   },
 
   en: {
+    bday_event_title: '{name}\'s birthday',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
     em_contact_only_label: 'Contact only',
     em_contact_only_chip: 'Contact only',
     em_contact_only_hint: 'No tasks or medications. Stays in the family for birthdays and special dates.',
-    em_parent_label: '👨‍👧 Child of (optional)',
+    em_parent_label: '🔗 Part of… (optional)',
     em_parent_none: '— None —',
-    em_parent_hint: 'Shown nested under the parent in the Family tab.',
+    em_parent_hint: 'Child or partner: shown nested under this person in the Family tab.',
     schema_missing_contacts: 'Run fammy-visibility-assignees-and-contacts.sql on Supabase to enable contact members and hierarchy.',
     task_visibility_label: 'Who can see it',
     task_visibility_all: 'Whole family',
@@ -2672,13 +2674,14 @@ export const T = {
   },
 
   fr: {
+    bday_event_title: 'Anniversaire de {name}',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
     em_contact_only_label: 'Contact uniquement',
     em_contact_only_chip: 'Contact',
     em_contact_only_hint: 'Ne reçoit ni tâches ni médicaments. Reste dans la famille pour les anniversaires et les dates importantes.',
-    em_parent_label: '👨‍👧 Enfant de (facultatif)',
+    em_parent_label: '🔗 Fait partie de… (facultatif)',
     em_parent_none: '— Aucun —',
-    em_parent_hint: 'Affiché imbriqué sous le parent dans l\'onglet Famille.',
+    em_parent_hint: 'Enfant ou partenaire : affiché imbriqué sous cette personne dans l\'onglet Famille.',
     schema_missing_contacts: 'Exécute fammy-visibility-assignees-and-contacts.sql sur Supabase pour activer les membres contact et la hiérarchie.',
     task_visibility_label: 'Qui peut le voir',
     task_visibility_all: 'Toute la famille',
@@ -3968,13 +3971,14 @@ export const T = {
   },
 
   de: {
+    bday_event_title: 'Geburtstag von {name}',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
     em_contact_only_label: 'Nur Kontakt',
     em_contact_only_chip: 'Nur Kontakt',
     em_contact_only_hint: 'Erhält weder Aufgaben noch Medikamente. Bleibt für Geburtstage und Jahrestage in der Familie.',
-    em_parent_label: '👨‍👧 Kind von (optional)',
+    em_parent_label: '🔗 Gehört zu… (optional)',
     em_parent_none: '— Niemand —',
-    em_parent_hint: 'Wird im Familien-Tab unter dem Elternteil eingerückt angezeigt.',
+    em_parent_hint: 'Kind oder Partner: wird im Familien-Tab unter dieser Person eingerückt angezeigt.',
     schema_missing_contacts: 'Führe fammy-visibility-assignees-and-contacts.sql auf Supabase aus, um Kontaktmitglieder und Hierarchie zu aktivieren.',
     task_visibility_label: 'Wer es sehen kann',
     task_visibility_all: 'Ganze Familie',
