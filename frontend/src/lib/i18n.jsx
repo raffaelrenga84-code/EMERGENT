@@ -16,6 +16,8 @@ export const LANGS = [
 
 export const T = {
   it: {
+    addexpense_payer_placeholder: '— Chi ha pagato? —',
+    addexpense_need_payer: 'Seleziona chi ha pagato la spesa',
     exp_edit_h: 'Modifica spesa',
     exp_action_share: 'Condividi',
     exp_action_duplicate: 'Duplica',
@@ -1365,6 +1367,8 @@ export const T = {
   },
 
   en: {
+    addexpense_payer_placeholder: '— Who paid? —',
+    addexpense_need_payer: 'Select who paid this expense',
     exp_edit_h: 'Edit expense',
     exp_action_share: 'Share',
     exp_action_duplicate: 'Duplicate',
@@ -2688,6 +2692,8 @@ export const T = {
   },
 
   fr: {
+    addexpense_payer_placeholder: '— Qui a payé ? —',
+    addexpense_need_payer: 'Sélectionne qui a payé cette dépense',
     exp_edit_h: 'Modifier la dépense',
     exp_action_share: 'Partager',
     exp_action_duplicate: 'Dupliquer',
@@ -3992,6 +3998,8 @@ export const T = {
   },
 
   de: {
+    addexpense_payer_placeholder: '— Wer hat bezahlt? —',
+    addexpense_need_payer: 'Wähle aus, wer diese Ausgabe bezahlt hat',
     exp_edit_h: 'Ausgabe bearbeiten',
     exp_action_share: 'Teilen',
     exp_action_duplicate: 'Duplizieren',
