@@ -685,14 +685,26 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
   ) : null;
 
   return (
+    <div style={{ position: 'relative', marginLeft: nested ? 38 : 0 }}>
+      {/* Connettore "└" stile diagramma: collega alla card della persona
+          di riferimento (parent). top negativo copre il gap tra le card. */}
+      {nested && (
+        <span aria-hidden style={{
+          position: 'absolute', left: 4, top: -10, bottom: '55%',
+          width: 13,
+          borderLeft: '2px solid var(--sd)',
+          borderBottom: '2px solid var(--sd)',
+          borderBottomLeftRadius: 12,
+          pointerEvents: 'none',
+        }} />
+      )}
     <div className="member-card" onClick={onEdit}
       style={{
-        alignItems: 'flex-start', gap: 12,
-        // Figlio annidato sotto il genitore: indent + bordo guida
+        alignItems: 'flex-start', gap: nested ? 10 : 12,
+        // Card compatta per i membri annidati
         ...(nested ? {
-          marginLeft: 22,
-          borderLeft: '2.5px solid var(--sm)',
-          paddingLeft: 12,
+          padding: '10px 12px',
+          background: 'var(--ab, #FBFAF7)',
         } : {}),
       }}>
       <Avatar
@@ -700,12 +712,12 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
         avatarUrl={member.avatar_url}
         avatarLetter={member.avatar_letter}
         avatarColor={member.avatar_color || '#1C1611'}
-        size={44}
+        size={nested ? 32 : 44}
       />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {/* Riga 1: Nome + chip identità (Tu / Owner) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minHeight: 24 }}>
-          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--k)' }}>{member.name}</span>
+          <span style={{ fontWeight: 700, fontSize: nested ? 13.5 : 15, color: 'var(--k)' }}>{member.name}</span>
           {isOwner && (
             <span title="Proprietario della famiglia" style={{
               fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 100,
@@ -886,6 +898,7 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
         )}
         {removeButton}
       </div>
+    </div>
     </div>
   );
 }
