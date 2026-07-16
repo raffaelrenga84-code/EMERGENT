@@ -21,7 +21,9 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
       : (base?.description || '')
   );
   const [category, setCategory] = useState(base?.category || null);
-  const [paidBy, setPaidBy] = useState(base?.paid_by || defaultPaidBy || members[0]?.id || '');
+  // "Pagato da" NON assume più che sia l'autore: scelta esplicita
+  // obbligatoria (chi registra la spesa non è per forza chi ha pagato).
+  const [paidBy, setPaidBy] = useState(base?.paid_by || '');
   const [paidAt, setPaidAt] = useState(
     editingExpense?.paid_at ? String(editingExpense.paid_at).slice(0, 10) : toLocalYMD()
   );
@@ -49,7 +51,11 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
   // Membri raggruppati per famiglia
   // In vista "Tutte" (familyId=null): mostra tutte le famiglie
   // Altrimenti: mostra solo la famiglia selezionata
-  const byFamily = !familyId ? families.map((f) => ({
+  // In vista "Tutte" e in MODIFICA si vedono tutte le famiglie: una spesa
+  // può coinvolgere membri di una famiglia diversa da quella "di default"
+  // (era il bug: family[0] silenziosa → famiglia sbagliata sulla spesa).
+  const showAllFamilies = !familyId || !!editingExpense;
+  const byFamily = showAllFamilies ? families.map((f) => ({
     family: f,
     members: members.filter((m) => m.family_id === f.id),
   })) : selectedFamily ? [{
@@ -117,13 +123,26 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
   const submit = async (e) => {
     e.preventDefault();
     if (!totalAmount || totalAmount <= 0) return;
-    if (!selectedFamily) return;
+    if (!paidBy) {
+      setErr(t('addexpense_need_payer') || 'Seleziona chi ha pagato la spesa');
+      return;
+    }
+    // La famiglia della spesa segue le PERSONE, non la vista: prima la
+    // famiglia del pagatore, poi quella del primo partecipante alla
+    // divisione, e solo in ultimo il default della vista.
+    const payerMember = members.find((m) => m.id === paidBy);
+    const firstSplitMember = members.find((m) => m.id === splitMembers[0]);
+    const effectiveFamily = payerMember?.family_id
+      || firstSplitMember?.family_id
+      || selectedFamily;
+    if (!effectiveFamily) return;
     setBusy(true); setErr('');
 
     let expense;
     if (editingExpense) {
       // ============ MODIFICA ============
       const { data, error: e1 } = await supabase.from('expenses').update({
+        family_id: effectiveFamily,
         amount: totalAmount,
         description: description.trim() || null,
         category: category || null,
@@ -156,7 +175,7 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
     } else {
       // ============ NUOVA (o duplicata) ============
       const { data, error: e1 } = await supabase.from('expenses').insert({
-        family_id: selectedFamily,
+        family_id: effectiveFamily,
         task_id: prefilledTask?.id || null,
         amount: totalAmount,
         currency: 'EUR',
@@ -303,7 +322,16 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
             <label htmlFor="who">{t('addexpense_paid_by')}</label>
             <select id="who" className="input"
               value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
-              {familyMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              <option value="">{t('addexpense_payer_placeholder') || '— Chi ha pagato? —'}</option>
+              {byFamily.length > 1
+                ? byFamily.map((g) => (
+                    <optgroup key={g.family?.id} label={`${g.family?.emoji || ''} ${g.family?.name || ''}`.trim()}>
+                      {g.members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </optgroup>
+                  ))
+                : (byFamily[0]?.members || familyMembers).map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
             </select>
           </div>
 
