@@ -48,12 +48,22 @@ export default function UpdateBanner({ onDismiss }) {
       return true;
     };
 
+    // Se c'è un worker in "waiting" (nuova versione scaricata ma non
+    // attiva), attivalo subito: il controllerchange farà auto-reload
+    // silenzioso o mostrerà il banner "🔄 Ricarica".
+    const activateIfWaiting = (r) => {
+      try {
+        if (r?.waiting) r.waiting.postMessage({ type: 'SKIP_WAITING' });
+      } catch (_) { /* ignore */ }
+    };
+
     const checkInterval = setInterval(async () => {
       try {
         const r = await navigator.serviceWorker.getRegistrations();
         if (r && r.length > 0) {
           registration = r[0];
           await registration.update();
+          activateIfWaiting(registration);
         }
       } catch (e) { console.error('Error checking for SW updates:', e); }
     }, 30000);
@@ -65,7 +75,10 @@ export default function UpdateBanner({ onDismiss }) {
       if (document.visibilityState !== 'visible') return;
       try {
         const r = await navigator.serviceWorker.getRegistration();
-        if (r) await r.update();
+        if (r) {
+          await r.update();
+          activateIfWaiting(r);
+        }
       } catch (e) { /* silent */ }
     };
     document.addEventListener('visibilitychange', onVisible);
