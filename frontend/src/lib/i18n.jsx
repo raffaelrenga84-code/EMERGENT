@@ -16,6 +16,12 @@ export const LANGS = [
 
 export const T = {
   it: {
+    exp_edit_h: 'Modifica spesa',
+    exp_action_share: 'Condividi',
+    exp_action_duplicate: 'Duplica',
+    exp_action_edit: 'Modifica',
+    exp_action_delete: 'Elimina',
+    exp_share_copied: 'Riepilogo copiato negli appunti',
     bday_reminder_title: 'Tra una settimana: compleanno di {name}',
     bday_event_title: 'Compleanno di {name}',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
@@ -1359,6 +1365,12 @@ export const T = {
   },
 
   en: {
+    exp_edit_h: 'Edit expense',
+    exp_action_share: 'Share',
+    exp_action_duplicate: 'Duplicate',
+    exp_action_edit: 'Edit',
+    exp_action_delete: 'Delete',
+    exp_share_copied: 'Summary copied to clipboard',
     bday_reminder_title: 'One week to go: {name}\'s birthday',
     bday_event_title: '{name}\'s birthday',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
@@ -2676,6 +2688,12 @@ export const T = {
   },
 
   fr: {
+    exp_edit_h: 'Modifier la dépense',
+    exp_action_share: 'Partager',
+    exp_action_duplicate: 'Dupliquer',
+    exp_action_edit: 'Modifier',
+    exp_action_delete: 'Supprimer',
+    exp_share_copied: 'Résumé copié dans le presse-papiers',
     bday_reminder_title: 'Dans une semaine : anniversaire de {name}',
     bday_event_title: 'Anniversaire de {name}',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
@@ -3974,6 +3992,12 @@ export const T = {
   },
 
   de: {
+    exp_edit_h: 'Ausgabe bearbeiten',
+    exp_action_share: 'Teilen',
+    exp_action_duplicate: 'Duplizieren',
+    exp_action_edit: 'Bearbeiten',
+    exp_action_delete: 'Löschen',
+    exp_share_copied: 'Zusammenfassung in die Zwischenablage kopiert',
     bday_reminder_title: 'In einer Woche: Geburtstag von {name}',
     bday_event_title: 'Geburtstag von {name}',
     // === Chiavi aggiunte 16/07/2026: visibilità incarichi, membri contatto, fix chiavi mancanti ===
