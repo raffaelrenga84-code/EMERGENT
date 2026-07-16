@@ -218,12 +218,26 @@ export default function FamilyTab({ family, members, session, families, activeFa
               {isExpanded && (
                 <>
                   <div className="list" style={{ borderTop: '1px solid var(--sm)' }}>
-                    {familyMembers.map((m) => {
+                    {(() => {
+                      // Ordine annidato: figli/partner (parent_member_id)
+                      // subito sotto la persona di riferimento, indentati.
+                      const roots = familyMembers.filter((m) =>
+                        !m.parent_member_id ||
+                        !familyMembers.some((pp) => pp.id === m.parent_member_id));
+                      const ordered = [];
+                      roots.forEach((r) => {
+                        ordered.push({ m: r, nested: false });
+                        familyMembers
+                          .filter((c) => c.parent_member_id === r.id && c.id !== r.id)
+                          .forEach((c) => ordered.push({ m: c, nested: true }));
+                      });
+                      return ordered.map(({ m, nested }) => {
                       const activeAbs = findActiveAbsence(absences, m.user_id);
                       return (
                         <MemberCard
                           key={m.id}
                           member={m}
+                          nested={nested}
                           familyMembers={familyMembers}
                           isMe={m.user_id === session.user.id}
                           isOwner={m.user_id === f.created_by}
@@ -241,7 +255,8 @@ export default function FamilyTab({ family, members, session, families, activeFa
                           }
                         />
                       );
-                    })}
+                      });
+                    })()}
                   </div>
                   {/* Azione espansa: aggiungi membro (l'invito è già nel bottone sopra) */}
                   <div style={{
