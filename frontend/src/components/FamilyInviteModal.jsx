@@ -263,7 +263,19 @@ export default function FamilyInviteModal({ family, session, onClose }) {
 
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
+        {/* X di chiusura sempre raggiungibile (il "Chiudi" in fondo resta) */}
+        <button type="button" onClick={onClose} aria-label="Chiudi"
+          data-testid="invite-modal-close"
+          style={{
+            position: 'sticky', top: 0, float: 'right',
+            marginTop: -8, marginRight: -8, zIndex: 5,
+            width: 34, height: 34, borderRadius: '50%',
+            border: '1px solid var(--sm)', background: 'var(--s)',
+            color: 'var(--km)', fontSize: 16, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: '0 2px 8px rgba(28,22,17,.08)',
+          }}>✕</button>
         <h2>🎁 {t('invite_people_to', { name: family.name })}</h2>
         <p className="modal-sub">{t('invite_share_hint')}</p>
 
