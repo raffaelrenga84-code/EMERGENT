@@ -7,22 +7,37 @@ import { isIOS } from '../lib/platformDetect.js';
 import { isImageFile, DOC_ACCEPT } from '../lib/fileKind.js';
 import { EXPENSE_CATEGORIES } from '../lib/expenseCategories.js';
 
-export default function AddExpenseModal({ familyId, families = [], members, defaultPaidBy, authorMemberId, prefilledTask = null, prefilledExpense = null, onClose, onCreated }) {
+export default function AddExpenseModal({ familyId, families = [], members, defaultPaidBy, authorMemberId, prefilledTask = null, prefilledExpense = null, editingExpense = null, prefilledShares = [], onClose, onCreated }) {
   const { t } = useT();
   useAndroidBack(true, onClose);
-  const [selectedFamily, setSelectedFamily] = useState(prefilledTask?.family_id || prefilledExpense?.family_id || familyId || (families.length > 0 ? families[0].id : ''));
-  const [amount, setAmount] = useState(prefilledExpense?.amount ? String(prefilledExpense.amount) : '');
+  // editingExpense → modalità MODIFICA (update invece di insert)
+  // prefilledExpense → precompila (usato da "ripeti ultima" e "⧉ duplica")
+  const base = editingExpense || prefilledExpense;
+  const [selectedFamily, setSelectedFamily] = useState(prefilledTask?.family_id || base?.family_id || familyId || (families.length > 0 ? families[0].id : ''));
+  const [amount, setAmount] = useState(base?.amount ? String(base.amount) : '');
   const [description, setDescription] = useState(
     prefilledTask
       ? `Pagamento: ${prefilledTask.title}`
-      : (prefilledExpense?.description || '')
+      : (base?.description || '')
   );
-  const [category, setCategory] = useState(prefilledExpense?.category || null);
-  const [paidBy, setPaidBy] = useState(defaultPaidBy || members[0]?.id || '');
-  const [paidAt, setPaidAt] = useState(toLocalYMD());
-  const [splitMode, setSplitMode] = useState('equal'); // 'equal' | 'custom'
-  const [splitMembers, setSplitMembers] = useState([]); // member.id array
-  const [customAmounts, setCustomAmounts] = useState({}); // {member_id: number}
+  const [category, setCategory] = useState(base?.category || null);
+  const [paidBy, setPaidBy] = useState(base?.paid_by || defaultPaidBy || members[0]?.id || '');
+  const [paidAt, setPaidAt] = useState(
+    editingExpense?.paid_at ? String(editingExpense.paid_at).slice(0, 10) : toLocalYMD()
+  );
+  // Quote iniziali da edit/duplica: stessi partecipanti; modalità custom se
+  // gli importi non sono tutti uguali.
+  const initShares = Array.isArray(prefilledShares) ? prefilledShares : [];
+  const initAmounts = initShares.map((sh) => Number(sh.amount) || 0);
+  const initEqual = initAmounts.length <= 1 ||
+    initAmounts.every((a) => Math.abs(a - initAmounts[0]) < 0.011);
+  const [splitMode, setSplitMode] = useState(initShares.length > 0 && !initEqual ? 'custom' : 'equal');
+  const [splitMembers, setSplitMembers] = useState(initShares.map((sh) => sh.member_id));
+  const [customAmounts, setCustomAmounts] = useState(() => {
+    const m = {};
+    for (const sh of initShares) m[sh.member_id] = String(sh.amount ?? '');
+    return m;
+  });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [expandedFamilies, setExpandedFamilies] = useState({}); // {familyId: boolean}
@@ -105,34 +120,71 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
     if (!selectedFamily) return;
     setBusy(true); setErr('');
 
-    const { data: expense, error: e1 } = await supabase.from('expenses').insert({
-      family_id: selectedFamily,
-      task_id: prefilledTask?.id || null,
-      amount: totalAmount,
-      currency: 'EUR',
-      description: description.trim() || null,
-      category: category || null,
-      paid_by: paidBy || null,
-      paid_at: paidAt || null,
-      created_by: authorMemberId || null,
-    }).select().single();
+    let expense;
+    if (editingExpense) {
+      // ============ MODIFICA ============
+      const { data, error: e1 } = await supabase.from('expenses').update({
+        amount: totalAmount,
+        description: description.trim() || null,
+        category: category || null,
+        paid_by: paidBy || null,
+        paid_at: paidAt || null,
+      }).eq('id', editingExpense.id).select().single();
+      if (e1) { setErr(e1.message); setBusy(false); return; }
+      expense = data;
 
-    if (e1) { setErr(e1.message); setBusy(false); return; }
+      // Ricrea le quote PRESERVANDO lo stato "saldato" di chi c'era già
+      // (chi aveva già pagato non deve tornare debitore per una modifica).
+      const prevSettled = {};
+      for (const sh of initShares) {
+        if (sh.settled) prevSettled[sh.member_id] = sh.settled_at || new Date().toISOString();
+      }
+      await supabase.from('expense_shares').delete().eq('expense_id', expense.id);
+      if (splitMembers.length > 0) {
+        const shares = splitMembers.map((mid) => ({
+          expense_id: expense.id,
+          member_id: mid,
+          amount: splitMode === 'equal' ? equalShare : (parseFloat(customAmounts[mid]) || 0),
+          settled: mid === paidBy || !!prevSettled[mid],
+          settled_at: mid === paidBy
+            ? new Date().toISOString()
+            : (prevSettled[mid] || null),
+        }));
+        const { error: e2 } = await supabase.from('expense_shares').insert(shares);
+        if (e2) { setErr(e2.message); setBusy(false); return; }
+      }
+    } else {
+      // ============ NUOVA (o duplicata) ============
+      const { data, error: e1 } = await supabase.from('expenses').insert({
+        family_id: selectedFamily,
+        task_id: prefilledTask?.id || null,
+        amount: totalAmount,
+        currency: 'EUR',
+        description: description.trim() || null,
+        category: category || null,
+        paid_by: paidBy || null,
+        paid_at: paidAt || null,
+        created_by: authorMemberId || null,
+      }).select().single();
 
-    // Inserisci le quote
-    if (splitMembers.length > 0) {
-      const shares = splitMembers.map((mid) => ({
-        expense_id: expense.id,
-        member_id: mid,
-        amount: splitMode === 'equal'
-          ? equalShare
-          : (parseFloat(customAmounts[mid]) || 0),
-        // Se la quota è di chi ha pagato, è già "settled" automaticamente
-        settled: mid === paidBy,
-        settled_at: mid === paidBy ? new Date().toISOString() : null,
-      }));
-      const { error: e2 } = await supabase.from('expense_shares').insert(shares);
-      if (e2) { setErr(e2.message); setBusy(false); return; }
+      if (e1) { setErr(e1.message); setBusy(false); return; }
+      expense = data;
+
+      // Inserisci le quote
+      if (splitMembers.length > 0) {
+        const shares = splitMembers.map((mid) => ({
+          expense_id: expense.id,
+          member_id: mid,
+          amount: splitMode === 'equal'
+            ? equalShare
+            : (parseFloat(customAmounts[mid]) || 0),
+          // Se la quota è di chi ha pagato, è già "settled" automaticamente
+          settled: mid === paidBy,
+          settled_at: mid === paidBy ? new Date().toISOString() : null,
+        }));
+        const { error: e2 } = await supabase.from('expense_shares').insert(shares);
+        if (e2) { setErr(e2.message); setBusy(false); return; }
+      }
     }
 
     // Upload allegati
@@ -166,7 +218,7 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{t('addexpense_h')}</h2>
+        <h2>{editingExpense ? (t('exp_edit_h') || 'Modifica spesa') : t('addexpense_h')}</h2>
         <p className="modal-sub">{t('addexpense_sub')}</p>
 
         {prefilledTask && (
@@ -188,7 +240,7 @@ export default function AddExpenseModal({ familyId, families = [], members, defa
 
         <form onSubmit={submit}>
           {/* Dropdown famiglia solo se in single-family view */}
-          {familyId && families.length > 1 && (
+          {!editingExpense && familyId && families.length > 1 && (
             <div style={{ marginBottom: 16 }}>
               <label htmlFor="family">{t('addexpense_family') || 'Famiglia'}</label>
               <select id="family" className="input"
