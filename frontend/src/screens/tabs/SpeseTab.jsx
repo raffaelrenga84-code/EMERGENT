@@ -121,6 +121,41 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
     onChanged();
   };
 
+  // {mode: 'edit' | 'dup', expense} → apre AddExpenseModal precompilato
+  const [expenseAction, setExpenseAction] = useState(null);
+
+  // 📤 Condividi: riepilogo testuale via share sheet (fallback: appunti)
+  const shareExpense = async (e) => {
+    const payer = members.find((m) => m.id === e.paid_by);
+    const expShares = sharesForExpense(e.id);
+    const lines = [
+      `💶 ${e.description || t('addexpense_h')} — € ${Number(e.amount).toFixed(2)}`,
+      payer ? `${t('expenses_paid_by_short')} ${payer.name} · ${fmtDate(e.paid_at || e.created_at)}` : fmtDate(e.paid_at || e.created_at),
+    ];
+    const debtors = expShares.filter((sh) => sh.member_id !== e.paid_by);
+    if (debtors.length > 0) {
+      lines.push(t('expenses_owed_by') + ':');
+      for (const sh of debtors) {
+        const m = members.find((x) => x.id === sh.member_id);
+        if (!m) continue;
+        lines.push(`  ${sh.settled ? '✅' : '⏳'} ${m.name}: € ${Number(sh.amount).toFixed(2)}`);
+      }
+    }
+    const text = lines.join('\n');
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return;
+      }
+    } catch (_) { /* annullato dall'utente */ return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      window.dispatchEvent(new CustomEvent('fammy_toast', {
+        detail: { text: t('exp_share_copied') || 'Riepilogo copiato negli appunti', tone: 'success' },
+      }));
+    } catch (_) { /* ignore */ }
+  };
+
   const settleShare = async (expenseId, memberId, settled) => {
     await supabase.from('expense_shares').update({
       settled, settled_at: settled ? new Date().toISOString() : null,
@@ -181,11 +216,28 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
           <div style={{ fontWeight: 700, fontFamily: 'var(--fs)', fontSize: 16 }}>
             € {Number(e.amount).toFixed(2)}
           </div>
-          {(!e.created_by || e.created_by === me?.id) && (
-            <button onClick={() => removeExpense(e.id)}
-              style={{ background: 'none', border: 'none', color: 'var(--km)', fontSize: 16, padding: 4 }}
-              title="Elimina (solo creatore)">✕</button>
-          )}
+        </div>
+
+        {/* Barra azioni: 📤 condividi e ⧉ duplica per tutti;
+            ✏️ modifica e 🗑 elimina solo per il creatore. */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 8 }}>
+          {[
+            { icon: '📤', label: t('exp_action_share') || 'Condividi', on: () => shareExpense(e), show: true, testid: 'share' },
+            { icon: '⧉', label: t('exp_action_duplicate') || 'Duplica', on: () => setExpenseAction({ mode: 'dup', expense: e }), show: true, testid: 'dup' },
+            { icon: '✏️', label: t('exp_action_edit') || 'Modifica', on: () => setExpenseAction({ mode: 'edit', expense: e }), show: !e.created_by || e.created_by === me?.id, testid: 'edit' },
+            { icon: '🗑', label: t('exp_action_delete') || 'Elimina', on: () => removeExpense(e.id), show: !e.created_by || e.created_by === me?.id, testid: 'del' },
+          ].filter((a) => a.show).map((a) => (
+            <button key={a.testid} onClick={a.on}
+              data-testid={`expense-${a.testid}-${e.id}`}
+              title={a.label} aria-label={a.label}
+              style={{
+                width: 34, height: 30, borderRadius: 9,
+                border: '1px solid var(--sm)', background: 'var(--s)',
+                fontSize: 14, lineHeight: 1, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--km)',
+              }}>{a.icon}</button>
+          ))}
         </div>
 
         {/* Allegati (scontrini/bollette): foto come miniature, PDF come chip */}
@@ -404,17 +456,19 @@ export default function SpeseTab({ familyId, families = [], expenses, tasks, mem
         ]}
       />
 
-      {showAdd && (
+      {(showAdd || expenseAction) && (
         <AddExpenseModal
-          familyId={pendingTask?.family_id || prefillData?.family_id || familyId}
+          familyId={pendingTask?.family_id || expenseAction?.expense?.family_id || prefillData?.family_id || familyId}
           families={families}
           members={members}
           defaultPaidBy={prefillData?.paid_by || me?.id}
           authorMemberId={me?.id}
           prefilledTask={pendingTask}
-          prefilledExpense={prefillData}
-          onClose={() => { setShowAdd(false); setPrefillData(null); onClearPendingTask && onClearPendingTask(); }}
-          onCreated={() => { setShowAdd(false); setPrefillData(null); onClearPendingTask && onClearPendingTask(); onChanged(); }}
+          prefilledExpense={expenseAction?.mode === 'dup' ? expenseAction.expense : prefillData}
+          editingExpense={expenseAction?.mode === 'edit' ? expenseAction.expense : null}
+          prefilledShares={expenseAction ? sharesForExpense(expenseAction.expense.id) : []}
+          onClose={() => { setShowAdd(false); setPrefillData(null); setExpenseAction(null); onClearPendingTask && onClearPendingTask(); }}
+          onCreated={() => { setShowAdd(false); setPrefillData(null); setExpenseAction(null); onClearPendingTask && onClearPendingTask(); onChanged(); }}
         />
       )}
 
