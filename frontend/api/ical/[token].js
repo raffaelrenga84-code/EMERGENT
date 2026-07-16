@@ -97,7 +97,36 @@ export default async function handler(req, res) {
     return true;
   });
 
-  const ics = buildICS(family, events, tasks);
+  // --- COMPLEANNI (da members.birth_date, inclusi i "solo contatto") ---
+  let bdays = [];
+  {
+    const q = await supabase
+      .from('members')
+      .select('id, name, birth_date, user_id')
+      .eq('family_id', family.id)
+      .not('birth_date', 'is', null);
+    if (!q.error) {
+      const seen = new Set();
+      bdays = (q.data || []).filter((m) => {
+        const k = `${m.user_id || m.name}|${String(m.birth_date).slice(0, 10)}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    }
+  }
+
+  // --- ASSENZE visibili a questa famiglia (🌍 Chi è dove) ---
+  let absences = [];
+  {
+    const q = await supabase
+      .from('absences')
+      .select('id, member_name, start_date, end_date, reason, location, note, visible_to_families')
+      .contains('visible_to_families', [family.id]);
+    if (!q.error) absences = q.data || [];
+  }
+
+  const ics = buildICS(family, events, tasks, bdays, absences);
 
   res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
@@ -163,7 +192,9 @@ function rruleWeekly(recurringDays, untilLine) {
   return rrule;
 }
 
-function buildICS(family, events, tasks) {
+const ABSENCE_ICONS = { vacation: '🏖️', work: '💼', health: '🏥', other: '✈️' };
+
+function buildICS(family, events, tasks, bdays = [], absences = []) {
   const calName = `${family.emoji || ''} ${family.name}`.trim();
   const lines = [
     'BEGIN:VCALENDAR',
@@ -296,6 +327,39 @@ function buildICS(family, events, tasks) {
       lines.push(fold(`DESCRIPTION:${esc(tk.title || 'Incarico')}`));
       lines.push('END:VALARM');
     }
+    lines.push('END:VEVENT');
+  }
+
+  // === ASSENZE (all-day, multi-giorno; DTEND esclusivo = end_date+1) ===
+  for (const ab of absences) {
+    const start = String(ab.start_date || '').slice(0, 10);
+    const end = String(ab.end_date || start).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) continue;
+    const icon = ABSENCE_ICONS[ab.reason] || '✈️';
+    const who = ab.member_name || 'Assenza';
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:absence-${ab.id}@fammy.app`);
+    lines.push(`DTSTAMP:${now}`);
+    lines.push(`DTSTART;VALUE=DATE:${fmtDate(start)}`);
+    lines.push(`DTEND;VALUE=DATE:${fmtDate(addDays(end, 1))}`);
+    lines.push(fold(`SUMMARY:${esc(`${icon} ${who}${ab.location ? ' · ' + ab.location : ''}`)}`));
+    if (ab.note) lines.push(fold(`DESCRIPTION:${esc(ab.note)}`));
+    lines.push('TRANSP:TRANSPARENT');
+    lines.push('END:VEVENT');
+  }
+
+  // === COMPLEANNI (ricorrenza annuale, all-day) ===
+  for (const m of bdays) {
+    const dk = String(m.birth_date).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) continue;
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:bday-${m.id}@fammy.app`);
+    lines.push(`DTSTAMP:${now}`);
+    lines.push(`DTSTART;VALUE=DATE:${fmtDate(dk)}`);
+    lines.push(`DTEND;VALUE=DATE:${fmtDate(addDays(dk, 1))}`);
+    lines.push('RRULE:FREQ=YEARLY');
+    lines.push(fold(`SUMMARY:${esc('🎂 Compleanno di ' + m.name)}`));
+    lines.push('TRANSP:TRANSPARENT');
     lines.push('END:VEVENT');
   }
 
