@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { isIOS } from '../lib/platformDetect.js';
-import { createBirthdayEventData } from '../lib/birthdayUtils.js';
 import GiftIdeasModal from './GiftIdeasModal.jsx';
 import CaregiverPicker from './CaregiverPicker.jsx';
 
@@ -200,22 +199,8 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
 
     const updatedMember = data[0];
 
-    // Crea (o aggiorna) l'evento compleanno solo se la data è cambiata davvero
-    if (birthDate && birthDate !== member.birth_date) {
-      const eventData = createBirthdayEventData({ ...member, name: name.trim(), birth_date: birthDate });
-      if (eventData && member.family_id) {
-        const { error: eventError } = await supabase.from('events').insert({
-          family_id: member.family_id,
-          title: eventData.title,
-          starts_at: eventData.starts_at,
-          category: eventData.category,
-          is_recurring: eventData.is_recurring,
-          recurrence_rule: eventData.recurrence_rule,
-          created_by: member.id,
-        });
-        if (eventError) console.warn('Birthday event creation warning:', eventError.message);
-      }
-    }
+    // NB: niente più insert dell'evento compleanno in events — i compleanni
+    // sono calcolati direttamente da members.birth_date (Agenda + feed iCal).
 
     onSaved && onSaved(updatedMember);
   };
@@ -422,7 +407,7 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
           {/* Genitore: annida questo membro sotto un altro in FamilyTab */}
           {familyMembers.filter((m) => m.id !== member.id).length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <label>{t('em_parent_label') || '👨‍👧 Figlio/a di (opzionale)'}</label>
+              <label>{t('em_parent_label') || '🔗 Fa parte di… (opzionale)'}</label>
               <select className="input" value={parentMemberId}
                 onChange={(e) => setParentMemberId(e.target.value)}
                 data-testid="member-parent-select">
