@@ -422,6 +422,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const assistedMembers = dedupeByUser(
     (members || []).filter((m) => {
       if (!m.is_assisted) return false;
+      if (m.is_contact_only) return false; // solo contatto: niente medicine
       if (familyId) return m.family_id === familyId;
       return (families || []).some((f) => f.id === m.family_id);
     })
@@ -451,7 +452,18 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   })();
 
   const onClickNewMed = () => {
-    if (medTargets.length === 0) return;
+    if (medTargets.length === 0) {
+      // Succede quando l'account dell'utente non è collegato a nessun
+      // member (user_id null): mai fallire in silenzio, spiega il perché.
+      window.dispatchEvent(new CustomEvent('fammy_toast', {
+        detail: {
+          text: t('meds_no_member') ||
+            'Il tuo account non è ancora collegato a un membro della famiglia. Apri la tab Famiglia e chiedi a chi ti ha invitato di collegarti al tuo profilo.',
+          tone: 'warning',
+        },
+      }));
+      return;
+    }
     if (medTargets.length === 1) setMedsForMember(medTargets[0]);
     else setShowMedsPicker(true);
   };
@@ -476,15 +488,15 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     ];
     // "Nuova medicina" è sempre disponibile: con assistiti apre il picker,
     // senza assistiti apre direttamente le medicine dell'utente stesso.
-    if (medTargets.length > 0) {
-      list.push({
-        id: 'med', icon: '💊',
-        label: t('fab_new_med') || 'Nuova medicina',
-        onClick: onClickNewMed,
-        testid: `${testidPrefix}-new-med`,
-        color: 'var(--gn)',
-      });
-    }
+    // Se l'account non è collegato a un member, onClickNewMed mostra un
+    // toast esplicativo invece di un pulsante che non fa nulla.
+    list.push({
+      id: 'med', icon: '💊',
+      label: t('fab_new_med') || 'Nuova medicina',
+      onClick: onClickNewMed,
+      testid: `${testidPrefix}-new-med`,
+      color: 'var(--gn)',
+    });
     // Voce extra "feedback" — separata visivamente dalle 3 azioni produttive
     // tramite una proprietà `divider: true` (resa nel FabSpeedDial se la
     // supporta) e un colore neutro. Lascia all'utente un canale rapido per
