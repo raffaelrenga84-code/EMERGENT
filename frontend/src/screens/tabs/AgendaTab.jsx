@@ -298,6 +298,24 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
           starts_at: `${year}-${p2(bm)}-${p2(bd)}T09:00:00`,
           category: 'other',
         });
+        // 🎁 Promemoria 7 giorni prima — per tutta la famiglia TRANNE il
+        // festeggiato (niente spoiler a chi compie gli anni). Gestisce da
+        // solo il cambio mese/anno (es. compleanno 3 gennaio → 27 dicembre).
+        if (!(m.user_id && m.user_id === session?.user?.id)) {
+          const rd = new Date(year, bm - 1, bd - 7, 9, 0, 0);
+          const rBase = __t0('bday_reminder_title', { name: m.name });
+          const rLabel = rBase === 'bday_reminder_title'
+            ? `Tra una settimana: compleanno di ${m.name}` : rBase;
+          out.push({
+            id: `bdayrem-${m.id}-${year}`,
+            _isBirthday: true,
+            family_id: m.family_id,
+            created_by: null,
+            title: `🎁 ${rLabel}`,
+            starts_at: `${rd.getFullYear()}-${p2(rd.getMonth() + 1)}-${p2(rd.getDate())}T09:00:00`,
+            category: 'other',
+          });
+        }
       }
     }
     return out;
