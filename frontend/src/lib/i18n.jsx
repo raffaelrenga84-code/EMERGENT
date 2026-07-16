@@ -16,6 +16,7 @@ export const LANGS = [
 
 export const T = {
   it: {
+    invite_msg_what: 'FAMMY è la nostra app di famiglia 👨‍👩‍👧: agenda e compleanni condivisi, incarichi, spese divise e promemoria medicine con notifiche. Niente chat infinite 😉',
     addexpense_payer_placeholder: '— Chi ha pagato? —',
     addexpense_need_payer: 'Seleziona chi ha pagato la spesa',
     exp_edit_h: 'Modifica spesa',
@@ -1367,6 +1368,7 @@ export const T = {
   },
 
   en: {
+    invite_msg_what: 'FAMMY is our family app 👨‍👩‍👧: shared calendar and birthdays, tasks, split expenses and medication reminders with notifications. No endless group chats 😉',
     addexpense_payer_placeholder: '— Who paid? —',
     addexpense_need_payer: 'Select who paid this expense',
     exp_edit_h: 'Edit expense',
@@ -2692,6 +2694,7 @@ export const T = {
   },
 
   fr: {
+    invite_msg_what: 'FAMMY est notre appli de famille 👨‍👩‍👧 : agenda et anniversaires partagés, tâches, dépenses partagées et rappels de médicaments avec notifications. Fini les discussions sans fin 😉',
     addexpense_payer_placeholder: '— Qui a payé ? —',
     addexpense_need_payer: 'Sélectionne qui a payé cette dépense',
     exp_edit_h: 'Modifier la dépense',
@@ -3998,6 +4001,7 @@ export const T = {
   },
 
   de: {
+    invite_msg_what: 'FAMMY ist unsere Familien-App 👨‍👩‍👧: gemeinsamer Kalender und Geburtstage, Aufgaben, geteilte Ausgaben und Medikamenten-Erinnerungen mit Benachrichtigungen. Keine endlosen Chats 😉',
     addexpense_payer_placeholder: '— Wer hat bezahlt? —',
     addexpense_need_payer: 'Wähle aus, wer diese Ausgabe bezahlt hat',
     exp_edit_h: 'Ausgabe bearbeiten',
