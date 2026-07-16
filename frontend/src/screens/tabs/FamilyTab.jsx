@@ -467,12 +467,27 @@ export default function FamilyTab({ family, members, session, families, activeFa
       )}
 
       <div className="list">
-        {familyMembersOfThis.map((m) => {
+        {(() => {
+          // Ordine annidato: prima i membri "radice" (senza genitore, o con
+          // genitore fuori da questa famiglia), poi i figli subito sotto il
+          // rispettivo genitore, indentati (parent_member_id).
+          const roots = familyMembersOfThis.filter((m) =>
+            !m.parent_member_id ||
+            !familyMembersOfThis.some((p) => p.id === m.parent_member_id));
+          const ordered = [];
+          roots.forEach((r) => {
+            ordered.push({ m: r, nested: false });
+            familyMembersOfThis
+              .filter((c) => c.parent_member_id === r.id && c.id !== r.id)
+              .forEach((c) => ordered.push({ m: c, nested: true }));
+          });
+          return ordered.map(({ m, nested }) => {
           const activeAbs = findActiveAbsence(absences, m.user_id);
           return (
             <MemberCard
               key={m.id}
               member={m}
+              nested={nested}
               familyMembers={familyMembersOfThis}
               isMe={m.user_id === session.user.id}
               isOwner={m.user_id === family.created_by}
@@ -490,7 +505,8 @@ export default function FamilyTab({ family, members, session, families, activeFa
               }
             />
           );
-        })}
+          });
+        })()}
       </div>
 
       {/* Timeline "🌍 Chi è dove" — assenze visibili a questa famiglia */}
@@ -611,7 +627,7 @@ export default function FamilyTab({ family, members, session, families, activeFa
   );
 }
 
-function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, otherFamilies = [], activeAbsence, onEdit, onRemove, onInvite, onSetAbsence, onOpenMedications }) {
+function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, otherFamilies = [], activeAbsence, onEdit, onRemove, onInvite, onSetAbsence, onOpenMedications, nested = false }) {
   const { t } = useT();
   const canInvite = !isMe && !member.user_id;
 
@@ -655,7 +671,15 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
 
   return (
     <div className="member-card" onClick={onEdit}
-      style={{ alignItems: 'flex-start', gap: 12 }}>
+      style={{
+        alignItems: 'flex-start', gap: 12,
+        // Figlio annidato sotto il genitore: indent + bordo guida
+        ...(nested ? {
+          marginLeft: 22,
+          borderLeft: '2.5px solid var(--sm)',
+          paddingLeft: 12,
+        } : {}),
+      }}>
       <Avatar
         name={member.name}
         avatarUrl={member.avatar_url}
@@ -682,6 +706,14 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
               border: '1px solid var(--gn)',
               whiteSpace: 'nowrap',
             }}>{t('you_chip') || 'Tu'}</span>
+          )}
+          {member.is_contact_only && (
+            <span title={t('em_contact_only_hint') || 'Escluso da incarichi e medicine; resta per i compleanni'} style={{
+              fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 100,
+              background: 'var(--ab)', color: 'var(--ac)',
+              border: '1px solid var(--ac)',
+              whiteSpace: 'nowrap',
+            }}>🎂 {t('em_contact_only_chip') || 'Solo contatto'}</span>
           )}
         </div>
 
