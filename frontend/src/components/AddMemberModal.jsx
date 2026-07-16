@@ -32,6 +32,10 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
   const [birthDate, setBirthDate] = useState('');
   const [isAssisted, setIsAssisted] = useState(false);
   const [caredBy, setCaredBy] = useState([]);
+  // Membro "solo contatto": escluso da incarichi e medicine, resta per i
+  // compleanni. parentMemberId: annidato sotto un genitore in FamilyTab.
+  const [isContactOnly, setIsContactOnly] = useState(false);
+  const [parentMemberId, setParentMemberId] = useState('');
   const [familyMembers, setFamilyMembers] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -65,10 +69,12 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
         avatar_letter: name.trim().charAt(0).toUpperCase(),
         avatar_color: color,
         status: 'active',
-        is_assisted: isAssisted,
+        is_assisted: isContactOnly ? false : isAssisted,
         // Caregiver assegnati (solo se è marcato come assistito)
-        cared_by: isAssisted ? caredBy : [],
+        cared_by: (isAssisted && !isContactOnly) ? caredBy : [],
+        is_contact_only: isContactOnly,
       };
+      if (parentMemberId) payload.parent_member_id = parentMemberId;
       if (withBirth && birthDate) payload.birth_date = birthDate;
       const { data, error } = await supabase
         .from('members').insert(payload).select().single();
@@ -76,6 +82,32 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
     };
 
     let { data: created, error } = await tryInsert(!!birthDate);
+
+    // Se il DB non ha ancora is_contact_only / parent_member_id
+    // (migration fammy-visibility-assignees-and-contacts.sql non eseguita)
+    // → ritenta senza, così il membro viene comunque creato.
+    if (error && /(is_contact_only|parent_member_id)/i.test(error.message)) {
+      const retry = await (async () => {
+        const payload = {
+          family_id: familyId,
+          name: name.trim(),
+          role: finalRole,
+          avatar_letter: name.trim().charAt(0).toUpperCase(),
+          avatar_color: color,
+          status: 'active',
+          is_assisted: isAssisted,
+          cared_by: isAssisted ? caredBy : [],
+        };
+        if (birthDate) payload.birth_date = birthDate;
+        return supabase.from('members').insert(payload).select().single();
+      })();
+      if (!retry.error) {
+        created = retry.data;
+        error = null;
+        if (isContactOnly || parentMemberId) setErr(t('schema_missing_contacts') ||
+          'Esegui fammy-visibility-assignees-and-contacts.sql per attivare membri contatto e gerarchia.');
+      }
+    }
 
     // Se il DB non ha ancora la colonna birth_date → ritenta senza, e avvisa.
     if (error && /birth_date/i.test(error.message)) {
@@ -233,6 +265,51 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
             </div>
           </div>
 
+          {/* Toggle "solo contatto" — escluso da incarichi/medicine, compleanni sì */}
+          <div style={{
+            marginTop: 16, padding: 12, borderRadius: 12,
+            background: isContactOnly ? 'var(--ab)' : 'var(--w, #fff)',
+            border: `1px solid ${isContactOnly ? 'var(--ac)' : 'var(--sd)'}`,
+            transition: 'all 0.2s ease',
+          }}>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              cursor: 'pointer', margin: 0,
+            }}>
+              <input type="checkbox" checked={isContactOnly}
+                onChange={(e) => { setIsContactOnly(e.target.checked); if (e.target.checked) { setIsAssisted(false); setCaredBy([]); } }}
+                data-testid="addmember-contact-only-toggle"
+                style={{ width: 18, height: 18, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--k)' }}>
+                  🎂 {t('em_contact_only_label') || 'Solo contatto'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2, lineHeight: 1.4 }}>
+                  {t('em_contact_only_hint') || 'Non riceve incarichi né medicine. Resta in famiglia per compleanni e ricorrenze.'}
+                </div>
+              </div>
+            </label>
+          </div>
+
+          {/* Genitore: annida questo membro sotto un altro in FamilyTab */}
+          {familyMembers.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <label>{t('em_parent_label') || '👨‍👧 Figlio/a di (opzionale)'}</label>
+              <select className="input" value={parentMemberId}
+                onChange={(e) => setParentMemberId(e.target.value)}
+                data-testid="addmember-parent-select">
+                <option value="">{t('em_parent_none') || '— Nessuno —'}</option>
+                {familyMembers.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+              <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 4 }}>
+                {t('em_parent_hint') || 'Verrà mostrato annidato sotto il genitore nella tab Famiglia.'}
+              </div>
+            </div>
+          )}
+
+          {!isContactOnly && (<>
           {/* Toggle "è assistito" — sblocca medicine + sezioni mediche */}
           <div style={{
             marginTop: 16, padding: 12, borderRadius: 12,
@@ -287,6 +364,7 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
               </div>
             )}
           </div>
+          </>)}
 
           <div style={{
             marginTop: 20, padding: 14, background: 'var(--ab)',
