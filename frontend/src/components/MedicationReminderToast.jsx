@@ -27,7 +27,10 @@ export default function MedicationReminderToast({ reminders, onTaken, onSnooze, 
   if (!rem) return null;
 
   const lateText = rem.minutesLate >= 1
-    ? t('med_late_fmt', { mins: rem.minutesLate }) || `In ritardo di ${rem.minutesLate} min`
+    ? (() => {
+        const v = __t0('med_late_fmt', { mins: rem.minutesLate });
+        return v === 'med_late_fmt' ? `In ritardo di ${rem.minutesLate} min` : v;
+      })()
     : (t('med_due_now') || 'Da prendere ora');
 
   return (
