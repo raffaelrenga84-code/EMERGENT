@@ -14,7 +14,7 @@ const urlsToCache = [
   '/manifest.json',
   '/icon.png',
 ];
-
+ 
 // Install event
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -24,7 +24,7 @@ self.addEventListener('install', event => {
   );
   self.skipWaiting();
 });
-
+ 
 // Activate event
 self.addEventListener('activate', event => {
   event.waitUntil(
@@ -40,7 +40,7 @@ self.addEventListener('activate', event => {
   );
   self.clients.claim();
 });
-
+ 
 // Fetch strategy: NETWORK-FIRST per index.html e API
 //   La causa #1 di "ho fatto deploy ma la app non si aggiorna" è che il
 //   browser serve dalla cache vecchia. Con network-first sull'HTML, ad ogni
@@ -50,21 +50,35 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-
+ 
   // Network-first per il documento HTML principale.
   const isHTML = req.mode === 'navigate' ||
     (req.headers.get('accept') || '').includes('text/html');
-
+ 
   if (isHTML) {
     event.respondWith((async () => {
       try {
         const res = await fetch(req);
+        // FIX Safari "Response served by service worker has redirections":
+        // se il fetch ha seguito un redirect (es. farxer.com → www.farxer.com),
+        // res.redirected=true e Safari RIFIUTA la risposta per le navigazioni
+        // → pagina bianca fatale. Ricostruiamo la risposta dal body per
+        // azzerare il flag redirected prima di servirla e cacharla.
+        let finalRes = res;
+        if (res.redirected) {
+          const body = await res.blob();
+          finalRes = new Response(body, {
+            status: res.status,
+            statusText: res.statusText,
+            headers: res.headers,
+          });
+        }
         // Aggiorna la cache in background
         try {
           const cache = await caches.open(CACHE_NAME);
-          cache.put(req, res.clone());
+          cache.put(req, finalRes.clone());
         } catch (_) {}
-        return res;
+        return finalRes;
       } catch (_) {
         // Offline → ripiega su cache
         const cached = await caches.match(req);
@@ -73,15 +87,15 @@ self.addEventListener('fetch', (event) => {
     })());
     return;
   }
-
+ 
   // Per il resto: cache-first è OK perché Vite mette gli hash nei
   // filename (vendor.abc123.js), quindi cambia il nome ad ogni build.
 });
-
+ 
 // Push notification handler
 self.addEventListener('push', event => {
   if (!event.data) return;
-
+ 
   try {
     const data = event.data.json();
     const options = {
@@ -96,11 +110,11 @@ self.addEventListener('push', event => {
       ],
       data: data.data || {},
     };
-
+ 
     event.waitUntil((async () => {
       // 1) Mostra la notifica
       await self.registration.showNotification(data.title || 'Fammy', options);
-
+ 
       // 2) Incrementa il badge sull'icona dell'app (numerino rosso).
       //    Funziona su Chrome/Edge Android & macOS, e su iOS quando l'app
       //    è installata come PWA (Add to Home Screen, iOS 16.4+).
@@ -117,11 +131,11 @@ self.addEventListener('push', event => {
     console.error('Push notification error:', e);
   }
 });
-
+ 
 // Notification click handler
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-
+ 
   // Pulisci il badge quando l'utente clicca su una notifica.
   // Nota: alcune piattaforme richiedono `clearAppBadge`, altre supportano
   // anche `setAppBadge(0)`. Proviamo entrambi.
@@ -129,11 +143,11 @@ self.addEventListener('notificationclick', event => {
     if ('clearAppBadge' in self.navigator) self.navigator.clearAppBadge();
     else if ('setAppBadge' in self.navigator) self.navigator.setAppBadge(0);
   } catch (e) { /* silent */ }
-
+ 
   if (event.action === 'close') {
     return;
   }
-
+ 
   // Per le notifiche con actions (es. follow-up urgenti), inoltra
   // l'action al client. Default = 'open'.
   const action = event.action || 'open';
@@ -145,7 +159,7 @@ self.addEventListener('notificationclick', event => {
       : null
   );
   const targetUrl = customUrl || '/';
-
+ 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then(clientList => {
@@ -167,19 +181,19 @@ self.addEventListener('notificationclick', event => {
       })
   );
 });
-
+ 
 // Sync per le notifiche programmate (quando il device torna online)
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-event-notifications') {
     event.waitUntil(syncEventNotifications());
   }
 });
-
+ 
 async function syncEventNotifications() {
   // Questa funzione verrà chiamata periodicamente per verificare gli eventi
   // Il client invierà i dati necessari tramite postMessage
 }
-
+ 
 // Message handler per comunicazioni dal client
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
@@ -200,7 +214,7 @@ self.addEventListener('message', event => {
     } catch (e) { /* silent */ }
   }
 });
-
+ 
 // Quando il browser ruota l'endpoint (es. aggiornamento del SO, cambio
 // del push service), Chrome/Firefox emettono `pushsubscriptionchange`.
 // Re-sottoscriviamo immediatamente con la stessa applicationServerKey,
@@ -215,12 +229,12 @@ self.addEventListener('pushsubscriptionchange', (event) => {
         appServerKey = oldSub.options?.applicationServerKey || null;
       }
       if (!appServerKey) return; // Senza key non possiamo re-sottoscrivere
-
+ 
       const newSub = await self.registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: appServerKey,
       });
-
+ 
       // Notifica tutti i client aperti che c'è una nuova subscription da salvare
       const clients = await self.clients.matchAll({ includeUncontrolled: true });
       for (const client of clients) {
@@ -234,4 +248,3 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     }
   })());
 });
-
