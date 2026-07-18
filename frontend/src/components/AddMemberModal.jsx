@@ -36,21 +36,119 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
   const [isContactOnly, setIsContactOnly] = useState(false);
   const [parentMemberId, setParentMemberId] = useState('');
   const [familyMembers, setFamilyMembers] = useState([]);
+  const [existingCandidates, setExistingCandidates] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
-  // Carica i membri della famiglia per il CaregiverPicker
+  // Carica i membri della famiglia per il CaregiverPicker + le persone
+  // delle ALTRE mie famiglie, aggiungibili con un tocco senza invito
+  // (la RLS mostra solo membri delle mie famiglie: il perimetro e' gia'
+  // "persone che conosco su FAMMY").
   useEffect(() => {
     let cancelled = false;
     if (!familyId) return;
-    supabase.from('members')
-      .select('id, name, user_id, avatar_letter, avatar_color, family_id')
-      .eq('family_id', familyId)
-      .then(({ data }) => {
-        if (!cancelled) setFamilyMembers(data || []);
-      });
+    (async () => {
+      const [{ data: fam }, { data: others }] = await Promise.all([
+        supabase.from('members')
+          .select('id, name, user_id, avatar_letter, avatar_color, family_id')
+          .eq('family_id', familyId),
+        supabase.from('members')
+          .select('id, name, user_id, avatar_letter, avatar_color, avatar_url, birth_date, role, is_contact_only, family_id')
+          .neq('family_id', familyId),
+      ]);
+      if (cancelled) return;
+      setFamilyMembers(fam || []);
+      // Dedupe (stessa persona in piu' famiglie) + escludi chi e' gia' qui
+      const famUserIds = new Set((fam || []).map((m) => m.user_id).filter(Boolean));
+      const famNames = new Set((fam || []).map((m) => (m.name || '').trim().toLowerCase()));
+      const seen = new Set();
+      const cands = [];
+      for (const m of (others || [])) {
+        const key = m.user_id || ((m.name || '').trim().toLowerCase() + '|' + (m.birth_date || ''));
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (m.user_id && famUserIds.has(m.user_id)) continue;
+        if (!m.user_id && famNames.has((m.name || '').trim().toLowerCase())) continue;
+        cands.push(m);
+      }
+      cands.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      setExistingCandidates(cands);
+    })();
     return () => { cancelled = true; };
   }, [familyId]);
+
+  // Aggiunta diretta di una persona gia' presente in un'altra famiglia:
+  // member creato in QUESTA famiglia gia' collegato al suo account
+  // (user_id copiato) -> niente invito, niente doppioni.
+  const addExisting = async (src) => {
+    if (busy) return;
+    setBusy(true); setErr('');
+
+    // CON account -> INVITO con consenso: creiamo una proposta, Silvia
+    // riceve la push e decide lei (Accetta/Rifiuta in Bacheca).
+    // SENZA account (solo contatto) -> aggiunta diretta come prima:
+    // non c'e' nessuno a cui chiedere.
+    if (src.user_id) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const [{ data: famRow }, myRow] = await Promise.all([
+          supabase.from('families').select('name, emoji').eq('id', familyId).single(),
+          Promise.resolve(familyMembers.find((m) => m.user_id === user?.id) || null),
+        ]);
+        const { error: offErr } = await supabase.from('family_join_offers').insert({
+          family_id: familyId,
+          target_user_id: src.user_id,
+          name: src.name,
+          role: src.role || 'altro',
+          avatar_letter: src.avatar_letter || (src.name || '?').charAt(0).toUpperCase(),
+          avatar_color: src.avatar_color || COLORS[0],
+          avatar_url: src.avatar_url || null,
+          birth_date: src.birth_date || null,
+          family_name: famRow?.name || null,
+          family_emoji: famRow?.emoji || null,
+          inviter_name: myRow?.name || null,
+          invited_by: myRow?.id || null,
+        });
+        setBusy(false);
+        if (!offErr) {
+          window.dispatchEvent(new CustomEvent('fammy_toast', {
+            detail: { text: `${t('am_offer_sent') || 'Invito inviato a'} ${src.name} 💌`, tone: 'success' },
+          }));
+          onClose && onClose();
+          return;
+        }
+        // Tabella assente (migration non eseguita) -> fallback aggiunta diretta
+        if (!/family_join_offers/i.test(offErr.message) && offErr.code !== '42P01') {
+          setErr(offErr.message);
+          return;
+        }
+        setBusy(true);
+      } catch (_) { /* fallback sotto */ }
+    }
+    const payload = {
+      family_id: familyId,
+      name: src.name,
+      role: src.role || 'altro',
+      avatar_letter: src.avatar_letter || (src.name || '?').charAt(0).toUpperCase(),
+      avatar_color: src.avatar_color || COLORS[0],
+      status: 'active',
+      user_id: src.user_id || null,
+      is_contact_only: !!src.is_contact_only,
+    };
+    if (src.avatar_url) payload.avatar_url = src.avatar_url;
+    if (src.birth_date) payload.birth_date = src.birth_date;
+    let { error } = await supabase.from('members').insert(payload);
+    if (error && /(is_contact_only|avatar_url|birth_date)/i.test(error.message)) {
+      ({ error } = await supabase.from('members').insert({
+        family_id: familyId, name: src.name, role: src.role || 'altro',
+        avatar_letter: payload.avatar_letter, avatar_color: payload.avatar_color,
+        status: 'active', user_id: src.user_id || null,
+      }));
+    }
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    onCreated && onCreated();
+  };
 
   const finalRole = customRoleMode && customRole.trim() ? customRole.trim() : role;
 
@@ -180,6 +278,42 @@ export default function AddMemberModal({ familyId, onClose, onCreated }) {
         <p className="modal-sub">{t('addmember_sub')}</p>
 
         <form onSubmit={submit}>
+          {existingCandidates.length > 0 && (
+            <div style={{
+              marginBottom: 18, padding: '12px 14px', borderRadius: 12,
+              background: 'var(--ab)', border: '1px solid var(--sm)',
+            }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--k)' }}>
+                {'\uD83D\uDC65 '}{t('am_existing_h') || "Gia' su FAMMY in un'altra tua famiglia?"}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2, marginBottom: 8, lineHeight: 1.4 }}>
+                {t('am_existing_p') || 'Chi ha un account riceve un invito e decide se unirsi; chi non ce l\'ha viene aggiunto subito.'}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {existingCandidates.map((m) => (
+                  <button key={m.id} type="button" disabled={busy}
+                    onClick={() => addExisting(m)}
+                    data-testid={'addmember-existing-' + m.id}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '6px 11px', borderRadius: 100, fontSize: 12.5,
+                      border: '1.5px solid var(--sm)', background: 'var(--s)',
+                      color: 'var(--k)', fontWeight: 600, cursor: 'pointer',
+                    }}>
+                    <span style={{
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: m.avatar_color || '#1C1611', color: '#fff',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, fontWeight: 700,
+                    }}>{m.avatar_letter || (m.name || '?').charAt(0).toUpperCase()}</span>
+                    {m.name}
+                    {!m.user_id && <span style={{ fontSize: 10, color: 'var(--km)' }}>({t('am_existing_noacc') || 'senza account'})</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <label htmlFor="name">{t('name_label')}</label>
           <input id="name" className="input" autoFocus
             placeholder={t('addmember_name_ph')}
