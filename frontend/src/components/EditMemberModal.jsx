@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { isIOS } from '../lib/platformDetect.js';
 import GiftIdeasModal from './GiftIdeasModal.jsx';
+import CareAttachments from './CareAttachments.jsx';
 import CaregiverPicker from './CaregiverPicker.jsx';
 
 const PRESET_ROLES = [
@@ -345,6 +346,13 @@ export default function EditMemberModal({ member, onClose, onSaved }) {
             <label htmlFor="birthDate">{t('addmember_birthdate')}</label>
             <input id="birthDate" type="date" className="input"
               value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+
+            {/* 📎 Foto e file del membro (wishlist, taglie, disegni…) —
+                riusa l'infrastruttura Care Hub (bucket + tabella esistenti) */}
+            <div style={{ marginTop: 14 }}>
+              <label>📎 {t('member_attachments_label') || 'Foto e file'}</label>
+              <CareAttachments memberId={member.id} kind="profile" parentId={null} compact />
+            </div>
 
             {!hasAccount && (
               <div style={{ marginTop: 14 }}>
