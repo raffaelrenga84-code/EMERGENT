@@ -16,6 +16,9 @@ export const LANGS = [
 
 export const T = {
   it: {
+    gift_participants_h: 'Chi partecipa al regalo',
+    gift_send_err: 'Impossibile inviare: il tuo account non è collegato a un membro di questa famiglia.',
+    member_attachments_label: 'Foto e file',
     invite_msg_what: 'FAMMY è la nostra app di famiglia 👨‍👩‍👧: agenda e compleanni condivisi, incarichi, spese divise e promemoria medicine con notifiche. Niente chat infinite 😉',
     addexpense_payer_placeholder: '— Chi ha pagato? —',
     addexpense_need_payer: 'Seleziona chi ha pagato la spesa',
@@ -1368,6 +1371,9 @@ export const T = {
   },
 
   en: {
+    gift_participants_h: 'Who joins the gift',
+    gift_send_err: 'Cannot send: your account is not linked to a member of this family.',
+    member_attachments_label: 'Photos and files',
     invite_msg_what: 'FAMMY is our family app 👨‍👩‍👧: shared calendar and birthdays, tasks, split expenses and medication reminders with notifications. No endless group chats 😉',
     addexpense_payer_placeholder: '— Who paid? —',
     addexpense_need_payer: 'Select who paid this expense',
@@ -2694,6 +2700,9 @@ export const T = {
   },
 
   fr: {
+    gift_participants_h: 'Qui participe au cadeau',
+    gift_send_err: 'Envoi impossible : ton compte n\'est pas lié à un membre de cette famille.',
+    member_attachments_label: 'Photos et fichiers',
     invite_msg_what: 'FAMMY est notre appli de famille 👨‍👩‍👧 : agenda et anniversaires partagés, tâches, dépenses partagées et rappels de médicaments avec notifications. Fini les discussions sans fin 😉',
     addexpense_payer_placeholder: '— Qui a payé ? —',
     addexpense_need_payer: 'Sélectionne qui a payé cette dépense',
@@ -4001,6 +4010,9 @@ export const T = {
   },
 
   de: {
+    gift_participants_h: 'Wer macht beim Geschenk mit',
+    gift_send_err: 'Senden nicht möglich: Dein Konto ist mit keinem Mitglied dieser Familie verknüpft.',
+    member_attachments_label: 'Fotos und Dateien',
     invite_msg_what: 'FAMMY ist unsere Familien-App 👨‍👩‍👧: gemeinsamer Kalender und Geburtstage, Aufgaben, geteilte Ausgaben und Medikamenten-Erinnerungen mit Benachrichtigungen. Keine endlosen Chats 😉',
     addexpense_payer_placeholder: '— Wer hat bezahlt? —',
     addexpense_need_payer: 'Wähle aus, wer diese Ausgabe bezahlt hat',
