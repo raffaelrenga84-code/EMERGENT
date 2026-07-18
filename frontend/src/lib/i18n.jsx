@@ -16,6 +16,16 @@ export const LANGS = [
 
 export const T = {
   it: {
+    am_offer_sent: 'Invito inviato a',
+    offer_banner_mid: 'ti ha invitato in',
+    offer_banner_p: 'Decidi tu: se accetti entri nella famiglia, altrimenti nessun problema.',
+    offer_accept: 'Accetta',
+    offer_decline: 'No, grazie',
+    offer_accepted_toast: 'Benvenuto nella famiglia',
+    offer_declined_toast: 'Invito rifiutato',
+    am_existing_h: 'Già su FAMMY in un\'altra tua famiglia?',
+    am_existing_p: 'Tocca per aggiungere direttamente, senza invito: resta collegata allo stesso account.',
+    am_existing_noacc: 'senza account',
     gift_participants_h: 'Chi partecipa al regalo',
     gift_send_err: 'Impossibile inviare: il tuo account non è collegato a un membro di questa famiglia.',
     member_attachments_label: 'Foto e file',
@@ -1371,6 +1381,16 @@ export const T = {
   },
 
   en: {
+    am_offer_sent: 'Invite sent to',
+    offer_banner_mid: 'invited you to',
+    offer_banner_p: 'Your call: accept to join the family, or decline — no hard feelings.',
+    offer_accept: 'Accept',
+    offer_decline: 'No, thanks',
+    offer_accepted_toast: 'Welcome to the family',
+    offer_declined_toast: 'Invite declined',
+    am_existing_h: 'Already on FAMMY in another of your families?',
+    am_existing_p: 'Tap to add directly, no invite needed: they stay linked to the same account.',
+    am_existing_noacc: 'no account',
     gift_participants_h: 'Who joins the gift',
     gift_send_err: 'Cannot send: your account is not linked to a member of this family.',
     member_attachments_label: 'Photos and files',
@@ -2700,6 +2720,16 @@ export const T = {
   },
 
   fr: {
+    am_offer_sent: 'Invitation envoyée à',
+    offer_banner_mid: 't\'a invité dans',
+    offer_banner_p: 'À toi de décider : accepte pour rejoindre la famille, ou refuse sans souci.',
+    offer_accept: 'Accepter',
+    offer_decline: 'Non, merci',
+    offer_accepted_toast: 'Bienvenue dans la famille',
+    offer_declined_toast: 'Invitation refusée',
+    am_existing_h: 'Déjà sur FAMMY dans une autre de tes familles ?',
+    am_existing_p: 'Touche pour ajouter directement, sans invitation : la personne reste liée au même compte.',
+    am_existing_noacc: 'sans compte',
     gift_participants_h: 'Qui participe au cadeau',
     gift_send_err: 'Envoi impossible : ton compte n\'est pas lié à un membre de cette famille.',
     member_attachments_label: 'Photos et fichiers',
@@ -4010,6 +4040,16 @@ export const T = {
   },
 
   de: {
+    am_offer_sent: 'Einladung gesendet an',
+    offer_banner_mid: 'hat dich eingeladen in',
+    offer_banner_p: 'Du entscheidest: annehmen und der Familie beitreten, oder ablehnen — kein Problem.',
+    offer_accept: 'Annehmen',
+    offer_decline: 'Nein, danke',
+    offer_accepted_toast: 'Willkommen in der Familie',
+    offer_declined_toast: 'Einladung abgelehnt',
+    am_existing_h: 'Schon auf FAMMY in einer anderen deiner Familien?',
+    am_existing_p: 'Tippe, um direkt hinzuzufügen — ohne Einladung: bleibt mit demselben Konto verknüpft.',
+    am_existing_noacc: 'ohne Konto',
     gift_participants_h: 'Wer macht beim Geschenk mit',
     gift_send_err: 'Senden nicht möglich: Dein Konto ist mit keinem Mitglied dieser Familie verknüpft.',
     member_attachments_label: 'Fotos und Dateien',
