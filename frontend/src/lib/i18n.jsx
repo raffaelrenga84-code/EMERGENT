@@ -16,6 +16,9 @@ export const LANGS = [
 
 export const T = {
   it: {
+    notif_h: 'Notifiche',
+    notif_empty: 'Nessuna notifica ancora. Quando arriva qualcosa, lo ritrovi qui.',
+    notif_mark_all: 'Segna tutte lette',
     am_offer_sent: 'Invito inviato a',
     offer_banner_mid: 'ti ha invitato in',
     offer_banner_p: 'Decidi tu: se accetti entri nella famiglia, altrimenti nessun problema.',
@@ -961,7 +964,7 @@ export const T = {
     nhc_hint_ios_safari_only: 'Le push su iPhone funzionano solo se hai aperto FAMMY da Safari/PWA, non da app in-app browser (es. Instagram, Facebook).',
     nhc_hint_android_battery: 'Impostazioni → App → FAMMY → Batteria → "Non ottimizzato". Senza, Android killa il Service Worker.',
     nhc_hint_android_bg: 'Impostazioni → App → FAMMY → consenti "Attività in background".',
-    nhc_hint_android_perm: 'Verifica in Impostazioni Chrome → Notifiche → cerca farxer.com → attivo.',
+    nhc_hint_android_perm: 'Verifica in Impostazioni Chrome → Notifiche → cerca myfammy.app → attivo.',
     // Subtask / Checklist
     subtask_h: 'Checklist',
     subtask_empty: 'Nessuna voce. Aggiungine una qui sotto.',
@@ -1155,7 +1158,7 @@ export const T = {
     ht_bp: 'Pressione (mmHg)',
     ht_weight: 'Peso (kg)',
     dr_tagline: "L'app che organizza la famiglia — anche la salute di chi ami.",
-    dr_scan: 'Scansiona il QR per provarla · farxer.com',
+    dr_scan: 'Scansiona il QR per provarla · myfammy.app',
     dr_bp_alert_legend: '⚠️ In rosso: pressione ≥ 140/90 mmHg',
     crs_copy: 'Copia',
     crs_share_native: 'Condividi…',
@@ -1381,6 +1384,9 @@ export const T = {
   },
 
   en: {
+    notif_h: 'Notifications',
+    notif_empty: 'No notifications yet. Anything that arrives will stay here.',
+    notif_mark_all: 'Mark all read',
     am_offer_sent: 'Invite sent to',
     offer_banner_mid: 'invited you to',
     offer_banner_p: 'Your call: accept to join the family, or decline — no hard feelings.',
@@ -2284,7 +2290,7 @@ export const T = {
     nhc_hint_ios_safari_only: 'Push on iPhone only work if FAMMY was opened from Safari/PWA, not from in-app browsers (e.g. Instagram, Facebook).',
     nhc_hint_android_battery: 'Settings → Apps → FAMMY → Battery → "Not optimized". Otherwise Android kills the Service Worker.',
     nhc_hint_android_bg: 'Settings → Apps → FAMMY → allow "Background activity".',
-    nhc_hint_android_perm: 'Check Chrome Settings → Notifications → look for farxer.com → enabled.',
+    nhc_hint_android_perm: 'Check Chrome Settings → Notifications → look for myfammy.app → enabled.',
     // Subtask / Checklist
     subtask_h: 'Checklist',
     subtask_empty: 'No items. Add one below.',
@@ -2478,7 +2484,7 @@ export const T = {
     ht_bp: 'Blood pressure (mmHg)',
     ht_weight: 'Weight (kg)',
     dr_tagline: 'The app that organizes your family — including the health of your loved ones.',
-    dr_scan: 'Scan the QR to try it · farxer.com',
+    dr_scan: 'Scan the QR to try it · myfammy.app',
     dr_bp_alert_legend: '⚠️ In red: blood pressure ≥ 140/90 mmHg',
     crs_copy: 'Copy',
     crs_share_native: 'Share…',
@@ -2720,6 +2726,9 @@ export const T = {
   },
 
   fr: {
+    notif_h: 'Notifications',
+    notif_empty: 'Aucune notification pour l\'instant. Tout ce qui arrive restera ici.',
+    notif_mark_all: 'Tout marquer comme lu',
     am_offer_sent: 'Invitation envoyée à',
     offer_banner_mid: 't\'a invité dans',
     offer_banner_p: 'À toi de décider : accepte pour rejoindre la famille, ou refuse sans souci.',
@@ -3531,7 +3540,7 @@ export const T = {
     nhc_hint_ios_safari_only: 'Les push sur iPhone fonctionnent seulement si FAMMY est ouvert depuis Safari/PWA, pas depuis un navigateur in-app (Instagram, Facebook…).',
     nhc_hint_android_battery: 'Paramètres → Apps → FAMMY → Batterie → "Non optimisé". Sinon Android tue le Service Worker.',
     nhc_hint_android_bg: 'Paramètres → Apps → FAMMY → autorise "Activité en arrière-plan".',
-    nhc_hint_android_perm: 'Vérifie dans Paramètres Chrome → Notifications → cherche farxer.com → activé.',
+    nhc_hint_android_perm: 'Vérifie dans Paramètres Chrome → Notifications → cherche myfammy.app → activé.',
     // Subtask / Checklist
     subtask_h: 'Liste',
     subtask_empty: 'Aucun élément. Ajoutes-en un ci-dessous.',
@@ -3850,7 +3859,7 @@ export const T = {
     dd_today: 'Aujourd’hui',
     dd_weight_label: 'Poids (kg)',
     dr_bp_alert_legend: '⚠️ En rouge : tension ≥ 140/90 mmHg',
-    dr_scan: 'Scannez le QR pour l’essayer · farxer.com',
+    dr_scan: 'Scannez le QR pour l’essayer · myfammy.app',
     dr_tagline: 'L’app qui organise la famille — y compris la santé de vos proches.',
     em_assisted_hint: 'Personne âgée, enfant ou personne avec des besoins spécifiques. Débloque la gestion des médicaments avec rappels.',
     em_assisted_label: 'Ce membre est assisté',
@@ -4040,6 +4049,9 @@ export const T = {
   },
 
   de: {
+    notif_h: 'Benachrichtigungen',
+    notif_empty: 'Noch keine Benachrichtigungen. Alles, was ankommt, bleibt hier.',
+    notif_mark_all: 'Alle als gelesen markieren',
     am_offer_sent: 'Einladung gesendet an',
     offer_banner_mid: 'hat dich eingeladen in',
     offer_banner_p: 'Du entscheidest: annehmen und der Familie beitreten, oder ablehnen — kein Problem.',
@@ -4842,7 +4854,7 @@ export const T = {
     nhc_hint_ios_safari_only: 'Push auf iPhone funktionieren nur, wenn FAMMY aus Safari/PWA geöffnet wurde, nicht aus In-App-Browsern (Instagram, Facebook…).',
     nhc_hint_android_battery: 'Einstellungen → Apps → FAMMY → Akku → "Nicht optimieren". Sonst killt Android den Service Worker.',
     nhc_hint_android_bg: 'Einstellungen → Apps → FAMMY → erlaube "Hintergrundaktivität".',
-    nhc_hint_android_perm: 'Prüfe in Chrome-Einstellungen → Benachrichtigungen → suche farxer.com → aktiviert.',
+    nhc_hint_android_perm: 'Prüfe in Chrome-Einstellungen → Benachrichtigungen → suche myfammy.app → aktiviert.',
     // Subtask / Checklist
     subtask_h: 'Checkliste',
     subtask_empty: 'Keine Einträge. Füge unten einen hinzu.',
@@ -5161,7 +5173,7 @@ export const T = {
     dd_today: 'Heute',
     dd_weight_label: 'Gewicht (kg)',
     dr_bp_alert_legend: '⚠️ Rot: Blutdruck ≥ 140/90 mmHg',
-    dr_scan: 'Scanne den QR-Code zum Ausprobieren · farxer.com',
+    dr_scan: 'Scanne den QR-Code zum Ausprobieren · myfammy.app',
     dr_tagline: 'Die App, die die Familie organisiert — auch die Gesundheit deiner Liebsten.',
     em_assisted_hint: 'Ältere Person, Kind oder Person mit besonderen Bedürfnissen. Schaltet die Medikamentenverwaltung mit Erinnerungen frei.',
     em_assisted_label: 'Dieses Mitglied wird betreut',
