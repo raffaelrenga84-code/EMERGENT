@@ -16,6 +16,10 @@ export const LANGS = [
 
 export const T = {
   it: {
+    dommig_h: 'FAMMY ha un nuovo indirizzo!',
+    dommig_p: 'Ci siamo trasferiti su myfammy.app. Questa versione continuerà a funzionare ancora per un po\', ma prima o poi verrà spenta: apri il nuovo indirizzo, installa la nuova icona sulla Home e poi elimina questa. I tuoi dati restano identici, devi solo rifare il login.',
+    dommig_open: 'Apri myfammy.app',
+    dommig_later: 'Più tardi',
     notif_h: 'Notifiche',
     notif_empty: 'Nessuna notifica ancora. Quando arriva qualcosa, lo ritrovi qui.',
     notif_mark_all: 'Segna tutte lette',
@@ -1384,6 +1388,10 @@ export const T = {
   },
 
   en: {
+    dommig_h: 'FAMMY has a new address!',
+    dommig_p: 'We moved to myfammy.app. This version will keep working for a while, but it will eventually shut down: open the new address, install the new icon on your Home screen, then delete this one. Your data stays exactly the same — you just need to log in again.',
+    dommig_open: 'Open myfammy.app',
+    dommig_later: 'Later',
     notif_h: 'Notifications',
     notif_empty: 'No notifications yet. Anything that arrives will stay here.',
     notif_mark_all: 'Mark all read',
@@ -2726,6 +2734,10 @@ export const T = {
   },
 
   fr: {
+    dommig_h: 'FAMMY a une nouvelle adresse !',
+    dommig_p: 'Nous avons déménagé sur myfammy.app. Cette version fonctionnera encore un moment, mais elle finira par être coupée : ouvre la nouvelle adresse, installe la nouvelle icône sur ton écran d\'accueil, puis supprime celle-ci. Tes données restent identiques — il suffit de te reconnecter.',
+    dommig_open: 'Ouvrir myfammy.app',
+    dommig_later: 'Plus tard',
     notif_h: 'Notifications',
     notif_empty: 'Aucune notification pour l\'instant. Tout ce qui arrive restera ici.',
     notif_mark_all: 'Tout marquer comme lu',
@@ -4049,6 +4061,10 @@ export const T = {
   },
 
   de: {
+    dommig_h: 'FAMMY hat eine neue Adresse!',
+    dommig_p: 'Wir sind auf myfammy.app umgezogen. Diese Version funktioniert noch eine Weile, wird aber irgendwann abgeschaltet: Öffne die neue Adresse, installiere das neue Icon auf dem Homescreen und lösche danach dieses. Deine Daten bleiben identisch — du musst dich nur neu anmelden.',
+    dommig_open: 'myfammy.app öffnen',
+    dommig_later: 'Später',
     notif_h: 'Benachrichtigungen',
     notif_empty: 'Noch keine Benachrichtigungen. Alles, was ankommt, bleibt hier.',
     notif_mark_all: 'Alle als gelesen markieren',
