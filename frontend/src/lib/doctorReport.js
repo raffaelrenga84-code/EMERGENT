@@ -218,7 +218,7 @@ export async function generateDoctorReport({ member, profile, meds, diary, t }) 
   // QR code → sito FAMMY (angolo in basso a destra)
   try {
     const qr = document.createElement('canvas');
-    await QRCode.toCanvas(qr, 'https://farxer.com', {
+    await QRCode.toCanvas(qr, 'https://www.myfammy.app', {
       width: 120, margin: 1,
       color: { dark: INK, light: '#F7F5F0' },
     });
