@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { APP_URL } from '../lib/appUrl.js';
 import { supabase } from '../lib/supabase.js';
 
 /**
@@ -19,7 +20,7 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
       const fTokens = families.map((f) => ({
         family: f,
         token: f.ical_token,
-        url: `${window.location.origin}/api/ical/${f.ical_token}.ics`,
+        url: `${APP_URL}/api/ical/${f.ical_token}.ics`,
       }));
       setTokens(fTokens);
       const defaultSelected = {};
@@ -87,7 +88,7 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
           return {
             family: t.family,
             token: updates[updateIdx].data,
-            url: `${window.location.origin}/api/ical/${updates[updateIdx].data}.ics`,
+            url: `${APP_URL}/api/ical/${updates[updateIdx].data}.ics`,
           };
         })
       );
