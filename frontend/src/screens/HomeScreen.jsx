@@ -25,6 +25,7 @@ import AddEventModal from '../components/AddEventModal.jsx';
 import MedicationReminderToast from '../components/MedicationReminderToast.jsx';
 import FeedbackToastSubscriber from '../components/FeedbackToastSubscriber.jsx';
 import GlobalSearch from '../components/GlobalSearch.jsx';
+import NotificationBell from '../components/NotificationBell.jsx';
 import { useUnreadTaskCount } from '../lib/useUnreadTaskCount.js';
 import { useMedicationReminders } from '../lib/useMedicationReminders.js';
 
@@ -518,6 +519,7 @@ function Header({ family, members, allMembers, tasks, families, activeFamily, is
             variant="pill"
           />
         </div>
+        <NotificationBell />
         {onOpenSearch && (
           <button
             type="button"
