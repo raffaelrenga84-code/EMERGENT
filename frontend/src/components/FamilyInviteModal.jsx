@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { APP_URL } from '../lib/appUrl.js';
 import { useT } from '../lib/i18n.jsx';
 import { openExternal } from '../lib/openExternal.js';
 
@@ -52,7 +53,9 @@ export default function FamilyInviteModal({ family, session, onClose }) {
     }
   };
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  // Link SEMPRE sul dominio canonico: chi invita da farxer.com genera
+  // comunque inviti myfammy.app (stesso deploy, stesso DB).
+  const origin = APP_URL;
   const buildUrl = (tok) => (tok ? `${origin}/invite/${tok}` : '');
 
   // Carica inviti, token e placeholder
