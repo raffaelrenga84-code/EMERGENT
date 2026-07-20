@@ -43,5 +43,13 @@
       "type": "image/png",
       "purpose": "any"
     }
+  ],
+  "description": "FAMMY — l'app per coordinare la tua famiglia: agenda e compleanni condivisi, incarichi, spese divise e promemoria medicine con notifiche. Senza chat infinite.",
+  "lang": "it",
+  "dir": "ltr",
+  "categories": [
+    "lifestyle",
+    "productivity",
+    "medical"
   ]
 }
