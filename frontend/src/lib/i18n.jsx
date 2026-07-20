@@ -16,6 +16,12 @@ export const LANGS = [
 
 export const T = {
   it: {
+    friend_inv_h: 'I tuoi inviti',
+    friend_inv_sub_empty: 'Invita un amico e segui qui se si iscrive.',
+    friend_inv_sub: '{a} iscritti su {n} inviti',
+    friend_inv_pending: 'In attesa', friend_inv_joined: 'Iscritto',
+    friend_inv_generic: 'Invito', friend_inv_label_q: 'A chi lo mandi? (nota per te, es. "Marco")',
+    family_invite_friend_hint: 'Per invitare qualcuno DENTRO una famiglia, usa 💌 Invita sulla famiglia.',
     wish_h: 'Auguri per', wish_h_own: 'I tuoi auguri!',
     wish_sub: 'Tutta la famiglia può scrivere — anche il festeggiato risponde qui.',
     wish_empty: 'Nessun augurio ancora — scrivi tu il primo! 🎈',
@@ -1395,6 +1401,12 @@ export const T = {
   },
 
   en: {
+    friend_inv_h: 'Your invites',
+    friend_inv_sub_empty: 'Invite a friend and track here if they sign up.',
+    friend_inv_sub: '{a} signed up of {n} invites',
+    friend_inv_pending: 'Pending', friend_inv_joined: 'Signed up',
+    friend_inv_generic: 'Invite', friend_inv_label_q: 'Who are you sending it to? (a note for you, e.g. "Marco")',
+    family_invite_friend_hint: 'To invite someone INTO a family, use 💌 Invite on the family.',
     wish_h: 'Wishes for', wish_h_own: 'Your birthday wishes!',
     wish_sub: 'The whole family can write — the birthday person replies here too.',
     wish_empty: 'No wishes yet — be the first! 🎈',
@@ -2748,6 +2760,12 @@ export const T = {
   },
 
   fr: {
+    friend_inv_h: 'Tes invitations',
+    friend_inv_sub_empty: 'Invite un ami et suis ici s\'il s\'inscrit.',
+    friend_inv_sub: '{a} inscrits sur {n} invitations',
+    friend_inv_pending: 'En attente', friend_inv_joined: 'Inscrit',
+    friend_inv_generic: 'Invitation', friend_inv_label_q: 'À qui l\'envoies-tu ? (une note pour toi, ex. "Marco")',
+    family_invite_friend_hint: 'Pour inviter quelqu\'un DANS une famille, utilise 💌 Inviter sur la famille.',
     wish_h: 'Vœux pour', wish_h_own: 'Tes vœux d\'anniversaire !',
     wish_sub: 'Toute la famille peut écrire — la personne fêtée répond ici aussi.',
     wish_empty: 'Aucun vœu pour l\'instant — sois le premier ! 🎈',
@@ -4082,6 +4100,12 @@ export const T = {
   },
 
   de: {
+    friend_inv_h: 'Deine Einladungen',
+    friend_inv_sub_empty: 'Lade einen Freund ein und verfolge hier, ob er sich anmeldet.',
+    friend_inv_sub: '{a} angemeldet von {n} Einladungen',
+    friend_inv_pending: 'Ausstehend', friend_inv_joined: 'Angemeldet',
+    friend_inv_generic: 'Einladung', friend_inv_label_q: 'An wen schickst du sie? (eine Notiz für dich, z.B. "Marco")',
+    family_invite_friend_hint: 'Um jemanden IN eine Familie einzuladen, nutze 💌 Einladen auf der Familie.',
     wish_h: 'Glückwünsche für', wish_h_own: 'Deine Geburtstagswünsche!',
     wish_sub: 'Die ganze Familie kann schreiben — das Geburtstagskind antwortet hier auch.',
     wish_empty: 'Noch keine Wünsche — sei der Erste! 🎈',
