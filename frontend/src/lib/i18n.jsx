@@ -16,6 +16,10 @@ export const LANGS = [
 
 export const T = {
   it: {
+    fj_joined: 'si è iscritto a FAMMY!', fj_generic: 'Il tuo amico',
+    fj_sub: 'Vuoi aggiungerlo a una delle tue famiglie? Riceverà una proposta e decide lui.',
+    fj_add_btn: 'Aggiungi a una famiglia', fj_later: 'Più tardi',
+    fj_pick: 'In quale famiglia?', fj_offer_sent: 'Proposta inviata a',
     friend_inv_h: 'I tuoi inviti',
     friend_inv_sub_empty: 'Invita un amico e segui qui se si iscrive.',
     friend_inv_sub: '{a} iscritti su {n} inviti',
@@ -1401,6 +1405,10 @@ export const T = {
   },
 
   en: {
+    fj_joined: 'joined FAMMY!', fj_generic: 'Your friend',
+    fj_sub: 'Want to add them to one of your families? They\'ll get a proposal and decide.',
+    fj_add_btn: 'Add to a family', fj_later: 'Later',
+    fj_pick: 'Which family?', fj_offer_sent: 'Proposal sent to',
     friend_inv_h: 'Your invites',
     friend_inv_sub_empty: 'Invite a friend and track here if they sign up.',
     friend_inv_sub: '{a} signed up of {n} invites',
@@ -2760,6 +2768,10 @@ export const T = {
   },
 
   fr: {
+    fj_joined: 's\'est inscrit sur FAMMY !', fj_generic: 'Ton ami',
+    fj_sub: 'Tu veux l\'ajouter à une de tes familles ? Il recevra une proposition et décide.',
+    fj_add_btn: 'Ajouter à une famille', fj_later: 'Plus tard',
+    fj_pick: 'Quelle famille ?', fj_offer_sent: 'Proposition envoyée à',
     friend_inv_h: 'Tes invitations',
     friend_inv_sub_empty: 'Invite un ami et suis ici s\'il s\'inscrit.',
     friend_inv_sub: '{a} inscrits sur {n} invitations',
@@ -4100,6 +4112,10 @@ export const T = {
   },
 
   de: {
+    fj_joined: 'ist FAMMY beigetreten!', fj_generic: 'Dein Freund',
+    fj_sub: 'Möchtest du ihn zu einer deiner Familien hinzufügen? Er bekommt einen Vorschlag und entscheidet.',
+    fj_add_btn: 'Zu einer Familie hinzufügen', fj_later: 'Später',
+    fj_pick: 'Welche Familie?', fj_offer_sent: 'Vorschlag gesendet an',
     friend_inv_h: 'Deine Einladungen',
     friend_inv_sub_empty: 'Lade einen Freund ein und verfolge hier, ob er sich anmeldet.',
     friend_inv_sub: '{a} angemeldet von {n} Einladungen',
