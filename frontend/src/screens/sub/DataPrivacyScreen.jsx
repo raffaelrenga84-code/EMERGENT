@@ -128,7 +128,15 @@ export default function DataPrivacyScreen({ session, onBack }) {
 
   return (
     <div className="profile-screen">
-      <button onClick={onBack} className="profile-back" data-testid="gdpr-back">‹ {t('back')}</button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button onClick={onBack} className="profile-back" data-testid="gdpr-back">‹ {t('back')}</button>
+        <button onClick={onBack} aria-label="Chiudi" data-testid="gdpr-close"
+          style={{
+            width: 34, height: 34, borderRadius: '50%', border: '1px solid var(--sm)',
+            background: 'var(--s)', color: 'var(--km)', fontSize: 16, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>✕</button>
+      </div>
 
       <h1 className="profile-h">{t('gdpr_h')}</h1>
       <p style={{ fontSize: 13, color: 'var(--km)', marginBottom: 22, lineHeight: 1.5 }}>
@@ -141,14 +149,16 @@ export default function DataPrivacyScreen({ session, onBack }) {
         <p style={{ fontSize: 13, color: 'var(--km)', margin: '0 0 12px', lineHeight: 1.4 }}>
           {t('gdpr_policy_sub')}
         </p>
-        <button
-          type="button"
+        <a
+          href="/privacy.html"
+          target="_blank"
+          rel="noopener"
           className="btn full secondary"
-          onClick={() => setShowPrivacy(true)}
           data-testid="gdpr-open-policy"
+          style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
         >
           📄 {t('gdpr_policy_btn')}
-        </button>
+        </a>
       </div>
 
       {/* Re-open consent banner */}
