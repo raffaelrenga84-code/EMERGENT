@@ -4,7 +4,7 @@ import { useT, LANGS } from '../../lib/i18n.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import AddressAutocomplete from '../../components/AddressAutocomplete.jsx';
 import FamilyMemoriesCard from '../../components/FamilyMemoriesCard.jsx';
-import InviteStatsCard from '../../components/InviteStatsCard.jsx';
+import FriendInvitesCard from '../../components/FriendInvitesCard.jsx';
 import OnboardingTour from '../../components/OnboardingTour.jsx';
 import QuietHoursControl from '../../components/QuietHoursControl.jsx';
 import WeeklySummaryCard from '../../components/WeeklySummaryCard.jsx';
@@ -899,11 +899,11 @@ export default function ProfileTab({ session, profile, families = [], members = 
 
       {/* GRUPPO 7: INVITA UN AMICO */}
       <ProfileGroup icon="💝" title={t('profile_card_share_t')} subtitle={t('profile_card_share_s')} testid="profile-group-share">
-        <InviteStatsCard session={session} families={families} />
+        <FriendInvitesCard session={session} />
         <p style={{ fontSize: 13, color: 'var(--km)', margin: '8px 0 12px', lineHeight: 1.4 }}>
           {t('profile_referral_sub')}
         </p>
-        <button className="btn full" onClick={shareApp} data-testid="profile-referral-btn">{t('profile_referral_btn')}</button>
+
         <p style={{ fontSize: 11, color: 'var(--km)', margin: '10px 4px 0', lineHeight: 1.45, textAlign: 'center' }}>
           💡 {t('invite_hint_family')} <strong>{t('family_title') || 'Famiglia'} → 💌</strong>.
         </p>
