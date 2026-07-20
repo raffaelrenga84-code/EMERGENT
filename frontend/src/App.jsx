@@ -144,10 +144,32 @@ export default function App() {
       } catch (e) { /* ignore */ }
     }
 
+    // Referral amico: se il link era myfammy.app/?ref=<token>, salviamo il
+    // token per rivendicarlo al primo login (l'OAuth ricarica la pagina).
+    try {
+      const refToken = new URLSearchParams(window.location.search).get('ref');
+      if (refToken) {
+        localStorage.setItem('fammy_pending_ref', refToken);
+        // Pulisce l'URL (evita di ri-processare il ref a ogni reload)
+        const clean = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, '', clean || '/');
+      }
+    } catch (_) {}
+
+    const claimPendingRef = async () => {
+      try {
+        const token = localStorage.getItem('fammy_pending_ref');
+        if (!token) return;
+        await supabase.rpc('claim_friend_invite', { p_token: token });
+        localStorage.removeItem('fammy_pending_ref');
+      } catch (_) { /* riproveremo al prossimo login */ }
+    };
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       if (data.session) {
         localStorage.setItem('fammy_session', JSON.stringify(data.session));
+        claimPendingRef();
       }
       setLoading(false);
     });
@@ -156,6 +178,7 @@ export default function App() {
       setSession(s);
       if (s) {
         localStorage.setItem('fammy_session', JSON.stringify(s));
+        claimPendingRef();
         // Riprende un eventuale invite token salvato: dopo OAuth/phone
         // signup, Supabase ci ridireziona alla home perdendo /invite/:token.
         // Se l'abbiamo salvato in localStorage al primo passaggio, lo
