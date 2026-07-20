@@ -64,9 +64,9 @@ function buildIcs({ calName, events, tasks }: { calName: string; events: any[]; 
 
   // Events
   for (const ev of events) {
-    const start = ev.start_at ? new Date(ev.start_at) : null;
+    const start = ev.starts_at ? new Date(ev.starts_at) : null;
     if (!start || Number.isNaN(start.getTime())) continue;
-    const end = ev.end_at ? new Date(ev.end_at) : new Date(start.getTime() + 60 * 60 * 1000);
+    const end = ev.ends_at ? new Date(ev.ends_at) : new Date(start.getTime() + 60 * 60 * 1000);
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:fammy-event-${ev.id}@fammy.app`);
     lines.push(`DTSTAMP:${now}`);
@@ -266,11 +266,11 @@ serve(async (req) => {
       // 4) Eventi + task delle famiglie nel range
       const { data: events } = await supabase
         .from("events")
-        .select("id, title, description, location, start_at, end_at, family_id")
+        .select("id, title, description, location, starts_at, ends_at, family_id")
         .in("family_id", familyIds)
-        .gte("start_at", startIso)
-        .lte("start_at", endIso)
-        .order("start_at");
+        .gte("starts_at", startIso)
+        .lte("starts_at", endIso)
+        .order("starts_at");
       const { data: tasks } = await supabase
         .from("tasks")
         .select("id, title, note, due_date, due_time, family_id")
