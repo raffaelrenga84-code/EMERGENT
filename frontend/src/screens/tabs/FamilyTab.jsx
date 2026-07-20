@@ -12,6 +12,7 @@ import WhoIsWhereTimeline from '../../components/WhoIsWhereTimeline.jsx';
 import MedicationsModal from '../../components/MedicationsModal.jsx';
 import TabHeaderActions from '../../components/TabHeaderActions.jsx';
 import { findActiveAbsence, absenceLabel, fmtAbsenceRange } from '../../lib/useAbsences.js';
+import { APP_URL } from '../../lib/appUrl.js';
 
 // Mostra il ruolo nella lingua corrente. Preset → traduzione `role_<id>`.
 // I ruoli "custom" inseriti dall'utente vengono mostrati così come sono.
@@ -23,6 +24,24 @@ function translateRole(role, t) {
 }
 
 export default function FamilyTab({ family, members, session, families, activeFamily, isAll, absences = [], profile, tasks = [], onSwitchFamily, onNewFamily, onChanged, onFamilyUpdated, onMemberUpdated, onOpenAI }) {
+  const shareFriend = async () => {
+    const myUserId = session?.user?.id;
+    let token = null;
+    try {
+      const { data, error } = await supabase.from('friend_invites')
+        .insert({ inviter_user_id: myUserId, label: null })
+        .select('token').single();
+      if (!error) token = data.token;
+    } catch (_) {}
+    const url = token ? `${APP_URL}/?ref=${token}` : APP_URL;
+    const msg = t('profile_referral_msg', { url });
+    const bare = t('profile_referral_msg', { url: '' }).replace(/[\s:]*$/, '');
+    try {
+      if (navigator.share) await navigator.share({ title: 'FAMMY', text: bare, url });
+      else { await navigator.clipboard.writeText(msg); window.dispatchEvent(new CustomEvent('fammy_toast', { detail: { text: t('share_copied') || 'Link copiato', tone: 'success' } })); }
+    } catch (_) {}
+  };
+
   const { t } = useT();
   const [showAdd, setShowAdd] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -283,6 +302,15 @@ export default function FamilyTab({ family, members, session, families, activeFa
             style={{ borderStyle: 'dashed' }}>
             {t('have_invite_code')}
           </button>
+          {/* Invito amico FUORI famiglia (link tracciato ?ref) — distinto
+              dagli inviti dentro una famiglia (bottone 💌 sulle card sopra) */}
+          <button className="btn full secondary" onClick={shareFriend} style={{ borderStyle: 'dashed' }}
+            data-testid="family-tab-invite-friend-btn">
+            {t('profile_referral_btn') || '💝 Invita un amico nuovo'}
+          </button>
+          <div style={{ fontSize: 11, color: 'var(--km)', textAlign: 'center', marginTop: -2 }}>
+            {t('family_invite_friend_hint') || 'Per invitare qualcuno DENTRO una famiglia, usa 💌 Invita sulla famiglia.'}
+          </div>
         </div>
 
         {editingFamilyAll && (
