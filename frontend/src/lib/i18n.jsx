@@ -16,6 +16,13 @@ export const LANGS = [
 
 export const T = {
   it: {
+    wish_h: 'Auguri per', wish_h_own: 'I tuoi auguri!',
+    wish_sub: 'Tutta la famiglia può scrivere — anche il festeggiato risponde qui.',
+    wish_empty: 'Nessun augurio ancora — scrivi tu il primo! 🎈',
+    wish_empty_own: 'Ancora nessun augurio… arriveranno! 🎈',
+    wish_quick: 'Tanti auguri', wish_ph: 'Scrivi i tuoi auguri…',
+    wish_banner_today: 'Compleanno oggi!', wish_banner_own: 'Oggi è il TUO compleanno — auguri!',
+    wish_write_btn: 'Fai gli auguri', wish_read_btn: 'Leggi gli auguri',
     dommig_h: 'FAMMY ha un nuovo indirizzo!',
     dommig_p: 'Ci siamo trasferiti su myfammy.app. Questa versione continuerà a funzionare ancora per un po\', ma prima o poi verrà spenta: apri il nuovo indirizzo, installa la nuova icona sulla Home e poi elimina questa. I tuoi dati restano identici, devi solo rifare il login.',
     dommig_open: 'Apri myfammy.app',
@@ -1388,6 +1395,13 @@ export const T = {
   },
 
   en: {
+    wish_h: 'Wishes for', wish_h_own: 'Your birthday wishes!',
+    wish_sub: 'The whole family can write — the birthday person replies here too.',
+    wish_empty: 'No wishes yet — be the first! 🎈',
+    wish_empty_own: 'No wishes yet… they will come! 🎈',
+    wish_quick: 'Happy birthday', wish_ph: 'Write your wishes…',
+    wish_banner_today: 'Birthday today!', wish_banner_own: 'Today is YOUR birthday — congrats!',
+    wish_write_btn: 'Send wishes', wish_read_btn: 'Read your wishes',
     dommig_h: 'FAMMY has a new address!',
     dommig_p: 'We moved to myfammy.app. This version will keep working for a while, but it will eventually shut down: open the new address, install the new icon on your Home screen, then delete this one. Your data stays exactly the same — you just need to log in again.',
     dommig_open: 'Open myfammy.app',
@@ -2734,6 +2748,13 @@ export const T = {
   },
 
   fr: {
+    wish_h: 'Vœux pour', wish_h_own: 'Tes vœux d\'anniversaire !',
+    wish_sub: 'Toute la famille peut écrire — la personne fêtée répond ici aussi.',
+    wish_empty: 'Aucun vœu pour l\'instant — sois le premier ! 🎈',
+    wish_empty_own: 'Pas encore de vœux… ça arrive ! 🎈',
+    wish_quick: 'Joyeux anniversaire', wish_ph: 'Écris tes vœux…',
+    wish_banner_today: 'Anniversaire aujourd\'hui !', wish_banner_own: 'C\'est TON anniversaire — félicitations !',
+    wish_write_btn: 'Envoyer des vœux', wish_read_btn: 'Lire tes vœux',
     dommig_h: 'FAMMY a une nouvelle adresse !',
     dommig_p: 'Nous avons déménagé sur myfammy.app. Cette version fonctionnera encore un moment, mais elle finira par être coupée : ouvre la nouvelle adresse, installe la nouvelle icône sur ton écran d\'accueil, puis supprime celle-ci. Tes données restent identiques — il suffit de te reconnecter.',
     dommig_open: 'Ouvrir myfammy.app',
@@ -4061,6 +4082,13 @@ export const T = {
   },
 
   de: {
+    wish_h: 'Glückwünsche für', wish_h_own: 'Deine Geburtstagswünsche!',
+    wish_sub: 'Die ganze Familie kann schreiben — das Geburtstagskind antwortet hier auch.',
+    wish_empty: 'Noch keine Wünsche — sei der Erste! 🎈',
+    wish_empty_own: 'Noch keine Wünsche… sie kommen! 🎈',
+    wish_quick: 'Alles Gute', wish_ph: 'Schreibe deine Wünsche…',
+    wish_banner_today: 'Heute Geburtstag!', wish_banner_own: 'Heute ist DEIN Geburtstag — alles Gute!',
+    wish_write_btn: 'Wünsche senden', wish_read_btn: 'Wünsche lesen',
     dommig_h: 'FAMMY hat eine neue Adresse!',
     dommig_p: 'Wir sind auf myfammy.app umgezogen. Diese Version funktioniert noch eine Weile, wird aber irgendwann abgeschaltet: Öffne die neue Adresse, installiere das neue Icon auf dem Homescreen und lösche danach dieses. Deine Daten bleiben identisch — du musst dich nur neu anmelden.',
     dommig_open: 'myfammy.app öffnen',
