@@ -5,6 +5,7 @@ import Avatar from '../../components/Avatar.jsx';
 import BirthdayReminder from '../../components/BirthdayReminder.jsx';
 import FamilyOfferBanner from '../../components/FamilyOfferBanner.jsx';
 import DomainMigrationBanner from '../../components/DomainMigrationBanner.jsx';
+import FriendJoinedBanner from '../../components/FriendJoinedBanner.jsx';
 import AddTaskModal from '../../components/AddTaskModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import OnboardingChecklist from '../../components/OnboardingChecklist.jsx';
@@ -711,6 +712,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
         completedTaskCount={dones.length}
       />
 
+      <FriendJoinedBanner session={session} families={families} />
       <DomainMigrationBanner />
       <FamilyOfferBanner session={session} onChanged={onChanged} />
       <BirthdayReminder members={members} session={session} familyId={familyId} families={families} />
