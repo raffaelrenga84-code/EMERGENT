@@ -31,7 +31,7 @@
   }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
-  header { padding: 28px 0; }
+  header { padding: 28px 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .brand {
     display: inline-flex; align-items: center; gap: 10px;
     font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 15px;
@@ -40,6 +40,14 @@
     padding: 8px 16px; border-radius: 999px;
   }
   .brand img { width: 24px; height: 24px; border-radius: 6px; }
+
+  .langs { display: inline-flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px; }
+  .langs button {
+    font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 500;
+    border: 0; background: transparent; color: var(--text-2);
+    padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .langs button.active { background: var(--text); color: #fff; }
 
   .hero {
     display: grid; grid-template-columns: 1fr 1fr; gap: 56px;
@@ -75,7 +83,6 @@
   }
   .btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
 
-  /* phone mockup */
   .phone {
     justify-self: center;
     width: 300px; height: 610px; background: #111; border-radius: 44px;
@@ -117,53 +124,164 @@
   <div class="wrap">
     <header>
       <span class="brand"><img src="/icon.png" alt="FAMMY logo"> FAMMY</span>
+      <div class="langs" id="langs">
+        <button data-lang="it">IT</button>
+        <button data-lang="en">EN</button>
+        <button data-lang="fr">FR</button>
+        <button data-lang="de">DE</button>
+      </div>
     </header>
 
     <section class="hero">
       <div>
-        <h1>La tua famiglia,<br><span class="accent">finalmente organizzata.</span></h1>
-        <p class="lead">
-          FAMMY è l'app che tiene insieme la vita di famiglia: incarichi, agenda,
-          spese e promemoria in un unico posto. Niente più conversazioni infinite
-          per ricordarsi chi compra il pane.
-        </p>
+        <h1><span data-i18n="h1a"></span><br><span class="accent" data-i18n="h1b"></span></h1>
+        <p class="lead" data-i18n="lead"></p>
 
         <ul class="features">
-          <li><span class="ic">📋</span> Incarichi condivisi, con una chat per ogni cosa da fare</li>
-          <li><span class="ic">📅</span> Agenda e compleanni, con sync Apple &amp; Google Calendar</li>
-          <li><span class="ic">💸</span> Spese divise, anche a rate parziali</li>
-          <li><span class="ic">✈️</span> Assenze: vedi chi c'è in famiglia oggi</li>
-          <li><span class="ic">💊</span> Promemoria medicine con notifiche, per te e chi assisti</li>
+          <li><span class="ic">📋</span> <span data-i18n="f1"></span></li>
+          <li><span class="ic">📅</span> <span data-i18n="f2"></span></li>
+          <li><span class="ic">💸</span> <span data-i18n="f3"></span></li>
+          <li><span class="ic">✈️</span> <span data-i18n="f4"></span></li>
+          <li><span class="ic">💊</span> <span data-i18n="f5"></span></li>
         </ul>
 
         <div class="cta-card">
-          <h3>Apri FAMMY</h3>
-          <p>Pensata per il mobile: aprila nel browser e installala come app dal tuo telefono.</p>
-          <a class="btn" href="/">Vai all'app →</a>
+          <h3 data-i18n="ctaTitle"></h3>
+          <p data-i18n="ctaText"></p>
+          <a class="btn" href="/" data-i18n="ctaBtn"></a>
         </div>
       </div>
 
       <div class="phone" aria-hidden="true">
         <div class="phone-screen">
           <div class="notch"></div>
-          <div class="ph-over">🏠 Famiglia Rossi · 3 da fare</div>
-          <div class="ph-title">Bacheca</div>
-          <div class="ph-task"><span class="dot">🛒</span><div><b>Spesa al super</b><span>Assegnato a Mamma</span></div></div>
-          <div class="ph-task"><span class="dot">🩺</span><div><b>Visita pediatra</b><span>Assegnato a Papà</span></div></div>
-          <div class="ph-task"><span class="dot">🎂</span><div><b>Torta per Sofia</b><span>Assegnato a Tutti</span></div></div>
-          <div class="ph-task"><span class="dot">🚗</span><div><b>Cambio gomme</b><span>Assegnato a Marco</span></div></div>
+          <div class="ph-over" data-i18n="phOver"></div>
+          <div class="ph-title" data-i18n="phTitle"></div>
+          <div class="ph-task"><span class="dot">🛒</span><div><b data-i18n="t1"></b><span data-i18n="t1a"></span></div></div>
+          <div class="ph-task"><span class="dot">🩺</span><div><b data-i18n="t2"></b><span data-i18n="t2a"></span></div></div>
+          <div class="ph-task"><span class="dot">🎂</span><div><b data-i18n="t3"></b><span data-i18n="t3a"></span></div></div>
+          <div class="ph-task"><span class="dot">🚗</span><div><b data-i18n="t4"></b><span data-i18n="t4a"></span></div></div>
         </div>
       </div>
     </section>
 
     <footer>
-      <div>© 2026 FAMMY — app per l'organizzazione familiare</div>
+      <div data-i18n="foot"></div>
       <div class="foot-links">
-        <a href="/privacy">Privacy</a>
-        <a href="/terms">Termini di servizio</a>
-        <a href="mailto:raffael.renga84@gmail.com">Contatti</a>
+        <a href="/privacy" data-i18n="fPrivacy"></a>
+        <a href="/terms" data-i18n="fTerms"></a>
+        <a href="mailto:raffael.renga84@gmail.com" data-i18n="fContact"></a>
       </div>
     </footer>
   </div>
+
+<script>
+  var I18N = {
+    it: {
+      _title: "FAMMY — La tua famiglia, finalmente organizzata",
+      _desc: "FAMMY è l'app per coordinare la tua famiglia: incarichi condivisi, agenda e compleanni, spese divise, assenze e promemoria medicine. Tutto in un unico posto, senza chat infinite.",
+      h1a: "La tua famiglia,", h1b: "finalmente organizzata.",
+      lead: "FAMMY è l'app che tiene insieme la vita di famiglia: incarichi, agenda, spese e promemoria in un unico posto. Niente più conversazioni infinite per ricordarsi chi compra il pane.",
+      f1: "Incarichi condivisi, con una chat per ogni cosa da fare",
+      f2: "Agenda e compleanni, con sync Apple & Google Calendar",
+      f3: "Spese divise, anche a rate parziali",
+      f4: "Assenze: vedi chi c'è in famiglia oggi",
+      f5: "Promemoria medicine con notifiche, per te e chi assisti",
+      ctaTitle: "Apri FAMMY", ctaText: "Pensata per il mobile: aprila nel browser e installala come app dal tuo telefono.", ctaBtn: "Vai all'app →",
+      phOver: "🏠 Famiglia Rossi · 3 da fare", phTitle: "Bacheca",
+      t1: "Spesa al super", t1a: "Assegnato a Mamma",
+      t2: "Visita pediatra", t2a: "Assegnato a Papà",
+      t3: "Torta per Sofia", t3a: "Assegnato a Tutti",
+      t4: "Cambio gomme", t4a: "Assegnato a Marco",
+      foot: "© 2026 FAMMY — app per l'organizzazione familiare",
+      fPrivacy: "Privacy", fTerms: "Termini di servizio", fContact: "Contatti"
+    },
+    en: {
+      _title: "FAMMY — Your family, finally organized",
+      _desc: "FAMMY is the app that coordinates your family: shared tasks, calendar and birthdays, split expenses, absences and medication reminders. All in one place, without endless chats.",
+      h1a: "Your family,", h1b: "finally organized.",
+      lead: "FAMMY is the app that holds family life together: tasks, calendar, expenses and reminders in one place. No more endless chats to remember who buys the bread.",
+      f1: "Shared tasks, with a chat for every to-do",
+      f2: "Calendar and birthdays, with Apple & Google Calendar sync",
+      f3: "Split expenses, even in partial instalments",
+      f4: "Absences: see who's around in the family today",
+      f5: "Medication reminders with notifications, for you and those you care for",
+      ctaTitle: "Open FAMMY", ctaText: "Built for mobile: open it in your browser and install it as an app on your phone.", ctaBtn: "Go to the app →",
+      phOver: "🏠 Rossi Family · 3 to do", phTitle: "Board",
+      t1: "Grocery shopping", t1a: "Assigned to Mum",
+      t2: "Pediatrician visit", t2a: "Assigned to Dad",
+      t3: "Cake for Sofia", t3a: "Assigned to Everyone",
+      t4: "Change tyres", t4a: "Assigned to Marco",
+      foot: "© 2026 FAMMY — family organization app",
+      fPrivacy: "Privacy", fTerms: "Terms of Service", fContact: "Contact"
+    },
+    fr: {
+      _title: "FAMMY — Votre famille, enfin organisée",
+      _desc: "FAMMY est l'application qui coordonne votre famille : tâches partagées, agenda et anniversaires, dépenses partagées, absences et rappels de médicaments. Tout au même endroit, sans conversations sans fin.",
+      h1a: "Votre famille,", h1b: "enfin organisée.",
+      lead: "FAMMY est l'application qui rassemble la vie de famille : tâches, agenda, dépenses et rappels au même endroit. Fini les conversations sans fin pour savoir qui achète le pain.",
+      f1: "Tâches partagées, avec un chat pour chaque chose à faire",
+      f2: "Agenda et anniversaires, avec sync Apple & Google Calendar",
+      f3: "Dépenses partagées, même en versements partiels",
+      f4: "Absences : voyez qui est présent dans la famille aujourd'hui",
+      f5: "Rappels de médicaments avec notifications, pour vous et vos proches",
+      ctaTitle: "Ouvrir FAMMY", ctaText: "Pensée pour le mobile : ouvrez-la dans votre navigateur et installez-la comme une app sur votre téléphone.", ctaBtn: "Accéder à l'app →",
+      phOver: "🏠 Famille Rossi · 3 à faire", phTitle: "Tableau",
+      t1: "Courses au supermarché", t1a: "Assigné à Maman",
+      t2: "Visite pédiatre", t2a: "Assigné à Papa",
+      t3: "Gâteau pour Sofia", t3a: "Assigné à Tous",
+      t4: "Changement de pneus", t4a: "Assigné à Marco",
+      foot: "© 2026 FAMMY — application d'organisation familiale",
+      fPrivacy: "Confidentialité", fTerms: "Conditions d'utilisation", fContact: "Contact"
+    },
+    de: {
+      _title: "FAMMY — Deine Familie, endlich organisiert",
+      _desc: "FAMMY ist die App, die deine Familie koordiniert: geteilte Aufgaben, Kalender und Geburtstage, geteilte Ausgaben, Abwesenheiten und Medikamenten-Erinnerungen. Alles an einem Ort, ohne endlose Chats.",
+      h1a: "Deine Familie,", h1b: "endlich organisiert.",
+      lead: "FAMMY ist die App, die das Familienleben zusammenhält: Aufgaben, Kalender, Ausgaben und Erinnerungen an einem Ort. Keine endlosen Chats mehr, um zu wissen, wer das Brot kauft.",
+      f1: "Geteilte Aufgaben, mit einem Chat für jede To-do",
+      f2: "Kalender und Geburtstage, mit Apple & Google Calendar Sync",
+      f3: "Geteilte Ausgaben, auch in Teilbeträgen",
+      f4: "Abwesenheiten: sieh, wer heute in der Familie da ist",
+      f5: "Medikamenten-Erinnerungen mit Benachrichtigungen, für dich und deine Angehörigen",
+      ctaTitle: "FAMMY öffnen", ctaText: "Für mobil gemacht: im Browser öffnen und als App auf dem Handy installieren.", ctaBtn: "Zur App →",
+      phOver: "🏠 Familie Rossi · 3 zu erledigen", phTitle: "Board",
+      t1: "Einkaufen im Supermarkt", t1a: "Zugewiesen an Mama",
+      t2: "Kinderarztbesuch", t2a: "Zugewiesen an Papa",
+      t3: "Kuchen für Sofia", t3a: "Zugewiesen an Alle",
+      t4: "Reifenwechsel", t4a: "Zugewiesen an Marco",
+      foot: "© 2026 FAMMY — App für Familienorganisation",
+      fPrivacy: "Datenschutz", fTerms: "Nutzungsbedingungen", fContact: "Kontakt"
+    }
+  };
+
+  function applyLang(lang) {
+    var dict = I18N[lang] || I18N.it;
+    document.documentElement.lang = lang;
+    document.title = dict._title;
+    var meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute('content', dict._desc);
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n');
+      if (dict[key] != null) el.textContent = dict[key];
+    });
+    document.querySelectorAll('#langs button').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+    });
+    try { localStorage.setItem('fammy_lang', lang); } catch (e) {}
+  }
+
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('fammy_lang'); } catch (e) {}
+    var qs = new URLSearchParams(location.search).get('lang');
+    var nav = (navigator.language || 'it').slice(0, 2).toLowerCase();
+    var start = qs || saved || (I18N[nav] ? nav : 'it');
+    applyLang(start);
+    document.querySelectorAll('#langs button').forEach(function (b) {
+      b.addEventListener('click', function () { applyLang(b.getAttribute('data-lang')); });
+    });
+  })();
+</script>
 </body>
 </html>
