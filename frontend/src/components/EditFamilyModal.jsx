@@ -5,6 +5,118 @@ import { useT } from '../lib/i18n.jsx';
 
 const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '❤️', '🌟', '🍝', '🐾', '🚗'];
 
+// ---------------------------------------------------------------------
+// i18n locale del componente (it/en/fr/de).
+// Tenuto qui (e non nel dizionario centrale) per consegnare il file
+// completo senza toccare l'enorme lib/i18n.jsx. Usa `lang` da useT().
+// ---------------------------------------------------------------------
+const L = {
+  it: {
+    editTitle: 'Modifica famiglia',
+    personalTitle: 'Personalizza famiglia',
+    editSub: 'Cambia nome, foto o icona di questa famiglia.',
+    personalSub: (name) => `Solo tu vedrai questo nome e questa foto. Gli altri vedono "${name}".`,
+    photoLabel: 'Foto famiglia (opzionale)',
+    uploadPhoto: 'Carica foto',
+    changePhoto: 'Cambia foto',
+    photoBtn: 'Foto',
+    galleryBtn: 'Galleria',
+    photoHint: 'Una foto rende la famiglia più riconoscibile. Senza foto, viene mostrata l\u2019emoji.',
+    nameLabel: 'Nome',
+    emojiLabel: 'Emoji (fallback)',
+    cancel: 'Annulla',
+    save: 'Salva',
+    deleteFamily: 'Elimina famiglia',
+    deleteHint: '⚠️ Cancella tutti i dati collegati. Irreversibile.',
+    deleteConfirm: (name) => `Eliminare la famiglia "${name}"? Verranno cancellati anche tutti i membri, gli incarichi, gli eventi e le spese collegati. Operazione irreversibile.`,
+    personalReset: 'Ripristina originale',
+    personalSaved: 'Personalizzazione salvata (solo per te)',
+    familyUpdated: '✅ Famiglia aggiornata',
+    photoTooBig: 'File troppo grande (max 5MB)',
+    errAliasPerm: 'Permesso negato o colonne mancanti. Esegui lo script SQL fammy-family-alias.sql su Supabase.',
+    errOwnerPerm: 'Permesso negato. Esegui lo script SQL fammy-photo-permissions.sql su Supabase per permettere a tutti i membri di modificare la famiglia.',
+    genericError: 'Errore',
+  },
+  en: {
+    editTitle: 'Edit family',
+    personalTitle: 'Customize family',
+    editSub: 'Change the name, photo or icon of this family.',
+    personalSub: (name) => `Only you will see this name and photo. Others see "${name}".`,
+    photoLabel: 'Family photo (optional)',
+    uploadPhoto: 'Upload photo',
+    changePhoto: 'Change photo',
+    photoBtn: 'Photo',
+    galleryBtn: 'Gallery',
+    photoHint: 'A photo makes the family more recognizable. Without a photo, the emoji is shown.',
+    nameLabel: 'Name',
+    emojiLabel: 'Emoji (fallback)',
+    cancel: 'Cancel',
+    save: 'Save',
+    deleteFamily: 'Delete family',
+    deleteHint: '⚠️ Deletes all linked data. Irreversible.',
+    deleteConfirm: (name) => `Delete the family "${name}"? All linked members, tasks, events and expenses will also be deleted. This cannot be undone.`,
+    personalReset: 'Restore original',
+    personalSaved: 'Customization saved (only for you)',
+    familyUpdated: '✅ Family updated',
+    photoTooBig: 'File too large (max 5MB)',
+    errAliasPerm: 'Permission denied or missing columns. Run the SQL script fammy-family-alias.sql on Supabase.',
+    errOwnerPerm: 'Permission denied. Run the SQL script fammy-photo-permissions.sql on Supabase to let all members edit the family.',
+    genericError: 'Error',
+  },
+  fr: {
+    editTitle: 'Modifier la famille',
+    personalTitle: 'Personnaliser la famille',
+    editSub: 'Modifiez le nom, la photo ou l\u2019icône de cette famille.',
+    personalSub: (name) => `Vous seul verrez ce nom et cette photo. Les autres voient « ${name} ».`,
+    photoLabel: 'Photo de famille (facultatif)',
+    uploadPhoto: 'Ajouter une photo',
+    changePhoto: 'Changer la photo',
+    photoBtn: 'Photo',
+    galleryBtn: 'Galerie',
+    photoHint: 'Une photo rend la famille plus reconnaissable. Sans photo, l\u2019emoji est affiché.',
+    nameLabel: 'Nom',
+    emojiLabel: 'Emoji (par défaut)',
+    cancel: 'Annuler',
+    save: 'Enregistrer',
+    deleteFamily: 'Supprimer la famille',
+    deleteHint: '⚠️ Supprime toutes les données liées. Irréversible.',
+    deleteConfirm: (name) => `Supprimer la famille « ${name} » ? Tous les membres, tâches, événements et dépenses liés seront également supprimés. Action irréversible.`,
+    personalReset: 'Rétablir l\u2019original',
+    personalSaved: 'Personnalisation enregistrée (visible par vous seul)',
+    familyUpdated: '✅ Famille mise à jour',
+    photoTooBig: 'Fichier trop volumineux (max 5 Mo)',
+    errAliasPerm: 'Autorisation refusée ou colonnes manquantes. Exécutez le script SQL fammy-family-alias.sql sur Supabase.',
+    errOwnerPerm: 'Autorisation refusée. Exécutez le script SQL fammy-photo-permissions.sql sur Supabase pour permettre à tous les membres de modifier la famille.',
+    genericError: 'Erreur',
+  },
+  de: {
+    editTitle: 'Familie bearbeiten',
+    personalTitle: 'Familie anpassen',
+    editSub: 'Ändere Name, Foto oder Symbol dieser Familie.',
+    personalSub: (name) => `Nur du siehst diesen Namen und dieses Foto. Andere sehen „${name}".`,
+    photoLabel: 'Familienfoto (optional)',
+    uploadPhoto: 'Foto hochladen',
+    changePhoto: 'Foto ändern',
+    photoBtn: 'Foto',
+    galleryBtn: 'Galerie',
+    photoHint: 'Ein Foto macht die Familie leichter erkennbar. Ohne Foto wird das Emoji angezeigt.',
+    nameLabel: 'Name',
+    emojiLabel: 'Emoji (Fallback)',
+    cancel: 'Abbrechen',
+    save: 'Speichern',
+    deleteFamily: 'Familie löschen',
+    deleteHint: '⚠️ Löscht alle verknüpften Daten. Unwiderruflich.',
+    deleteConfirm: (name) => `Familie „${name}" löschen? Alle verknüpften Mitglieder, Aufgaben, Ereignisse und Ausgaben werden ebenfalls gelöscht. Nicht umkehrbar.`,
+    personalReset: 'Original wiederherstellen',
+    personalSaved: 'Anpassung gespeichert (nur für dich)',
+    familyUpdated: '✅ Familie aktualisiert',
+    photoTooBig: 'Datei zu groß (max. 5 MB)',
+    errAliasPerm: 'Zugriff verweigert oder fehlende Spalten. Führe das SQL-Skript fammy-family-alias.sql in Supabase aus.',
+    errOwnerPerm: 'Zugriff verweigert. Führe das SQL-Skript fammy-photo-permissions.sql in Supabase aus, damit alle Mitglieder die Familie bearbeiten können.',
+    genericError: 'Fehler',
+  },
+};
+
 /**
  * EditFamilyModal — modifica nome / emoji / FOTO della famiglia.
  *
@@ -19,7 +131,8 @@ const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '�
  * personale). L'emoji resta come fallback se la foto manca.
  */
 export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, personal = false, session }) {
-  const { t } = useT();
+  const { lang } = useT();
+  const tr = L[lang] || L.it;
   // Valori reali (sempre presenti dopo il merge in App.jsx; fallback ai
   // display se il modal riceve un oggetto famiglia "grezzo").
   const realName = family.real_name !== undefined ? family.real_name : family.name;
@@ -44,7 +157,7 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      setErr('File troppo grande (max 5MB)');
+      setErr(tr.photoTooBig);
       return;
     }
     setPhotoFile(file);
@@ -97,10 +210,10 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
           .select();
         if (error) throw error;
         if (!data || data.length === 0) {
-          throw new Error('Permesso negato o colonne mancanti. Esegui lo script SQL fammy-family-alias.sql su Supabase.');
+          throw new Error(tr.errAliasPerm);
         }
         window.dispatchEvent(new CustomEvent('fammy_toast', {
-          detail: { text: `✅ ${t('fam_personal_saved') || 'Personalizzazione salvata (solo per te)'}`, tone: 'success' },
+          detail: { text: `✅ ${tr.personalSaved}`, tone: 'success' },
         }));
         setBusy(false);
         onSaved && onSaved({ ...family, name: name.trim(), emoji, photo_url: finalPhotoUrl });
@@ -116,10 +229,10 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
         .select();
       if (error) throw error;
       if (!data || data.length === 0) {
-        throw new Error('Permesso negato. Esegui lo script SQL fammy-photo-permissions.sql su Supabase per permettere a tutti i membri di modificare la famiglia.');
+        throw new Error(tr.errOwnerPerm);
       }
       window.dispatchEvent(new CustomEvent('fammy_toast', {
-        detail: { text: '✅ Famiglia aggiornata', tone: 'success' },
+        detail: { text: tr.familyUpdated, tone: 'success' },
       }));
       setBusy(false);
       onSaved && onSaved({
@@ -128,7 +241,7 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
         real_name: name.trim(), real_emoji: emoji, real_photo_url: finalPhotoUrl,
       });
     } catch (e2) {
-      setErr(e2.message || 'Errore');
+      setErr(e2.message || tr.genericError);
       setBusy(false);
     }
   };
@@ -150,7 +263,7 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
   };
 
   const remove = async () => {
-    if (!confirm(`Eliminare la famiglia "${family.name}"? Verranno cancellati anche tutti i membri, gli incarichi, gli eventi e le spese collegati. Operazione irreversibile.`)) return;
+    if (!confirm(tr.deleteConfirm(family.name))) return;
     setBusy(true);
     const { error } = await supabase.from('families').delete().eq('id', family.id);
     if (error) { setErr(error.message); setBusy(false); }
@@ -160,16 +273,14 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{personal ? (t('fam_personal_title') || 'Personalizza famiglia') : (t('fam_edit_h') || 'Modifica famiglia')}</h2>
+        <h2>{personal ? tr.personalTitle : tr.editTitle}</h2>
         <p className="modal-sub">
-          {personal
-            ? (t('fam_personal_sub', { name: realName }) || `Solo tu vedrai questo nome e questa foto. Gli altri vedono "${realName}".`)
-            : 'Cambia nome, foto o icona di questa famiglia.'}
+          {personal ? tr.personalSub(realName) : tr.editSub}
         </p>
 
         <form onSubmit={save}>
           {/* === FOTO === */}
-          <label style={{ marginTop: 8 }}>Foto famiglia (opzionale)</label>
+          <label style={{ marginTop: 8 }}>{tr.photoLabel}</label>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12,
           }}>
@@ -215,7 +326,7 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
                     color: 'var(--ac)', fontSize: 13, fontWeight: 600,
                     cursor: 'pointer',
                   }}>
-                  📸 {photoPreview ? 'Cambia foto' : 'Carica foto'}
+                  📸 {photoPreview ? tr.changePhoto : tr.uploadPhoto}
                 </button>
               ) : (
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -229,7 +340,7 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
                       color: 'var(--ac)', fontSize: 12, fontWeight: 600,
                       cursor: 'pointer', flex: 1,
                     }}>
-                    📷 Foto
+                    📷 {tr.photoBtn}
                   </button>
                   <button
                     type="button"
@@ -241,12 +352,12 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
                       color: 'var(--ac)', fontSize: 12, fontWeight: 600,
                       cursor: 'pointer', flex: 1,
                     }}>
-                    🖼️ Galleria
+                    🖼️ {tr.galleryBtn}
                   </button>
                 </div>
               )}
               <p style={{ fontSize: 11, color: 'var(--km)', margin: '6px 0 0', lineHeight: 1.4 }}>
-                Una foto rende la famiglia più riconoscibile. Senza foto, viene mostrata l'emoji.
+                {tr.photoHint}
               </p>
             </div>
             <input
@@ -263,12 +374,12 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
             />
           </div>
 
-          <label htmlFor="name">Nome</label>
+          <label htmlFor="name">{tr.nameLabel}</label>
           <input id="name" className="input"
             value={name} onChange={(e) => setName(e.target.value)} />
 
           <div style={{ marginTop: 16 }}>
-            <label>Emoji (fallback)</label>
+            <label>{tr.emojiLabel}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {EMOJI.map((e) => (
                 <button key={e} type="button" onClick={() => setEmoji(e)}
@@ -285,9 +396,9 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
           {err && <div className="login-msg error" style={{ marginTop: 12 }}>{err}</div>}
 
           <div className="row" style={{ marginTop: 20 }}>
-            <button type="button" className="btn secondary" onClick={onClose}>Annulla</button>
+            <button type="button" className="btn secondary" onClick={onClose}>{tr.cancel}</button>
             <button type="submit" className="btn" disabled={busy || !name.trim()}>
-              {busy ? <span className="spin" /> : 'Salva'}
+              {busy ? <span className="spin" /> : tr.save}
             </button>
           </div>
         </form>
@@ -297,16 +408,16 @@ export default function EditFamilyModal({ family, onClose, onSaved, onDeleted, p
             <button type="button" className="link-btn" onClick={resetPersonal} disabled={busy}
               data-testid="family-personal-reset"
               style={{ width: '100%', textAlign: 'center' }}>
-              ↩️ {t('fam_personal_reset') || 'Ripristina originale'} ("{realName}")
+              ↩️ {tr.personalReset} ("{realName}")
             </button>
           </div>
         ) : (
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--sm)' }}>
             <button className="btn full danger" onClick={remove} disabled={busy}>
-              Elimina famiglia
+              {tr.deleteFamily}
             </button>
             <p style={{ fontSize: 11, color: 'var(--km)', textAlign: 'center', marginTop: 8 }}>
-              ⚠️ Cancella tutti i dati collegati. Irreversibile.
+              {tr.deleteHint}
             </p>
           </div>
         )}
