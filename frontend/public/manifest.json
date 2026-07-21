@@ -42,28 +42,28 @@
   "screenshots": [
     {
       "src": "/screenshots/mobile-1.png",
-      "sizes": "1080x1920",
+      "sizes": "946x2048",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Bacheca — gli incarichi e il riepilogo della giornata"
     },
     {
       "src": "/screenshots/mobile-2.png",
-      "sizes": "1080x1920",
+      "sizes": "946x2048",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Agenda — eventi e compleanni della famiglia"
     },
     {
       "src": "/screenshots/mobile-3.png",
-      "sizes": "1080x1920",
+      "sizes": "946x2048",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Care Hub — promemoria medicine e caregiver"
+      "label": "Spese divise — chi deve cosa, senza discussioni"
     },
     {
       "src": "/screenshots/wide-1.png",
-      "sizes": "1920x1080",
+      "sizes": "1768x918",
       "type": "image/png",
       "form_factor": "wide",
       "label": "FAMMY — coordina la tua famiglia in un unico posto"
