@@ -4,6 +4,12 @@ import { useT } from '../lib/i18n.jsx';
 
 /**
  * JoinFamilyByCodeModal — flusso 2-step: peek_family_by_code → accept_family_by_code.
+ *
+ * v2: supporto claim placeholder. Se la famiglia contiene membri "senza
+ * account" (placeholder), dopo il peek viene chiesto "Chi sei?" e la
+ * scelta viene passata a accept_family_by_code(p_claim_member_id) così
+ * l'utente si aggancia al profilo esistente invece di creare un doppione.
+ * Richiede la migrazione fammy-join-by-code-claim.sql.
  */
 export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
   const { t } = useT();
@@ -13,6 +19,13 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // undefined = non ancora scelto, null = "crea nuovo", uuid = claim placeholder
+  const [claimId, setClaimId] = useState(undefined);
+
+  const placeholders = Array.isArray(preview?.placeholders) ? preview.placeholders : [];
+  const hasPlaceholders = placeholders.length > 0 && !preview?.already_member;
+  const mustPick = hasPlaceholders && claimId === undefined;
+  const claimedPh = claimId ? placeholders.find((p) => p.id === claimId) : null;
 
   const handleCodeChange = (v) => {
     const cleaned = v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -36,6 +49,7 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
         return;
       }
       setPreview(data);
+      setClaimId(undefined);
       setStep('preview');
     } catch (e2) {
       setErr(e2.message || 'Errore');
@@ -50,11 +64,22 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
     try {
       const { data, error } = await supabase.rpc('accept_family_by_code', {
         p_code: code.trim().toUpperCase(),
-        p_name: name.trim() || null,
+        p_name: claimId ? null : (name.trim() || null),
+        p_claim_member_id: claimId || null,
       });
       if (error) throw error;
       if (!data?.ok) {
-        setErr(`${t('join_err_generic')}: ${data?.error || ''}`);
+        if (data?.error === 'placeholder_taken') {
+          // Qualcun altro ha preso quel profilo nel frattempo: ricarica il peek
+          setErr(t('join_err_ph_taken'));
+          setClaimId(undefined);
+          const { data: fresh } = await supabase.rpc('peek_family_by_code', {
+            p_code: code.trim().toUpperCase(),
+          });
+          if (fresh?.ok) setPreview(fresh);
+        } else {
+          setErr(`${t('join_err_generic')}: ${data?.error || ''}`);
+        }
         return;
       }
       setStep('success');
@@ -66,7 +91,7 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
     }
   };
 
-  const goBack = () => { setStep('input'); setPreview(null); };
+  const goBack = () => { setStep('input'); setPreview(null); setClaimId(undefined); };
 
   return (
     <div className="modal-bg" onClick={onClose} data-testid="join-by-code-modal">
@@ -124,7 +149,73 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
               )}
             </div>
 
-            {!preview.already_member && (
+            {/* === Picker "Chi sei?" (solo se ci sono placeholder) === */}
+            {hasPlaceholders && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: 'var(--km)',
+                  marginBottom: 8, letterSpacing: 0.4, textAlign: 'center',
+                }}>
+                  {t('join_who_are_you')}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {placeholders.map((ph) => {
+                    const selected = claimId === ph.id;
+                    return (
+                      <button
+                        key={ph.id}
+                        type="button"
+                        onClick={() => setClaimId(selected ? undefined : ph.id)}
+                        data-testid={`join-claim-${ph.id}`}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 12px', borderRadius: 12,
+                          border: selected ? '2px solid var(--ac)' : '1.5px solid var(--sm)',
+                          background: selected ? 'var(--ab)' : 'white',
+                          cursor: 'pointer', textAlign: 'left', width: '100%',
+                        }}
+                      >
+                        <span style={{
+                          width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: ph.avatar_color || 'var(--k)',
+                          color: 'white', fontWeight: 700, fontSize: 14,
+                        }}>
+                          {ph.avatar_letter || (ph.name || '?').charAt(0).toUpperCase()}
+                        </span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--k)' }}>
+                            {t('join_i_am', { name: ph.name })}
+                          </span>
+                          {ph.role && (
+                            <span style={{ display: 'block', fontSize: 11, color: 'var(--km)' }}>
+                              {ph.role}
+                            </span>
+                          )}
+                        </span>
+                        {selected && <span style={{ fontSize: 16 }}>✓</span>}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setClaimId(claimId === null ? undefined : null)}
+                    data-testid="join-claim-new"
+                    style={{
+                      padding: '10px 12px', borderRadius: 12,
+                      border: claimId === null ? '2px solid var(--ac)' : '1.5px dashed var(--sm)',
+                      background: claimId === null ? 'var(--ab)' : 'transparent',
+                      cursor: 'pointer', fontSize: 13, color: 'var(--km)', width: '100%',
+                    }}
+                  >
+                    {t('join_claim_new')} {claimId === null && '✓'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Input nome: solo se NON sta claimando un placeholder */}
+            {!preview.already_member && !claimedPh && (!hasPlaceholders || claimId === null) && (
               <>
                 <label htmlFor="join-name" style={{
                   display: 'block', fontSize: 11, fontWeight: 700,
@@ -154,13 +245,14 @@ export default function JoinFamilyByCodeModal({ profile, onClose, onJoined }) {
               <button type="button" className="btn secondary" onClick={goBack} data-testid="join-back-btn">
                 {t('join_back')}
               </button>
-              <button type="button" className="btn" disabled={busy}
+              <button type="button" className="btn" disabled={busy || (!preview.already_member && mustPick)}
                 onClick={preview.already_member ? () => onJoined?.(preview.family_id) : confirmJoin}
                 data-testid="join-confirm-btn"
                 style={{
                   background: 'linear-gradient(135deg, var(--ac) 0%, #B5563D 100%)',
                   color: 'white', border: 'none',
                   boxShadow: '0 6px 18px rgba(193,98,75,0.32)',
+                  opacity: (!preview.already_member && mustPick) ? 0.5 : 1,
                 }}>
                 {busy ? <span className="spin" /> : (preview.already_member ? t('join_go_to_family') : t('join_submit'))}
               </button>
