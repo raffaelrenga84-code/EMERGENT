@@ -36,6 +36,8 @@ export default function AddTaskModal({
   initialChecklistOpen = false,
   shoppingMode = false,
   initialDueTime = '', initialLocation = '',
+  // Prefill assegnatari + visibilità (es. "nuovo incarico per chi si è unito")
+  initialAssignees = [], initialRestrictVisibility = false,
   onClose, onCreated, onUpdated,
 }) {
   const { t: __t0 } = useT();
@@ -78,7 +80,9 @@ export default function AddTaskModal({
   };
   const [location, setLocation] = useState(editingTask?.location || initialLocation || '');
   const [assignees, setAssignees] = useState(
-    shoppingMode && authorMemberId ? [authorMemberId] : []
+    shoppingMode && authorMemberId
+      ? [authorMemberId]
+      : (!editingTask && initialAssignees?.length ? initialAssignees : [])
   );
   const [recurringDays, setRecurringDays] = useState(editingTask?.recurring_days || []);
   // Rotazione turni: gli assegnatari si alternano a ogni completamento
@@ -117,6 +121,7 @@ export default function AddTaskModal({
   // scelti (extraViewers → task_couple_members). RLS lato DB + questa UI.
   const [restrictVisibility, setRestrictVisibility] = useState(
     editingTask?.visibility === 'assignees' || editingTask?.visibility === 'couple'
+    || (!editingTask && initialRestrictVisibility === true)
   );
   const [extraViewers, setExtraViewers] = useState([]);
   const toggleExtraViewer = (id) => setExtraViewers((p) =>
