@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useT } from '../../lib/i18n.jsx';
 import Avatar from '../../components/Avatar.jsx';
@@ -23,7 +23,7 @@ function translateRole(role, t) {
   return translated === key ? role : translated;
 }
 
-export default function FamilyTab({ family, members, session, families, activeFamily, isAll, absences = [], profile, tasks = [], onSwitchFamily, onNewFamily, onChanged, onFamilyUpdated, onMemberUpdated, onOpenAI }) {
+export default function FamilyTab({ family, members, session, families, activeFamily, isAll, absences = [], profile, tasks = [], onSwitchFamily, onNewFamily, onChanged, onFamilyUpdated, onMemberUpdated, onOpenAI, focusSection = null }) {
   const [showFriendLabel, setShowFriendLabel] = useState(false);
   const [friendLabelInput, setFriendLabelInput] = useState('');
 
@@ -52,6 +52,14 @@ export default function FamilyTab({ family, members, session, families, activeFa
   const [editingMember, setEditingMember] = useState(null);
   const [editingFamily, setEditingFamily] = useState(false);
   const [showFamilyInvite, setShowFamilyInvite] = useState(null); // family object o null
+
+  // Apertura invito richiesta da fuori (es. passo "invita" della checklist):
+  // apre FamilyInviteModal sulla famiglia corrente (o la prima disponibile).
+  useEffect(() => {
+    if (focusSection?.section !== 'invite') return;
+    const target = family || families?.[0] || null;
+    if (target) setShowFamilyInvite(target);
+  }, [focusSection]);
   const [showAbsence, setShowAbsence] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState(null);
   const [medsMember, setMedsMember] = useState(null);
