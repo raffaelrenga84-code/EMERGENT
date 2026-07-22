@@ -24,7 +24,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Outfit', system-ui, sans-serif;
-    background: var(--bg);
+    background: linear-gradient(135deg, #FAF4ED 0%, #F0E6D7 100%);
     color: var(--text);
     line-height: 1.6;
     font-weight: 300;
@@ -82,6 +82,12 @@
     padding: 14px 28px; border-radius: 999px; transition: transform .15s, background .15s;
   }
   .btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
+
+  .store-badges { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px;
+    border-radius: 12px; background: #1C1611; color: #fff; text-decoration: none; }
+  .badge small { display: block; font-size: 10px; opacity: .8; }
+  .badge b { display: block; font-size: 14px; font-weight: 700; }
 
   .phone {
     justify-self: center;
@@ -150,6 +156,17 @@
           <p data-i18n="ctaText">Pensata per il mobile: aprila nel browser e installala come app dal tuo telefono.</p>
           <a class="btn" href="/" data-i18n="ctaBtn">Vai all'app →</a>
         </div>
+
+        <div class="store-badges">
+          <a class="badge" href="https://play.google.com/store/apps/details?id=app.myfammy.twa" target="_blank" rel="noopener">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true"><path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-1.224a1 1 0 010 1.034l-2.006 1.16L13.4 12l2.293-2.293 2.005 1.776zM5.864 3.658L16.8 9.99l-2.302 2.302-8.635-8.634z"/></svg>
+            <span><small data-i18n="getOn">Disponibile su</small><b>Google Play</b></span>
+          </a>
+          <a class="badge" href="/ios-install.html" target="_blank" rel="noopener">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            <span><small data-i18n="onIphone">Su iPhone</small><b data-i18n="iosGuide">Guida installazione</b></span>
+          </a>
+        </div>
       </div>
 
       <div class="phone" aria-hidden="true">
@@ -187,7 +204,7 @@
       f3: "Spese divise, anche a rate parziali",
       f4: "Assenze: vedi chi c'è in famiglia oggi",
       f5: "Promemoria medicine con notifiche, per te e chi assisti",
-      ctaTitle: "Apri FAMMY", ctaText: "Pensata per il mobile: aprila nel browser e installala come app dal tuo telefono.", ctaBtn: "Vai all'app →",
+      ctaTitle: "Apri FAMMY", ctaText: "Pensata per il mobile: aprila nel browser e installala come app dal tuo telefono.", ctaBtn: "Vai all'app →", getOn: "Disponibile su", onIphone: "Su iPhone", iosGuide: "Guida installazione",
       phOver: "🏠 Famiglia Rossi · 3 da fare", phTitle: "Bacheca",
       t1: "Spesa al super", t1a: "Assegnato a Mamma",
       t2: "Visita pediatra", t2a: "Assegnato a Papà",
@@ -206,7 +223,7 @@
       f3: "Split expenses, even in partial instalments",
       f4: "Absences: see who's around in the family today",
       f5: "Medication reminders with notifications, for you and those you care for",
-      ctaTitle: "Open FAMMY", ctaText: "Built for mobile: open it in your browser and install it as an app on your phone.", ctaBtn: "Go to the app →",
+      ctaTitle: "Open FAMMY", ctaText: "Built for mobile: open it in your browser and install it as an app on your phone.", ctaBtn: "Go to the app →", getOn: "Available on", onIphone: "On iPhone", iosGuide: "Install guide",
       phOver: "🏠 Rossi Family · 3 to do", phTitle: "Board",
       t1: "Grocery shopping", t1a: "Assigned to Mum",
       t2: "Pediatrician visit", t2a: "Assigned to Dad",
@@ -225,7 +242,7 @@
       f3: "Dépenses partagées, même en versements partiels",
       f4: "Absences : voyez qui est présent dans la famille aujourd'hui",
       f5: "Rappels de médicaments avec notifications, pour vous et vos proches",
-      ctaTitle: "Ouvrir FAMMY", ctaText: "Pensée pour le mobile : ouvrez-la dans votre navigateur et installez-la comme une app sur votre téléphone.", ctaBtn: "Accéder à l'app →",
+      ctaTitle: "Ouvrir FAMMY", ctaText: "Pensée pour le mobile : ouvrez-la dans votre navigateur et installez-la comme une app sur votre téléphone.", ctaBtn: "Accéder à l'app →", getOn: "Disponible sur", onIphone: "Sur iPhone", iosGuide: "Guide d'installation",
       phOver: "🏠 Famille Rossi · 3 à faire", phTitle: "Tableau",
       t1: "Courses au supermarché", t1a: "Assigné à Maman",
       t2: "Visite pédiatre", t2a: "Assigné à Papa",
@@ -244,7 +261,7 @@
       f3: "Geteilte Ausgaben, auch in Teilbeträgen",
       f4: "Abwesenheiten: sieh, wer heute in der Familie da ist",
       f5: "Medikamenten-Erinnerungen mit Benachrichtigungen, für dich und deine Angehörigen",
-      ctaTitle: "FAMMY öffnen", ctaText: "Für mobil gemacht: im Browser öffnen und als App auf dem Handy installieren.", ctaBtn: "Zur App →",
+      ctaTitle: "FAMMY öffnen", ctaText: "Für mobil gemacht: im Browser öffnen und als App auf dem Handy installieren.", ctaBtn: "Zur App →", getOn: "Verfügbar bei", onIphone: "Auf dem iPhone", iosGuide: "Installationsanleitung",
       phOver: "🏠 Familie Rossi · 3 zu erledigen", phTitle: "Board",
       t1: "Einkaufen im Supermarkt", t1a: "Zugewiesen an Mama",
       t2: "Kinderarztbesuch", t2a: "Zugewiesen an Papa",
