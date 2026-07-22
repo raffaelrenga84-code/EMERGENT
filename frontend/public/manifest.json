@@ -19,6 +19,11 @@
       "auto"
     ]
   },
+  "service_worker": {
+    "src": "/sw.js",
+    "scope": "/",
+    "update_via_cache": "none"
+  },
   "icons": [
     {
       "src": "/icon.png",
@@ -37,36 +42,6 @@
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/mobile-1.png",
-      "sizes": "946x2048",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Bacheca — gli incarichi e il riepilogo della giornata"
-    },
-    {
-      "src": "/screenshots/mobile-2.png",
-      "sizes": "946x2048",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Agenda — eventi e compleanni della famiglia"
-    },
-    {
-      "src": "/screenshots/mobile-3.png",
-      "sizes": "946x2048",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Spese divise — chi deve cosa, senza discussioni"
-    },
-    {
-      "src": "/screenshots/wide-1.png",
-      "sizes": "1768x918",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "FAMMY — coordina la tua famiglia in un unico posto"
     }
   ],
   "description": "FAMMY — l'app per coordinare la tua famiglia: agenda e compleanni condivisi, incarichi, spese divise e promemoria medicine con notifiche. Senza chat infinite.",
