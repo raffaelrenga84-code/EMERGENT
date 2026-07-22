@@ -26,7 +26,6 @@ import MedicationReminderToast from '../components/MedicationReminderToast.jsx';
 import FeedbackToastSubscriber from '../components/FeedbackToastSubscriber.jsx';
 import GlobalSearch from '../components/GlobalSearch.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
-import HelpMenu from '../components/HelpMenu.jsx';
 import { useUnreadTaskCount } from '../lib/useUnreadTaskCount.js';
 import { useMedicationReminders } from '../lib/useMedicationReminders.js';
 
@@ -56,15 +55,6 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   //  a) non c'è il flag locale (primo avvio sul dominio), E
   //  b) il profilo non ha famiglie attive (utente davvero nuovo)
   // Così chi arriva su myfammy.app dopo farxer.com non lo rivede.
-  const [showHelpTour, setShowHelpTour] = useState(false);
-
-  // Listener eventi globali emessi da WelcomeHubModal
-  useEffect(() => {
-    const onTour = () => setShowHelpTour(true);
-    window.addEventListener('fammy_open_tour', onTour);
-    return () => window.removeEventListener('fammy_open_tour', onTour);
-  }, []);
-
   const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
     try {
@@ -319,10 +309,6 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
       })()}
       {showUpdateBanner && <UpdateBanner onDismiss={() => setShowUpdateBanner(false)} />}
 
-      {showHelpTour && (
-        <OnboardingTour onClose={() => setShowHelpTour(false)} />
-      )}
-
       {showOnboarding && (
         <OnboardingTour onClose={async () => {
           setShowOnboarding(false);
@@ -557,7 +543,6 @@ function Header({ family, members, allMembers, tasks, families, activeFamily, is
           />
         </div>
         <NotificationBell />
-        <HelpMenu session={session} profile={profile} families={families} />
         {onOpenSearch && (
           <button
             type="button"
