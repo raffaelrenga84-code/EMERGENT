@@ -53,6 +53,32 @@ export default function NotificationBell() {
       .eq('id', n.id).is('read_at', null);
   };
 
+  // Riconosce la notifica "X si è unito alla famiglia": in tal caso il click
+  // apre un nuovo incarico precompilato solo per quella persona (via HomeScreen).
+  const joinTargetOf = (n) => {
+    const d = (n && n.data) || {};
+    const tag = n && n.tag ? String(n.tag) : '';
+    const hay = `${d.type || ''} ${tag}`.toLowerCase();
+    const isJoin = /join|welcome|new[_-]?member|member[_-]?added/.test(hay);
+    const memberId = d.member_id || d.memberId || d.target_member_id || null;
+    const familyId = d.family_id || d.familyId || null;
+    const memberName = d.member_name || d.name || null;
+    // Serve sia il segnale "join" sia un riferimento risolvibile alla persona:
+    // il doppio requisito evita falsi positivi su altre notifiche.
+    if (!isJoin) return null;
+    if (!memberId && !memberName) return null;
+    return { memberId, familyId, memberName };
+  };
+
+  const onItemClick = (n) => {
+    markRead(n);
+    const jt = joinTargetOf(n);
+    if (jt) {
+      setOpen(false);
+      window.dispatchEvent(new CustomEvent('fammy_new_task_for_member', { detail: jt }));
+    }
+  };
+
   const markAll = async () => {
     if (busy || unread === 0) return;
     setBusy(true);
@@ -128,7 +154,7 @@ export default function NotificationBell() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {notifs.map((n) => (
-                  <button key={n.id} type="button" onClick={() => markRead(n)}
+                  <button key={n.id} type="button" onClick={() => onItemClick(n)}
                     data-testid={'notif-item-' + n.id}
                     style={{
                       textAlign: 'left', padding: '10px 12px', borderRadius: 12,
