@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT, LANGS } from '../lib/i18n.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import JoinFamilyByCodeModal from '../components/JoinFamilyByCodeModal.jsx';
+import { getWelcomeHidden, setWelcomeHidden } from '../components/WelcomeHubModal.jsx';
 import FamilyInviteModal from '../components/FamilyInviteModal.jsx';
 
 const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '❤️', '🌟', '🍝'];
@@ -18,7 +19,7 @@ function fallbackDisplayName(profile, session) {
   return 'Membro';
 }
 
-export default function WelcomeScreen({ session, profile, onCreated }) {
+export default function WelcomeScreen({ session, profile, onCreated, autoSkip = false }) {
   const { t, lang, setLang } = useT();
   const [view, setView] = useState('hub'); // 'hub' | 'family' | 'task' | 'event' | 'demo'
   const [busy, setBusy] = useState(false);
@@ -27,9 +28,15 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
   // volta vede il tour qui; se atterra direttamente in Home (es. via invito)
   // lo vede lì.
   const [showOnboarding, setShowOnboarding] = useState(() => {
-    try { return !localStorage.getItem('fammy_onboarding_done'); } catch (e) { return false; }
+    return false; // gestito in HomeScreen
   });
   const [showJoinCode, setShowJoinCode] = useState(false);
+  const [dontShow, setDontShow] = useState(getWelcomeHidden());
+
+  // autoSkip: utente ha spuntato "Non mostrare più" → skipToBoard immediato
+  useEffect(() => {
+    if (autoSkip) skipToBoard();
+  }, []);
 
   const initial = (profile?.avatar_letter || (profile?.display_name || 'U').charAt(0)).toUpperCase();
 
@@ -125,7 +132,18 @@ export default function WelcomeScreen({ session, profile, onCreated }) {
         <HubCard emoji="👀" title={t('hub_card_demo_t')} subtitle={t('hub_card_demo_s')} onClick={() => setView('demo')} />
       </div>
 
-      <button className="link-btn" style={{ display: 'block', margin: '20px auto 0', fontSize: 14, fontWeight: 600 }}
+      {/* Spunta "Non mostrare più" — persistente in localStorage */}
+      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 8, fontSize: 12.5, color: 'var(--km)', cursor: 'pointer',
+        margin: '20px auto 4px', userSelect: 'none' }}>
+        <input type="checkbox" checked={dontShow}
+          onChange={(e) => { setDontShow(e.target.checked); setWelcomeHidden(e.target.checked); }}
+          data-testid="welcome-dont-show"
+          style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--ac)' }} />
+        {t('whm_dont_show') || 'Non mostrare più automaticamente'}
+      </label>
+
+      <button className="link-btn" style={{ display: 'block', margin: '4px auto 0', fontSize: 14, fontWeight: 600 }}
         onClick={skipToBoard} disabled={busy}>
         {busy ? <span className="spin dark" /> : t('hub_skip_btn')}
       </button>
