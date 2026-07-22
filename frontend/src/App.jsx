@@ -474,7 +474,15 @@ export default function App() {
       </div>
     );
   } else if (families.length === 0) {
-    content = <div className="app-shell"><WelcomeScreen session={session} profile={profile} onCreated={refresh} /></div>;
+    // Rispetta la spunta "Non mostrare più": se l'utente l'ha impostata,
+    // salta la WelcomeScreen e va direttamente in bacheca con famiglia vuota.
+    const welcomeHidden = (() => { try { return localStorage.getItem('fammy_welcome_hidden') === '1'; } catch { return false; } })();
+    if (welcomeHidden) {
+      // Crea famiglia default automaticamente e apre la bacheca
+      content = <div className="app-shell"><WelcomeScreen session={session} profile={profile} onCreated={refresh} autoSkip /></div>;
+    } else {
+      content = <div className="app-shell"><WelcomeScreen session={session} profile={profile} onCreated={refresh} /></div>;
+    }
   } else {
     content = (
       <div className="app-shell">
