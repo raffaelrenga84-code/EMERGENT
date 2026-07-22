@@ -57,6 +57,24 @@ export default function FriendInvitesCard({ session }) {
     createAndShare(label.trim());
   };
 
+  // Elimina un invito (annulla se in attesa, o rimuove la riga di tracking).
+  const deleteInvite = async (inv) => {
+    let ok = true;
+    try { ok = window.confirm(t('friend_inv_delete_q') || 'Eliminare questo invito?'); } catch (_) {}
+    if (!ok) return;
+    const prev = invites;
+    setInvites((p) => p.filter((x) => x.id !== inv.id)); // ottimistico
+    try {
+      const { error } = await supabase.from('friend_invites').delete().eq('id', inv.id);
+      if (error) throw error;
+    } catch (_) {
+      setInvites(prev); // ripristina se fallisce (es. policy RLS di DELETE mancante)
+      window.dispatchEvent(new CustomEvent('fammy_toast', {
+        detail: { text: t('friend_inv_delete_err') || "Impossibile eliminare l'invito", tone: 'error' },
+      }));
+    }
+  };
+
   const fmt = (iso) => new Date(iso).toLocaleDateString(lang || 'it', { day: 'numeric', month: 'short' });
 
   const accepted = invites.filter((i) => i.status === 'accepted').length;
@@ -103,6 +121,19 @@ export default function FriendInvitesCard({ session }) {
                       : `${t('friend_inv_pending') || 'In attesa'} · ${fmt(inv.created_at)}`}
                   </div>
                 </div>
+                <button type="button"
+                  onClick={() => deleteInvite(inv)}
+                  data-testid={`friend-invite-delete-${inv.id}`}
+                  aria-label={t('friend_inv_delete') || 'Elimina invito'}
+                  title={t('friend_inv_delete') || 'Elimina invito'}
+                  style={{
+                    flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+                    border: 'none', background: 'transparent', cursor: 'pointer',
+                    color: 'var(--km)', fontSize: 15, lineHeight: 1,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  ✕
+                </button>
               </div>
             );
           })}
