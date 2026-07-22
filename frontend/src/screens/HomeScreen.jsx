@@ -106,6 +106,44 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
     return () => window.removeEventListener('fammy_open_task', handler);
   }, []);
 
+  // Nuovo incarico precompilato per una persona specifica (es. click sulla
+  // notifica "X si è unito alla famiglia"). Risolve il membro dagli id nel
+  // payload; fallback: match per nome entro la famiglia indicata.
+  useEffect(() => {
+    const handler = (e) => {
+      const d = e?.detail || {};
+      const pool = d.familyId ? members.filter((m) => m.family_id === d.familyId) : members;
+      let memberId = null;
+      // 1) id esplicito: può essere members.id oppure user_id della persona
+      if (d.memberId) {
+        const hit =
+          pool.find((m) => m.id === d.memberId) ||
+          pool.find((m) => m.user_id === d.memberId) ||
+          members.find((m) => m.id === d.memberId) ||
+          members.find((m) => m.user_id === d.memberId);
+        memberId = hit?.id || null;
+      }
+      // 2) fallback per nome, entro la famiglia indicata
+      if (!memberId && d.memberName) {
+        const wanted = String(d.memberName).trim().toLowerCase();
+        const target =
+          pool.find((m) => (m.name || '').trim().toLowerCase() === wanted) ||
+          pool.find((m) => (m.name || '').toLowerCase().startsWith(wanted.split(' ')[0]));
+        if (target) memberId = target.id;
+      }
+      if (!memberId) return; // non risolvibile → nessuna azione
+      const fam = members.find((m) => m.id === memberId)?.family_id || d.familyId || null;
+      setActiveTab('bacheca');
+      if (fam) setActiveFamily(fam);
+      setAiTaskPrefill({
+        title: '', category: 'other', due_date: '',
+        assignees: [memberId], restrictVisibility: true,
+      });
+    };
+    window.addEventListener('fammy_new_task_for_member', handler);
+    return () => window.removeEventListener('fammy_new_task_for_member', handler);
+  }, [members]);
+
   // Helper: pick the family the AI-created item should land in.
   // Priority: currently-active family → first family the user belongs to.
   const targetFamilyForAI = () => {
@@ -516,6 +554,8 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
           initialDueDate={aiTaskPrefill.due_date}
           initialDueTime={aiTaskPrefill.due_time || ''}
           initialLocation={aiTaskPrefill.location || ''}
+          initialAssignees={aiTaskPrefill.assignees || []}
+          initialRestrictVisibility={aiTaskPrefill.restrictVisibility === true}
           onClose={() => setAiTaskPrefill(null)}
           onCreated={() => { setAiTaskPrefill(null); setRefreshKey((k) => k + 1); }}
         />
