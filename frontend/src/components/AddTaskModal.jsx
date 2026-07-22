@@ -122,6 +122,10 @@ export default function AddTaskModal({
   const toggleExtraViewer = (id) => setExtraViewers((p) =>
     p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
 
+  // L'utente ha scelto manualmente la visibilità? Se sì, l'automatismo
+  // qui sotto smette di sovrascriverla (rispetta la scelta esplicita).
+  const [visibilityTouched, setVisibilityTouched] = useState(false);
+
   // Carica gli assegnatari attuali (e i membri extra) in modo edit
   useEffect(() => {
     if (!editingTask) return;
@@ -166,6 +170,19 @@ export default function AddTaskModal({
       setAssignees((prev) => [...new Set([...prev, ...ids])]);
     }
   };
+
+  // Auto-imposta "Chi può vederlo" in base agli assegnatari selezionati.
+  // Solo per nuovi incarichi e finché l'utente non sceglie manualmente:
+  //   - sottoinsieme di membri → "Solo coinvolti" (restrictVisibility = true)
+  //   - tutti i membri         → "Tutta la famiglia" (restrictVisibility = false)
+  useEffect(() => {
+    if (isEdit || visibilityTouched) return;
+    if (assignees.length === 0) return;
+    const allAssignableIds = byFamily.flatMap((g) => g.members.map((m) => m.id));
+    if (allAssignableIds.length === 0) return;
+    const everyoneSelected = allAssignableIds.every((id) => assignees.includes(id));
+    setRestrictVisibility(!everyoneSelected);
+  }, [assignees, isEdit, visibilityTouched]);
 
   const toggleDay = (idx) => {
     setRecurringDays((prev) => prev.includes(idx) ? prev.filter((x) => x !== idx) : [...prev, idx].sort((a,b) => a-b));
@@ -1003,7 +1020,7 @@ export default function AddTaskModal({
                 <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                   <button type="button"
                     data-testid="add-task-visibility-all"
-                    onClick={() => setRestrictVisibility(false)}
+                    onClick={() => { setVisibilityTouched(true); setRestrictVisibility(false); }}
                     style={{
                       flex: 1, padding: '10px 12px', borderRadius: 12,
                       border: `1.5px solid ${!restrictVisibility ? 'var(--ac)' : 'var(--sm)'}`,
@@ -1015,7 +1032,7 @@ export default function AddTaskModal({
                   </button>
                   <button type="button"
                     data-testid="add-task-visibility-assignees"
-                    onClick={() => setRestrictVisibility(true)}
+                    onClick={() => { setVisibilityTouched(true); setRestrictVisibility(true); }}
                     style={{
                       flex: 1, padding: '10px 12px', borderRadius: 12,
                       border: `1.5px solid ${restrictVisibility ? 'var(--ac)' : 'var(--sm)'}`,
