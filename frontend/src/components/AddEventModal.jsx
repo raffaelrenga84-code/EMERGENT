@@ -5,6 +5,7 @@ import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
 import { useAndroidBack } from '../lib/useAndroidBack.js';
 import { isIOS } from '../lib/platformDetect.js';
 import { isImageFile, DOC_ACCEPT } from '../lib/fileKind.js';
+import { sendPush, memberIdsToUserIds } from '../lib/pushClient.js';
 
 function dateOffset(days) {
   const d = new Date();
@@ -43,6 +44,37 @@ export default function AddEventModal({
   const [recurringDays, setRecurringDays] = useState(editingEvent?.recurring_days || []);
   const [recurringUntil, setRecurringUntil] = useState(editingEvent?.recurring_until || '');
   const [assignees, setAssignees] = useState([]);
+  // Logistica evento: chi porta / chi riprende (member_id singoli, opzionali)
+  const [bringMemberId, setBringMemberId] = useState(editingEvent?.bring_member_id || '');
+  const [pickupMemberId, setPickupMemberId] = useState(editingEvent?.pickup_member_id || '');
+  // Membri selezionabili per la logistica (esclude i contatti solo-compleanno)
+  const logiMembers = (members || []).filter((m) => !m.is_contact_only);
+
+  // Push best-effort ai membri appena taggati come "porta"/"riprende".
+  // Su modifica notifica solo se il tag è cambiato; mai a sé stessi.
+  const notifyLogistics = async (eventId, prevBring, prevPickup) => {
+    try {
+      const targets = [];
+      if (bringMemberId && bringMemberId !== prevBring && bringMemberId !== authorMemberId)
+        targets.push({ memberId: bringMemberId, role: 'bring' });
+      if (pickupMemberId && pickupMemberId !== prevPickup && pickupMemberId !== authorMemberId)
+        targets.push({ memberId: pickupMemberId, role: 'pickup' });
+      if (targets.length === 0) return;
+      const evTitle = title.trim();
+      for (const tgt of targets) {
+        const userIds = [...(await memberIdsToUserIds([tgt.memberId]))];
+        if (userIds.length === 0) continue;
+        const roleLabel = tgt.role === 'bring' ? t('event_logi_bring') : t('event_logi_pickup');
+        await sendPush({
+          userIds,
+          title: `🚗 ${roleLabel}: ${evTitle}`,
+          body: t('event_logi_push_body', { title: evTitle }),
+          tag: 'event-logistics-' + eventId,
+          data: { kind: 'event_logistics', event_id: eventId, role: tgt.role, url: '/?tab=agenda' },
+        });
+      }
+    } catch (_) { /* push best-effort: mai bloccare il salvataggio */ }
+  };
   const [attachments, setAttachments] = useState([]);
   // Tendine famiglia chiuse di default (più pulito e meno spazio)
   const [expandedFamilies, setExpandedFamilies] = useState({});
@@ -161,6 +193,8 @@ export default function AddEventModal({
       description: description.trim() || null,
       recurring_days: recurringDays.length > 0 ? recurringDays : null,
       recurring_until: recurringDays.length > 0 && recurringUntil ? recurringUntil : null,
+      bring_member_id: bringMemberId || null,
+      pickup_member_id: pickupMemberId || null,
     };
 
     if (isEdit) {
@@ -191,6 +225,7 @@ export default function AddEventModal({
           }
         }
       }
+      await notifyLogistics(editingEvent.id, editingEvent.bring_member_id || '', editingEvent.pickup_member_id || '');
       onUpdated && onUpdated();
       return;
     }
@@ -227,6 +262,7 @@ export default function AddEventModal({
       }
     }
 
+    await notifyLogistics(ev.id, '', '');
     onCreated && onCreated();
   };
 
@@ -421,6 +457,40 @@ export default function AddEventModal({
                 })}
               </div>
             )}
+
+            {/* === LOGISTICA (chi porta / chi riprende) === */}
+            <div style={{ marginTop: 20, padding: 14, background: 'var(--ab)', borderRadius: 14, border: '1px solid var(--sm)' }}>
+              <label style={{ marginBottom: 4 }}>🚗 {t('event_logi_label')}</label>
+              <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 8 }}>{t('event_logi_hint')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--km)', marginBottom: 4 }}>{t('event_logi_bring')}</div>
+                  <select data-testid="add-event-bring"
+                    value={bringMemberId} onChange={(e) => setBringMemberId(e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 10,
+                      border: '1px solid var(--sm)', background: 'white',
+                      color: 'var(--k)', fontSize: 14,
+                    }}>
+                    <option value="">{t('event_logi_none')}</option>
+                    {logiMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--km)', marginBottom: 4 }}>{t('event_logi_pickup')}</div>
+                  <select data-testid="add-event-pickup"
+                    value={pickupMemberId} onChange={(e) => setPickupMemberId(e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 10,
+                      border: '1px solid var(--sm)', background: 'white',
+                      color: 'var(--k)', fontSize: 14,
+                    }}>
+                    <option value="">{t('event_logi_none')}</option>
+                    {logiMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
 
             {/* === RICORRENZA === */}
             <div style={{ marginTop: 20, padding: 14, background: 'var(--ab)', borderRadius: 14, border: '1px solid var(--sm)' }}>
