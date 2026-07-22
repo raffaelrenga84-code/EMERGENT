@@ -173,6 +173,28 @@ export default function EventDetailModal({ event, families = [], members = [], m
             </div>
           )}
 
+          {(event.bring_member_id || event.pickup_member_id) && (
+            <div style={{ marginBottom: 16 }} data-testid="event-detail-logistics">
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase', marginBottom: 8 }}>
+                🚗 {t('event_logi_label')}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {event.bring_member_id && (
+                  <div style={{ fontSize: 14 }}>
+                    <span style={{ color: 'var(--km)' }}>{t('event_logi_bring')}: </span>
+                    <strong>{members.find((m) => m.id === event.bring_member_id)?.name || '—'}</strong>
+                  </div>
+                )}
+                {event.pickup_member_id && (
+                  <div style={{ fontSize: 14 }}>
+                    <span style={{ color: 'var(--km)' }}>{t('event_logi_pickup')}: </span>
+                    <strong>{members.find((m) => m.id === event.pickup_member_id)?.name || '—'}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {event.description && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--km)', textTransform: 'uppercase', marginBottom: 4 }}>
