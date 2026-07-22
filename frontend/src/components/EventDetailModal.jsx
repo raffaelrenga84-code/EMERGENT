@@ -5,6 +5,7 @@ import PhotoGalleryEditor from './PhotoGalleryEditor.jsx';
 import AddEventModal from './AddEventModal.jsx';
 import RecurringActionChoice from './RecurringActionChoice.jsx';
 import DetailTabs from './DetailTabs.jsx';
+import CantDoModal from './CantDoModal.jsx';
 
 /**
  * EventDetailModal — mostra dettagli completi di un evento:
@@ -21,6 +22,7 @@ export default function EventDetailModal({ event, families = [], members = [], m
   const [editing, setEditing] = useState(false);
   const [recurringChoice, setRecurringChoice] = useState(null); // 'edit' | 'delete'
   const [activeTab, setActiveTab] = useState('details');
+  const [showCantDo, setShowCantDo] = useState(false);
 
   const origId = event._origId || event.id;
   const occDate = event._occurrenceDate || (event._isRecurringInstance ? new Date(event.starts_at).toISOString().slice(0, 10) : null);
@@ -56,6 +58,7 @@ export default function EventDetailModal({ event, families = [], members = [], m
 
   const start = new Date(event.starts_at);
   const canDelete = !event.created_by || event.created_by === me?.id;
+  const isTagged = !!me?.id && (me.id === event.bring_member_id || me.id === event.pickup_member_id);
   const canEdit = canDelete; // stessa logica
   const assigneeMembers = members.filter((m) => assignees.includes(m.id));
 
@@ -192,6 +195,18 @@ export default function EventDetailModal({ event, families = [], members = [], m
                   </div>
                 )}
               </div>
+              {isTagged && (
+                <button type="button" onClick={() => setShowCantDo(true)}
+                  data-testid="event-cant-do-btn"
+                  style={{
+                    marginTop: 10, padding: '10px 14px', borderRadius: 12,
+                    border: '1.5px solid var(--rd, #C1624B)', background: 'transparent',
+                    color: 'var(--rd, #C1624B)', fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                  }}>
+                  ❌ {t('ev_cant_do') || 'Non posso'}
+                </button>
+              )}
             </div>
           )}
 
@@ -325,6 +340,15 @@ export default function EventDetailModal({ event, families = [], members = [], m
           onSingle={onSingle}
           onSeries={onSeries}
           onClose={() => setRecurringChoice(null)}
+        />
+      )}
+
+      {showCantDo && (
+        <CantDoModal
+          event={event}
+          members={members}
+          me={me}
+          onClose={() => setShowCantDo(false)}
         />
       )}
     </div>
