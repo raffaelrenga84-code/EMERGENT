@@ -7,13 +7,13 @@ import { APP_URL } from '../lib/appUrl.js';
  * CantDoModal — "Non posso" per logistica eventi.
  * Due canali: notifica famiglia (push) + WhatsApp (testo precompilato).
  */
-export default function CantDoModal({ event, members = [], session, onClose }) {
-  const { t: __t0 } = useT();
+export default function CantDoModal({ event, members = [], me, session, onClose }) {
+  const { t: __t0, lang } = useT();
   const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
-  const myMember = members.find((m) => m.user_id === session?.user?.id);
+  const myMember = me || members.find((m) => m.user_id === session?.user?.id);
   const myName = myMember?.name || 'Qualcuno';
   const eventTitle = event.title || 'Evento';
 
@@ -21,15 +21,16 @@ export default function CantDoModal({ event, members = [], session, onClose }) {
   const fmtDt = (iso) => {
     if (!iso) return '';
     const d = new Date(iso);
-    return d.toLocaleDateString('it', { weekday: 'short', day: 'numeric', month: 'short' })
-      + ' ' + d.toLocaleTimeString('it', { hour: '2-digit', minute: '2-digit' });
+    const lc = lang || 'it';
+    return d.toLocaleDateString(lc, { weekday: 'short', day: 'numeric', month: 'short' })
+      + ' ' + d.toLocaleTimeString(lc, { hour: '2-digit', minute: '2-digit' });
   };
   const when = fmtDt(event.starts_at);
 
   // Ruolo di chi dice "non posso"
   const roles = [];
-  if (myMember && myMember.id === event.transport_by) roles.push(t('ev_transport_by') || 'portare');
-  if (myMember && myMember.id === event.pickup_by) roles.push(t('ev_pickup_by') || 'riprendere');
+  if (myMember && myMember.id === event.bring_member_id) roles.push(t('ev_transport_by') || 'portare');
+  if (myMember && myMember.id === event.pickup_member_id) roles.push(t('ev_pickup_by') || 'riprendere');
   const roleText = roles.join(' e ');
 
   // Push a tutta la famiglia (escluso chi scrive)
@@ -38,7 +39,7 @@ export default function CantDoModal({ event, members = [], session, onClose }) {
     try {
       const famMembers = members.filter(
         (m) => m.family_id === (myMember?.family_id || event.family_id)
-          && m.user_id && m.user_id !== session?.user?.id
+          && m.user_id && m.id !== myMember?.id
       );
       const userIds = [...new Set(famMembers.map((m) => m.user_id))];
       if (userIds.length > 0) {
