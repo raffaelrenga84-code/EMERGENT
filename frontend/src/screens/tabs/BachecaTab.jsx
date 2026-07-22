@@ -726,7 +726,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           notificationPermission={typeof Notification !== 'undefined' ? Notification.permission : 'denied'}
           onAddTask={() => setShowAdd(true)}
           onInviteFamily={() => window.dispatchEvent(new CustomEvent('fammy_request_invite'))}
-          onExportAgenda={() => window.dispatchEvent(new CustomEvent('fammy_request_export'))}
+          onExportAgenda={() => window.dispatchEvent(new CustomEvent('fammy_go_profile', { detail: { section: 'export' } }))}
         />
       )}
 
