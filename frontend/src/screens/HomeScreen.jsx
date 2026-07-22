@@ -158,6 +158,20 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
     return () => window.removeEventListener('fammy_go_profile', handler);
   }, []);
 
+  // Naviga alla tab Famiglia e mette a fuoco una sezione (es. "invita"),
+  // dal passo della checklist di setup in Bacheca.
+  const [familyFocus, setFamilyFocus] = useState(null); // { section, ts }
+  useEffect(() => {
+    const handler = (e) => {
+      const section = e?.detail?.section;
+      if (!section) return;
+      setActiveTab('famiglia');
+      setFamilyFocus({ section, ts: Date.now() });
+    };
+    window.addEventListener('fammy_go_family', handler);
+    return () => window.removeEventListener('fammy_go_family', handler);
+  }, []);
+
   // Helper: pick the family the AI-created item should land in.
   // Priority: currently-active family → first family the user belongs to.
   const targetFamilyForAI = () => {
@@ -494,6 +508,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             onMemberUpdated={updateMemberLocally}
             onChanged={() => { refreshAll(); refreshAbsences(); }}
             onOpenAI={onOpenAI}
+            focusSection={familyFocus}
           />
         )}
         {activeTab === 'profile' && (
