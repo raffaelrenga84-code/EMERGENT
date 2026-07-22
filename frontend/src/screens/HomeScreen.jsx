@@ -26,6 +26,7 @@ import MedicationReminderToast from '../components/MedicationReminderToast.jsx';
 import FeedbackToastSubscriber from '../components/FeedbackToastSubscriber.jsx';
 import GlobalSearch from '../components/GlobalSearch.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
+import HelpMenu from '../components/HelpMenu.jsx';
 import { useUnreadTaskCount } from '../lib/useUnreadTaskCount.js';
 import { useMedicationReminders } from '../lib/useMedicationReminders.js';
 
@@ -51,9 +52,33 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   const [taskMeta, setTaskMeta] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [showNewFamily, setShowNewFamily] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    try { return !localStorage.getItem('fammy_onboarding_done'); } catch (e) { return false; }
-  });
+  // Tour onboarding: si mostra SOLO se:
+  //  a) non c'è il flag locale (primo avvio sul dominio), E
+  //  b) il profilo non ha famiglie attive (utente davvero nuovo)
+  // Così chi arriva su myfammy.app dopo farxer.com non lo rivede.
+  const [showHelpTour, setShowHelpTour] = useState(false);
+
+  // Listener eventi globali emessi da WelcomeHubModal
+  useEffect(() => {
+    const onTour = () => setShowHelpTour(true);
+    window.addEventListener('fammy_open_tour', onTour);
+    return () => window.removeEventListener('fammy_open_tour', onTour);
+  }, []);
+
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    try {
+      const localDone = !!localStorage.getItem('fammy_onboarding_done');
+      if (localDone) { setShowOnboarding(false); return; }
+      // Controlla DB: se ha già famiglie → non è nuovo
+      if (families && families.length > 0) {
+        localStorage.setItem('fammy_onboarding_done', '1');
+        setShowOnboarding(false);
+        return;
+      }
+      setShowOnboarding(true);
+    } catch (e) { setShowOnboarding(false); }
+  }, [families]);
   const [showUpdateBanner, setShowUpdateBanner] = useState(true);
   const [pendingExpenseTask, setPendingExpenseTask] = useState(null);
   // Ricerca globale (cross-tab)
@@ -294,8 +319,20 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
       })()}
       {showUpdateBanner && <UpdateBanner onDismiss={() => setShowUpdateBanner(false)} />}
 
+      {showHelpTour && (
+        <OnboardingTour onClose={() => setShowHelpTour(false)} />
+      )}
+
       {showOnboarding && (
-        <OnboardingTour onClose={() => setShowOnboarding(false)} />
+        <OnboardingTour onClose={async () => {
+          setShowOnboarding(false);
+          try {
+            localStorage.setItem('fammy_onboarding_done', '1');
+            if (session?.user?.id) {
+              await supabase.from('profiles').update({ onboarding_done: true }).eq('id', session.user.id);
+            }
+          } catch (_) {}
+        }} />
       )}
 
       {showHeader && (
@@ -520,6 +557,7 @@ function Header({ family, members, allMembers, tasks, families, activeFamily, is
           />
         </div>
         <NotificationBell />
+        <HelpMenu session={session} profile={profile} families={families} />
         {onOpenSearch && (
           <button
             type="button"
