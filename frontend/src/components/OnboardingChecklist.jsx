@@ -46,7 +46,10 @@ export default function OnboardingChecklist({
       label: 'Attiva le notifiche push',
       done: notificationPermission === 'granted',
       onClick: () => {
-        if (typeof Notification !== 'undefined') Notification.requestPermission().catch(() => {});
+        // Porta l'utente alla sezione Notifiche del Profilo (con il pulsante
+        // "Riprova abilitazione" e le istruzioni iOS). requestPermission() da
+        // solo è un no-op quando iOS ha già negato il permesso.
+        window.dispatchEvent(new CustomEvent('fammy_go_profile', { detail: { section: 'notifications' } }));
       },
     },
     {
