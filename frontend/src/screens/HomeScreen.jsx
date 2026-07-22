@@ -144,6 +144,20 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
     return () => window.removeEventListener('fammy_new_task_for_member', handler);
   }, [members]);
 
+  // Naviga al Profilo e mette a fuoco una sezione (Notifiche o Esporta
+  // calendario), es. dai passi della checklist di setup in Bacheca.
+  const [profileFocus, setProfileFocus] = useState(null); // { section, ts }
+  useEffect(() => {
+    const handler = (e) => {
+      const section = e?.detail?.section;
+      if (!section) return;
+      setActiveTab('profile');
+      setProfileFocus({ section, ts: Date.now() });
+    };
+    window.addEventListener('fammy_go_profile', handler);
+    return () => window.removeEventListener('fammy_go_profile', handler);
+  }, []);
+
   // Helper: pick the family the AI-created item should land in.
   // Priority: currently-active family → first family the user belongs to.
   const targetFamilyForAI = () => {
@@ -492,6 +506,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
             onNewFamily={() => setShowNewFamily(true)}
             onOpenAI={onOpenAI}
             openInboxSignal={openFeedbackInboxSignal}
+            focusSection={profileFocus}
             notificationControl={notificationControl} />
         )}
       </div>
