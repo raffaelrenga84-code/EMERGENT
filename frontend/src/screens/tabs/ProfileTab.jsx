@@ -30,12 +30,32 @@ import { dedupeByUser } from '../../lib/memberDedupe.js';
 
 const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C', '#E67E22', '#7C3AED', '#5A4A3A', '#8B6F5E'];
 
-export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, onNewFamily, onOpenAI, openInboxSignal = 0, notificationControl = {} }) {
+export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, onNewFamily, onOpenAI, openInboxSignal = 0, focusSection = null, notificationControl = {} }) {
   const { t: __t0, lang, setLang } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
   const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const [view, setView] = useState('main'); // main | plans | theme | a11y | privacy
   const [showExportCal, setShowExportCal] = useState(false);
+
+  // Messa a fuoco sezione richiesta da fuori (es. checklist di setup):
+  //  - 'export'        → apre direttamente il modale Esporta calendario
+  //  - 'notifications' → espande e scrolla alla sezione Notifiche
+  useEffect(() => {
+    if (!focusSection?.section) return;
+    const sec = focusSection.section;
+    const timer = setTimeout(() => {
+      if (sec === 'export') {
+        setShowExportCal(true);
+      } else if (sec === 'notifications') {
+        const toggle = document.querySelector('[data-testid="profile-group-notif-toggle"]');
+        if (toggle) {
+          if (toggle.getAttribute('aria-expanded') === 'false') toggle.click();
+          toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }, 140);
+    return () => clearTimeout(timer);
+  }, [focusSection]);
   // Preferenza schermata iniziale (per-dispositivo, come il tema)
   const [startTab, setStartTab] = useState(() => {
     try {
