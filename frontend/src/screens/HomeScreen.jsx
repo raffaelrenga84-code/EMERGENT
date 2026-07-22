@@ -337,6 +337,8 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
 
       {showHeader && (
         <Header
+          session={session}
+          profile={profile}
           family={family}
           members={isAll ? members.filter((m) => m.family_id === families[0]?.id) : members}
           allMembers={members}
@@ -536,7 +538,7 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
   );
 }
 
-function Header({ family, members, allMembers, tasks, families, activeFamily, isAll, onSwitchFamily, onNewFamily, onOpenSearch }) {
+function Header({ session, profile, family, members, allMembers, tasks, families, activeFamily, isAll, onSwitchFamily, onNewFamily, onOpenSearch }) {
   const { t } = useT();
   const todoCount = tasks.filter((task) => task.status !== 'done').length;
 
