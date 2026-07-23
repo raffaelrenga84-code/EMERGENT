@@ -783,7 +783,7 @@ function MemberCard({ member, familyMembers = [], isMe, isOwner, canRemove, othe
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minHeight: 24 }}>
           <span style={{ fontWeight: 700, fontSize: nested ? 13.5 : 15, color: 'var(--k)' }}>{member.name}</span>
           {isOwner && (
-            <span title="Proprietario della famiglia" style={{
+            <span title={t('family_owner_badge') || 'Proprietario della famiglia'} style={{
               fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 100,
               background: 'rgba(255,107,107,0.13)', color: '#C73838',
               border: '1px solid rgba(255,107,107,0.35)',
