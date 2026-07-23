@@ -30,14 +30,15 @@ export default function NativeDateInput({
   type = 'date',
   value,
   onChange,
-  placeholder = 'Tocca per scegliere…',
+  placeholder = null,
   icon = '📅',
   clearable = true,
   displayFormat,
   testid,
 }) {
   const ref = useRef(null);
-  const { lang } = useT();
+  const { t, lang } = useT();
+  const ph = placeholder ?? (t('tap_to_pick') || 'Tocca per scegliere…');
   const locale = LANG_TO_LOCALE[lang] || undefined;
 
   // showPicker() solo come UX boost su desktop — sulla label il browser
@@ -93,7 +94,7 @@ export default function NativeDateInput({
         }}>
         <span style={{ fontSize: 18 }}>{icon}</span>
         <span style={{ flex: 1, textTransform: value ? 'capitalize' : 'none' }}>
-          {display || placeholder}
+          {display || ph}
         </span>
         {value && clearable && (
           <span role="button"
@@ -108,7 +109,7 @@ export default function NativeDateInput({
         )}
         <input ref={ref} type={type} value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          aria-label={placeholder}
+          aria-label={ph}
           style={{
             position: 'absolute', left: 0, top: 0,
             width: '100%', height: '100%',
