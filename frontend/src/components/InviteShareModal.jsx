@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { openExternal } from '../lib/openExternal.js';
+import { useT } from '../lib/i18n.jsx';
 
 export default function InviteShareModal({ familyId, familyName, member, session, onClose }) {
+  const { t } = useT();
   const [token, setToken] = useState(null);
   const [busy, setBusy] = useState(true);
   const [err, setErr] = useState('');
@@ -121,7 +123,7 @@ export default function InviteShareModal({ familyId, familyName, member, session
         )}
 
         <div className="row" style={{ marginTop: 20 }}>
-          <button className="btn secondary full" onClick={onClose}>Chiudi</button>
+          <button className="btn secondary full" onClick={onClose}>{t('close') || 'Chiudi'}</button>
         </div>
       </div>
     </div>
