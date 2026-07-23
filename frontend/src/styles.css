@@ -43,20 +43,20 @@
 
 
 html, body { background: var(--s); font-family: var(--fn); color: var(--k); -webkit-font-smoothing: antialiased; }
-html { overflow-x: hidden; max-width: 100vw; }
-body { min-height: 100vh; overflow-x: hidden; max-width: 100vw;
+html { overflow-x: clip; max-width: 100vw; }
+body { min-height: 100vh; overflow-x: clip; max-width: 100vw;
   /* iOS: niente rimbalzo elastico del body → la .bnav fixed non "galleggia"
      durante lo scroll inerziale (il translateZ da solo non bastava). */
   overscroll-behavior-y: none; }
 /* Catch-all: nessun elemento può "sforare" lateralmente la viewport.
    Combat l'overflow orizzontale dato da grid/flex/scroll horizontal
    senza min-width. */
-#root, .app-shell { max-width: 100vw; overflow-x: hidden; }
+#root, .app-shell { max-width: 100vw; overflow-x: clip; }
 
 /* Anti-overflow orizzontale: alcune pagine hanno chip lunghi, immagini wide
    o tabelle che sforavano la viewport e creavano scroll laterale indesiderato.
    Vincoliamo l'app-shell e tutti i suoi figli a stare dentro la viewport. */
-.app-shell { overflow-x: hidden; }
+.app-shell { overflow-x: clip; }
 .app-shell > *,
 .app-shell .modal,
 .app-shell .card,
