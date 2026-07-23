@@ -1,6 +1,44 @@
 import { useMemo } from 'react';
+import { useT } from '../lib/i18n.jsx';
 
 const DISMISSED_KEY = 'fammy_setup_checklist_dismissed';
+
+// i18n locale it/en/fr/de (pattern EditFamilyModal), via `lang` da useT().
+const L = {
+  it: {
+    kicker: 'Setup famiglia', header: '{tr.header}',
+    s_members: 'Aggiungi un membro o invita qualcuno',
+    s_task: 'Crea il primo incarico',
+    s_notif: 'Attiva le notifiche push',
+    s_export: 'Esporta agenda sul calendario',
+    closeAria: 'Chiudi',
+  },
+  en: {
+    kicker: 'Family setup', header: 'Complete the setup to get the most out of FAMMY',
+    s_members: 'Add a member or invite someone',
+    s_task: 'Create your first task',
+    s_notif: 'Enable push notifications',
+    s_export: 'Export the agenda to your calendar',
+    closeAria: 'Close',
+  },
+  fr: {
+    kicker: 'Configuration', header: 'Termine la configuration pour profiter au maximum de FAMMY',
+    s_members: 'Ajoute un membre ou invite quelqu\u2019un',
+    s_task: 'Crée ta première tâche',
+    s_notif: 'Active les notifications push',
+    s_export: 'Exporte l\u2019agenda vers ton calendrier',
+    closeAria: 'Fermer',
+  },
+  de: {
+    kicker: 'Familien-Setup', header: 'Schließe das Setup ab, um FAMMY optimal zu nutzen',
+    s_members: 'Füge ein Mitglied hinzu oder lade jemanden ein',
+    s_task: 'Erstelle deine erste Aufgabe',
+    s_notif: 'Aktiviere Push-Benachrichtigungen',
+    s_export: 'Exportiere den Kalender',
+    closeAria: 'Schließen',
+  },
+};
+
 
 /**
  * OnboardingChecklist — banner "Completa il setup 2/5" in cima alla Bacheca,
@@ -19,6 +57,8 @@ const DISMISSED_KEY = 'fammy_setup_checklist_dismissed';
 export default function OnboardingChecklist({
   family, members = [], tasks = [], notificationPermission, onAddTask, onInviteFamily, onExportAgenda,
 }) {
+  const { lang } = useT();
+  const tr = L[lang] || L.it;
   const dismissed = (() => {
     try { return localStorage.getItem(DISMISSED_KEY) === '1'; } catch { return false; }
   })();
@@ -31,19 +71,19 @@ export default function OnboardingChecklist({
   const steps = [
     {
       id: 'members',
-      label: 'Aggiungi un membro o invita qualcuno',
+      label: tr.s_members,
       done: familyMembersOfThis.length >= 2,
       onClick: onInviteFamily,
     },
     {
       id: 'task',
-      label: 'Crea il primo incarico',
+      label: tr.s_task,
       done: tasks.length >= 1,
       onClick: onAddTask,
     },
     {
       id: 'notif',
-      label: 'Attiva le notifiche push',
+      label: tr.s_notif,
       done: notificationPermission === 'granted',
       onClick: () => {
         // Porta l'utente alla sezione Notifiche del Profilo (con il pulsante
@@ -54,7 +94,7 @@ export default function OnboardingChecklist({
     },
     {
       id: 'export',
-      label: 'Esporta agenda sul calendario',
+      label: tr.s_export,
       done: (() => {
         try { return localStorage.getItem('fammy_exported_ics') === '1'; } catch { return false; }
       })(),
@@ -95,20 +135,20 @@ export default function OnboardingChecklist({
             fontSize: 10, fontWeight: 800, letterSpacing: '0.16em',
             color: 'var(--ac)', textTransform: 'uppercase', marginBottom: 2,
           }}>
-            Setup famiglia · {completed}/{total}
+            {tr.kicker} · {completed}/{total}
           </div>
           <div style={{
             fontFamily: 'var(--fs)', fontSize: 17, fontWeight: 500,
             color: 'var(--k)', letterSpacing: '-0.01em', lineHeight: 1.2,
           }}>
-            Completa il setup per sfruttare al massimo FAMMY
+            {tr.header}
           </div>
         </div>
         <button
           type="button"
           onClick={handleDismiss}
           data-testid="onboarding-checklist-dismiss"
-          aria-label="Chiudi"
+          aria-label={tr.closeAria}
           style={{
             width: 28, height: 28, borderRadius: '50%',
             border: 'none', background: 'rgba(28,22,17,0.06)',
