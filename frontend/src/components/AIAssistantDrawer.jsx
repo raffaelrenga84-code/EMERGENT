@@ -86,7 +86,7 @@ export default function AIAssistantDrawer({ session, families = [], members = []
       });
 
     return {
-      family_name: currentFamily?.name || (lang === 'it' ? 'la famiglia' : 'the family'),
+      family_name: currentFamily?.name || t('ai_family_generic') || 'la famiglia',
       members: memberNames,
       today_tasks: openTasks,
       upcoming_events: upcoming,
