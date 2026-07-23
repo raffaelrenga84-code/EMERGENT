@@ -13,9 +13,73 @@ const EMOJI = ['🏡', '🏠', '👨‍👩‍👧‍👦', '🌳', '⛱️', '�
  * Foto: caricata nel bucket pubblico `family-photos` DOPO l'INSERT della
  * famiglia (serve l'id per il path). Se l'upload fallisce, la famiglia
  * viene comunque creata con la sola emoji come fallback.
+ *
+ * i18n: lo step 2 usa le chiavi nf_* del dizionario centrale (già esistenti);
+ * il form principale usa un dizionario locale it/en/fr/de (pattern
+ * EditFamilyModal) selezionato via `lang`.
  */
+const L = {
+  it: {
+    h: 'Nuova famiglia',
+    sub: 'Crea una seconda famiglia (es. casa al mare, famiglia del coniuge…).',
+    nameLabel: 'Come si chiama?',
+    namePh: 'es. Famiglia Masiero',
+    photoLabel: 'Foto famiglia (opzionale)',
+    changePhoto: 'Cambia foto', uploadPhoto: 'Carica foto',
+    photoBtn: 'Foto', galleryBtn: 'Galleria',
+    photoHint: 'Una foto rende la famiglia più riconoscibile. Senza foto, viene mostrata l\u2019emoji.',
+    emojiLabel: 'Emoji', emojiFallback: '(fallback)',
+    cancel: 'Annulla', create: 'Crea',
+    photoTooBig: 'File troppo grande (max 5MB)',
+    createFailed: 'Creazione famiglia fallita (risposta vuota).',
+  },
+  en: {
+    h: 'New family',
+    sub: 'Create a second family (e.g. beach house, in-laws…).',
+    nameLabel: 'What is it called?',
+    namePh: 'e.g. Masiero Family',
+    photoLabel: 'Family photo (optional)',
+    changePhoto: 'Change photo', uploadPhoto: 'Upload photo',
+    photoBtn: 'Photo', galleryBtn: 'Gallery',
+    photoHint: 'A photo makes the family more recognizable. Without a photo, the emoji is shown.',
+    emojiLabel: 'Emoji', emojiFallback: '(fallback)',
+    cancel: 'Cancel', create: 'Create',
+    photoTooBig: 'File too large (max 5MB)',
+    createFailed: 'Family creation failed (empty response).',
+  },
+  fr: {
+    h: 'Nouvelle famille',
+    sub: 'Créez une deuxième famille (ex. maison de vacances, belle-famille…).',
+    nameLabel: 'Comment s\u2019appelle-t-elle ?',
+    namePh: 'ex. Famille Masiero',
+    photoLabel: 'Photo de famille (facultatif)',
+    changePhoto: 'Changer la photo', uploadPhoto: 'Ajouter une photo',
+    photoBtn: 'Photo', galleryBtn: 'Galerie',
+    photoHint: 'Une photo rend la famille plus reconnaissable. Sans photo, l\u2019emoji est affiché.',
+    emojiLabel: 'Emoji', emojiFallback: '(par défaut)',
+    cancel: 'Annuler', create: 'Créer',
+    photoTooBig: 'Fichier trop volumineux (max 5 Mo)',
+    createFailed: 'Création de la famille échouée (réponse vide).',
+  },
+  de: {
+    h: 'Neue Familie',
+    sub: 'Erstelle eine zweite Familie (z. B. Ferienhaus, Schwiegerfamilie…).',
+    nameLabel: 'Wie heißt sie?',
+    namePh: 'z. B. Familie Masiero',
+    photoLabel: 'Familienfoto (optional)',
+    changePhoto: 'Foto ändern', uploadPhoto: 'Foto hochladen',
+    photoBtn: 'Foto', galleryBtn: 'Galerie',
+    photoHint: 'Ein Foto macht die Familie leichter erkennbar. Ohne Foto wird das Emoji angezeigt.',
+    emojiLabel: 'Emoji', emojiFallback: '(Fallback)',
+    cancel: 'Abbrechen', create: 'Erstellen',
+    photoTooBig: 'Datei zu groß (max. 5 MB)',
+    createFailed: 'Familienerstellung fehlgeschlagen (leere Antwort).',
+  },
+};
+
 export default function NewFamilyModal({ session, profile, onClose, onCreated }) {
-  const { t } = useT();
+  const { t, lang } = useT();
+  const tr = L[lang] || L.it;
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('🏡');
   const [photoFile, setPhotoFile] = useState(null);
@@ -34,7 +98,7 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      setErr('File troppo grande (max 5MB)');
+      setErr(tr.photoTooBig);
       return;
     }
     setPhotoFile(file);
@@ -82,7 +146,7 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
       // RPC ritorna l'UUID (stringa). Se serve l'oggetto famiglia, lo recuperiamo
       // con una select successiva (sotto, per la foto).
       const newFamilyId = typeof famId === 'string' ? famId : (Array.isArray(famId) ? famId[0] : famId?.id);
-      if (!newFamilyId) throw new Error('Creazione famiglia fallita (risposta vuota).');
+      if (!newFamilyId) throw new Error(tr.createFailed);
 
       // 2) Carica la foto (best-effort: se fallisce la famiglia resta creata)
       let photoUrl = null;
@@ -183,16 +247,16 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Nuova famiglia</h2>
-        <p className="modal-sub">Crea una seconda famiglia (es. casa al mare, famiglia del coniuge…).</p>
+        <h2>{tr.h}</h2>
+        <p className="modal-sub">{tr.sub}</p>
 
         <form onSubmit={create}>
-          <label htmlFor="name">Come si chiama?</label>
-          <input id="name" className="input" autoFocus placeholder="es. Famiglia Masiero"
+          <label htmlFor="name">{tr.nameLabel}</label>
+          <input id="name" className="input" autoFocus placeholder={tr.namePh}
             value={name} onChange={(e) => setName(e.target.value)} />
 
           {/* === FOTO (opzionale) === */}
-          <label style={{ marginTop: 16 }}>Foto famiglia (opzionale)</label>
+          <label style={{ marginTop: 16 }}>{tr.photoLabel}</label>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12,
           }}>
@@ -238,7 +302,7 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
                     color: 'var(--ac)', fontSize: 13, fontWeight: 600,
                     cursor: 'pointer',
                   }}>
-                  📸 {photoPreview ? 'Cambia foto' : 'Carica foto'}
+                  📸 {photoPreview ? tr.changePhoto : tr.uploadPhoto}
                 </button>
               ) : (
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -252,7 +316,7 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
                       color: 'var(--ac)', fontSize: 12, fontWeight: 600,
                       cursor: 'pointer', flex: 1,
                     }}>
-                    📷 Foto
+                    📷 {tr.photoBtn}
                   </button>
                   <button
                     type="button"
@@ -264,12 +328,12 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
                       color: 'var(--ac)', fontSize: 12, fontWeight: 600,
                       cursor: 'pointer', flex: 1,
                     }}>
-                    🖼️ Galleria
+                    🖼️ {tr.galleryBtn}
                   </button>
                 </div>
               )}
               <p style={{ fontSize: 11, color: 'var(--km)', margin: '6px 0 0', lineHeight: 1.4 }}>
-                Una foto rende la famiglia più riconoscibile. Senza foto, viene mostrata l'emoji.
+                {tr.photoHint}
               </p>
             </div>
             <input
@@ -287,7 +351,7 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <label>Emoji {photoPreview ? '(fallback)' : ''}</label>
+            <label>{tr.emojiLabel} {photoPreview ? tr.emojiFallback : ''}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {EMOJI.map((e) => (
                 <button key={e} type="button" onClick={() => setEmoji(e)}
@@ -304,9 +368,9 @@ export default function NewFamilyModal({ session, profile, onClose, onCreated })
           {err && <div className="login-msg error" style={{ marginTop: 12 }}>{err}</div>}
 
           <div className="row" style={{ marginTop: 20 }}>
-            <button type="button" className="btn secondary" onClick={onClose}>Annulla</button>
+            <button type="button" className="btn secondary" onClick={onClose}>{tr.cancel}</button>
             <button type="submit" className="btn" disabled={busy || !name.trim()}>
-              {busy ? <span className="spin" /> : 'Crea'}
+              {busy ? <span className="spin" /> : tr.create}
             </button>
           </div>
         </form>
