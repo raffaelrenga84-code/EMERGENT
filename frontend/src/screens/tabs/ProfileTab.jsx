@@ -242,8 +242,8 @@ export default function ProfileTab({ session, profile, families = [], members = 
     // altrimenti fallisce in silenzio e il campo torna a "Not set".
     if (profileErr || membersErr) {
       console.error('saveBirthday failed', { profileErr, membersErr });
-      alert('Errore nel salvataggio della data di nascita: ' +
-        (profileErr?.message || membersErr?.message || 'errore sconosciuto'));
+      alert((t('profile_birthdate_save_err') || 'Errore nel salvataggio della data di nascita: ') +
+        (profileErr?.message || membersErr?.message || t('err_unknown') || 'errore sconosciuto'));
       setBusy(false);
       return; // tieni aperto l'editor così non perdi il valore inserito
     }
