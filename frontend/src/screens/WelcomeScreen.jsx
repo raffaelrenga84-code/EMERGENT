@@ -74,10 +74,10 @@ export default function WelcomeScreen({ session, profile, onCreated, autoSkip = 
       });
       if (rpcErr) throw new Error(rpcErr.message);
       const newFamilyId = typeof famId === 'string' ? famId : (Array.isArray(famId) ? famId[0] : famId?.id);
-      if (!newFamilyId) throw new Error('Creazione famiglia fallita.');
+      if (!newFamilyId) throw new Error(t('wz_create_failed') || 'Creazione famiglia fallita.');
       onCreated && onCreated();
     } catch (e) {
-      alert(e.message || 'Errore imprevisto. Riprova tra poco.');
+      alert(e.message || t('err_unexpected') || 'Errore imprevisto. Riprova tra poco.');
       setBusy(false);
     }
   };
@@ -207,7 +207,7 @@ function FamilyCreateForm({ session, profile, onCreated, onBack }) {
       setBusy(false);
       setCreated({ id: famId, name: name.trim(), emoji });
     } catch (e) {
-      setErr(e.message || 'Errore.');
+      setErr(e.message || t('err_generic_short') || 'Errore.');
       setBusy(false);
     }
   };
@@ -317,7 +317,7 @@ function FamilyThenItem({ mode, session, profile, onCreated, onBack }) {
       });
       if (e1) throw e1;
       const newFamilyId = typeof famId === 'string' ? famId : (Array.isArray(famId) ? famId[0] : famId?.id);
-      if (!newFamilyId) throw new Error('Creazione famiglia fallita.');
+      if (!newFamilyId) throw new Error(t('wz_create_failed') || 'Creazione famiglia fallita.');
       // Recupera l'id del nuovo member (creato dalla RPC) per gli step successivi
       const { data: mem } = await supabase.from('members')
         .select('id').eq('family_id', newFamilyId).eq('user_id', session.user.id).single();
@@ -484,7 +484,7 @@ function DemoCreator({ session, profile, onCreated, onBack }) {
       });
       if (e1) throw e1;
       const newFamilyId = typeof famId === 'string' ? famId : (Array.isArray(famId) ? famId[0] : famId?.id);
-      if (!newFamilyId) throw new Error('Creazione famiglia demo fallita.');
+      if (!newFamilyId) throw new Error(t('wz_create_demo_failed') || 'Creazione famiglia demo fallita.');
 
       // Aggiungi i membri demo (la RPC ha già creato il primo)
       await supabase.from('members').insert([
