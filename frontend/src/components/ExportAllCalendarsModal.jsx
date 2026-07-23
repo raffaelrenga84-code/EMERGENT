@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { APP_URL } from '../lib/appUrl.js';
 import { supabase } from '../lib/supabase.js';
+import { useT } from '../lib/i18n.jsx';
 
 /**
  * Modal per esportare i calendari delle famiglie con selezione granulare
@@ -8,6 +9,7 @@ import { supabase } from '../lib/supabase.js';
  * al calendario iOS (webcal://) o a Google Calendar.
  */
 export default function ExportAllCalendarsModal({ families, onClose, onChanged }) {
+  const { t } = useT();
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -73,7 +75,7 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
   };
 
   const handleRegenerateSelected = async () => {
-    if (selectedCount === 0) { alert('Seleziona almeno una famiglia'); return; }
+    if (selectedCount === 0) { alert(t('expcal_select_one') || 'Seleziona almeno una famiglia'); return; }
     const familiesText = selectedFamilies.map((f) => f.name).join(', ');
     if (!confirm(`Rigenerare i token per: ${familiesText}?\nI vecchi URL smetteranno di funzionare.`)) return;
     setBusy(true);
@@ -94,7 +96,7 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
       );
       onChanged?.();
     } catch (e) {
-      alert('Errore: ' + e.message);
+      alert((t('error_prefix') || 'Errore: ') + e.message);
     }
     setBusy(false);
   };
@@ -206,7 +208,7 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
           </div>
         ) : (
           <div style={{ marginBottom: 16, padding: 16, background: 'var(--s)', borderRadius: 8, textAlign: 'center', color: 'var(--km)', fontSize: 13 }}>
-            Seleziona almeno una famiglia per vedere gli URL
+            {t('expcal_select_hint') || 'Seleziona almeno una famiglia per vedere gli URL'}
           </div>
         )}
 
@@ -222,7 +224,7 @@ export default function ExportAllCalendarsModal({ families, onClose, onChanged }
           </button>
           <button type="button" className="btn danger" onClick={handleRegenerateSelected}
             disabled={busy || selectedCount === 0}
-            title={selectedCount === 0 ? 'Seleziona almeno una famiglia' : ''}>
+            title={selectedCount === 0 ? (t('expcal_select_one') || 'Seleziona almeno una famiglia') : ''}>
             {busy ? <span className="spin" /> : `🔄 Rigenera ${selectedCount > 0 ? `(${selectedCount})` : ''}`}
           </button>
         </div>
