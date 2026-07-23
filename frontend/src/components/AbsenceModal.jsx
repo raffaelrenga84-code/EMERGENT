@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import { useKeyboardSafeModal } from '../lib/useKeyboardSafeModal.jsx';
 import { markSelfAssignment } from '../lib/assignMarker.js';
-import { sendPush } from '../lib/pushClient.js';
 import NativeDateInput from './NativeDateInput.jsx';
 import ImportScheduleModal from './ImportScheduleModal.jsx';
 import AbsenceCommentsThread from './AbsenceCommentsThread.jsx';
@@ -148,36 +147,10 @@ export default function AbsenceModal({
       } catch (e) { /* silent */ }
     }
 
-    // 🔔 Notifica push ai membri delle famiglie che vedono l'assenza,
-    // escluso me stesso. Best-effort: se fallisce, il salvataggio resta ok.
-    try {
-      const recipientUserIds = [...new Set(
-        (members || [])
-          .filter((m) =>
-            m.user_id &&
-            m.user_id !== myUserId &&
-            visibleFamilies.includes(m.family_id)
-          )
-          .map((m) => m.user_id)
-      )];
-      if (recipientUserIds.length > 0) {
-        const fmtD = (ymd) => (ymd || '').split('-').reverse().join('/');
-        const reasonObj = REASONS.find((r) => r.id === reason);
-        const reasonTxt = reasonObj
-          ? `${reasonObj.icon} ${reasonObj[`label_${lang}`] || reasonObj.label_it}`
-          : '';
-        const who = profile?.display_name || t('a_member') || 'Un membro';
-        sendPush({
-          userIds: recipientUserIds,
-          title: isEdit
-            ? `✏️ ${who} ${t('absence_push_edited') || 'ha modificato la sua assenza'}`
-            : `🌍 ${who} ${t('absence_push_new') || 'sarà assente'}`,
-          body: `${reasonTxt} · ${fmtD(start)} → ${fmtD(end)}${location.trim() ? ' · ' + location.trim() : ''}`,
-          tag: `absence-${absenceId || 'new'}`,
-          data: { kind: 'absence', absence_id: absenceId || null },
-        });
-      }
-    } catch (_) { /* silent: push best-effort */ }
+    // 🔔 Push spostata LATO SERVER: il trigger fammy_private.notify_absence
+    // (fammy-absence-push-server.sql) invia la notifica a tutti i membri
+    // delle famiglie che vedono l'assenza, ognuno NELLA SUA LINGUA.
+    // Niente più invio dal client: più affidabile e niente doppioni.
 
     setBusy(false);
     onSaved?.({ id: absenceId, ...payload });
