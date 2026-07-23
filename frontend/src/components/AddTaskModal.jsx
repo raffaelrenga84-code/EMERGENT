@@ -305,9 +305,7 @@ export default function AddTaskModal({
           .join(', ');
         const firstFamName = families.find((f) => f.id === distinctFamilies[0])?.name || '?';
         const ok = window.confirm(
-          `Stai assegnando questo incarico a membri di famiglie diverse (${famNames}).\n\n` +
-          `L'incarico verra' creato in "${firstFamName}" e visibile solo li'.\n\n` +
-          `Continuare?`
+          __t0('addtask_multifam_confirm', { fams: famNames, first: firstFamName })
         );
         if (!ok) { setBusy(false); return; }
         finalFamilyId = distinctFamilies[0];
@@ -1140,7 +1138,7 @@ export default function AddTaskModal({
                   <div style={{ fontSize: 11, color: 'var(--km)', marginBottom: 12 }}>{t('repeat_hint')}</div>
 
                   <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 10, color: 'var(--km)', marginBottom: 6, fontWeight: 600 }}>Giorni della settimana</div>
+                    <div style={{ fontSize: 10, color: 'var(--km)', marginBottom: 6, fontWeight: 600 }}>{t('addtask_weekdays_label') || 'Giorni della settimana'}</div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between' }}>
                       {Array.isArray(weekdays) && weekdays.map((w, idx) => {
                         const selected = recurringDays.includes(idx);
