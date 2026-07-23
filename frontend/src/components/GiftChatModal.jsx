@@ -138,7 +138,7 @@ export default function GiftChatModal({ member, members, familyId, currentUserId
           <button type="button" onClick={onClose} className="link-btn" style={{ fontSize: 20 }}>‹</button>
           <div style={{ flex: 1 }}>
             <h2 style={{ margin: 0, fontSize: 16 }}>💝 Organizziamo il regalo per {member.name}</h2>
-            <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>Tutti i membri della famiglia possono aiutare</div>
+            <div style={{ fontSize: 11, color: 'var(--km)', marginTop: 2 }}>{t('gift_chat_all_help') || 'Tutti i membri della famiglia possono aiutare'}</div>
           </div>
           <button type="button" onClick={() => setShowGiftIdeas(true)}
             data-testid="gift-chat-ai-ideas"
@@ -189,7 +189,7 @@ export default function GiftChatModal({ member, members, familyId, currentUserId
           display: 'flex', flexDirection: 'column', gap: 8,
         }}>
           {loading ? (
-            <div style={{ textAlign: 'center', color: 'var(--km)', fontSize: 12, margin: 'auto' }}>Caricamento...</div>
+            <div style={{ textAlign: 'center', color: 'var(--km)', fontSize: 12, margin: 'auto' }}>{t('loading') || 'Caricamento...'}</div>
           ) : messages.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--km)', fontSize: 12, margin: 'auto' }}>
               Nessun messaggio ancora. Inizia la conversazione!
