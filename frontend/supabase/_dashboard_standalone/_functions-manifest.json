@@ -1,0 +1,126 @@
+{
+  "project": "jwzoymvtxjzpymaywjtw",
+  "exported_at": "2026-07-23T08:01:39.041Z",
+  "functions": [
+    {
+      "slug": "ai-chat",
+      "version": 12,
+      "verify_jwt": false,
+      "status": "ACTIVE",
+      "updated_at": "2026-05-15T15:59:55.725Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "ai-gift-ideas",
+      "version": 12,
+      "verify_jwt": false,
+      "status": "ACTIVE",
+      "updated_at": "2026-05-15T15:59:58.094Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "ai-suggest-task",
+      "version": 12,
+      "verify_jwt": false,
+      "status": "ACTIVE",
+      "updated_at": "2026-05-15T15:59:34.675Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "ai-weekly-summary",
+      "version": 12,
+      "verify_jwt": false,
+      "status": "ACTIVE",
+      "updated_at": "2026-05-15T15:59:56.943Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "birthday-reminder-push",
+      "version": 3,
+      "verify_jwt": true,
+      "status": "ACTIVE",
+      "updated_at": "2026-07-16T16:41:13.773Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "cron-digest",
+      "version": 16,
+      "verify_jwt": false,
+      "status": "ACTIVE",
+      "updated_at": "2026-07-15T12:05:44.604Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "event-logistics-reminder",
+      "version": 1,
+      "verify_jwt": true,
+      "status": "ACTIVE",
+      "updated_at": "2026-07-23T07:07:00.611Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "medication-reminder-push",
+      "version": 15,
+      "verify_jwt": true,
+      "status": "ACTIVE",
+      "updated_at": "2026-07-15T12:06:10.589Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "parse-schedule",
+      "version": 10,
+      "verify_jwt": false,
+      "status": "ACTIVE",
+      "updated_at": "2026-05-23T17:09:42.223Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "send-push",
+      "version": 25,
+      "verify_jwt": false,
+      "status": "ACTIVE",
+      "updated_at": "2026-07-22T10:06:13.466Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "task-reminder-push",
+      "version": 19,
+      "verify_jwt": true,
+      "status": "ACTIVE",
+      "updated_at": "2026-07-15T12:06:40.584Z",
+      "files": [
+        "index.ts"
+      ]
+    },
+    {
+      "slug": "weekly-calendar-sync",
+      "version": 14,
+      "verify_jwt": false,
+      "status": "ACTIVE",
+      "updated_at": "2026-07-22T10:06:36.622Z",
+      "files": [
+        "index.ts"
+      ]
+    }
+  ]
+}

@@ -103,6 +103,22 @@ serve(async (req) => {
             .eq('id', task.author_id).maybeSingle();
           author = a || null;
         }
+        // 🔕 Task "Solo a me": se TUTTI gli assegnatari corrispondono
+        // all'utente autore, è un promemoria personale → NESSUNA push
+        // "Nuovo incarico" al resto della famiglia.
+        const assigneeUserIds = (fam || [])
+          .filter((m) => assigneeMemberIds.has(m.id) && m.user_id)
+          .map((m) => m.user_id as string);
+        if (
+          assigneeMemberIds.size > 0 &&
+          author?.user_id &&
+          assigneeUserIds.length > 0 &&
+          assigneeUserIds.every((u) => u === author.user_id)
+        ) {
+          await removeFromQueue();
+          continue;
+        }
+
         const excluded = new Set<string>();
         if (author?.user_id) excluded.add(author.user_id);
         for (const m of fam || []) {
@@ -216,7 +232,7 @@ serve(async (req) => {
     // Task di OGGI con orario impostato e non ancora completati
     const { data: tasks } = await supabaseAdmin
       .from('tasks')
-      .select('id, title, due_date, due_time, status, family_id')
+      .select('id, title, due_date, due_time, status, family_id, remind_lead_min')
       .eq('due_date', todayRome)
       .not('due_time', 'is', null)
       .neq('status', 'done');
@@ -227,12 +243,17 @@ serve(async (req) => {
 
     // Finestra di catch-up: il promemoria scatta nel minuto ESATTO oppure
     // fino a 1 minuto DOPO (se il cron salta un tick). Mai in anticipo.
-    // delta = (minuti correnti) - (minuti dell'orario impostato).
+    // delta = (minuti correnti) - (minuti dell'orario TARGET), dove il
+    // target è l'orario di scadenza MENO l'eventuale anticipo scelto
+    // dall'utente (remind_lead_min: 0/30/60/180). Se l'anticipo porterebbe
+    // il target prima di mezzanotte, si ferma a mezzanotte.
     const dueNow = tasks.filter((t) => {
       const hhmm = String(t.due_time).slice(0, 5);
       const [h, m] = hhmm.split(':').map(Number);
       if (Number.isNaN(h) || Number.isNaN(m)) return false;
-      const delta = nowMinutes - (h * 60 + m);
+      const lead = Number((t as { remind_lead_min?: number }).remind_lead_min) || 0;
+      const target = Math.max(0, (h * 60 + m) - lead);
+      const delta = nowMinutes - target;
       return delta === 0 || delta === 1;
     });
     if (dueNow.length === 0) {

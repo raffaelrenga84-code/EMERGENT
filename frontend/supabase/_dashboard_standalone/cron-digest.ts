@@ -219,6 +219,40 @@ serve(async (req) => {
     );
   });
 
+  // 3e) TASK IN RITARDO (solo digest del mattino): scadenza già passata,
+  //     non fatti, non ricorrenti — quelli che rischiano l'oblio.
+  const overdueTasks = isMorning
+    ? (allTasks || []).filter((t) =>
+        t.due_date &&
+        String(t.due_date).slice(0, 10) < targetKey &&
+        !(t.recurring_days && (t.recurring_days as string[]).length > 0)
+      )
+    : [];
+
+  // 3f) COMPLEANNI 🎂 (solo digest del mattino): membri delle famiglie
+  //     con compleanno OGGI o tra 7 GIORNI. Include anche membri senza
+  //     account (es. bambini): il compleanno riguarda tutta la famiglia.
+  type BdayMember = { id: string; name: string; user_id: string | null; family_id: string; birth_date: string };
+  let bdayToday: BdayMember[] = [];
+  let bdayIn7: BdayMember[] = [];
+  if (isMorning) {
+    const { data: famMembers } = await supabaseAdmin
+      .from('members')
+      .select('id, name, user_id, family_id, birth_date')
+      .in('family_id', familyIds)
+      .not('birth_date', 'is', null);
+    const mmdd = (ymd: string) => String(ymd).slice(5, 10);
+    const todayMMDD = mmdd(targetKey);
+    const in7 = new Date(startTarget);
+    in7.setDate(in7.getDate() + 7);
+    const in7MMDD = `${String(in7.getMonth() + 1).padStart(2, '0')}-${String(in7.getDate()).padStart(2, '0')}`;
+    for (const m of (famMembers || []) as BdayMember[]) {
+      const b = mmdd(String(m.birth_date));
+      if (b === todayMMDD) bdayToday.push(m);
+      else if (b === in7MMDD) bdayIn7.push(m);
+    }
+  }
+
   // 4) EVENTI: include single + ricorrenti
   const { data: allEvents } = await supabaseAdmin
     .from('events')
@@ -263,16 +297,74 @@ serve(async (req) => {
 
     const myEvents = targetEvents.filter((e) => fams.has(e.family_id));
 
+    // Task in ritardo rilevanti per me (stessa regola di rilevanza)
+    const myOverdue = overdueTasks.filter((t) => {
+      if (!fams.has(t.family_id)) return false;
+      const ass = assigneesByTask[t.id] || [];
+      const isAssignedToMe = ass.some((mid) => myMemberSet.has(mid));
+      const isMyAuthor = t.author_id && myMemberSet.has(t.author_id);
+      const hasNoAssignee = ass.length === 0;
+      return isAssignedToMe || isMyAuthor || hasNoAssignee;
+    });
+
     const totalTasks = myTasks.length;
     const totalEvents = myEvents.length;
-    if (totalTasks === 0 && totalEvents === 0) continue;
+
+    // Compleanni rilevanti per me: nelle mie famiglie, dedup per nome.
+    // Escludo me stesso dalle liste "fai gli auguri" (per me c'è il
+    // messaggio dedicato di buon compleanno).
+    const seenBday = new Set<string>();
+    const pickBdays = (list: BdayMember[]) => list.filter((b) => {
+      if (!fams.has(b.family_id)) return false;
+      if (b.user_id && b.user_id === uid) return false;
+      const key = (b.name || '').trim().toLowerCase();
+      if (!key || seenBday.has(key)) return false;
+      seenBday.add(key);
+      return true;
+    });
+    const myBdayToday = isMorning ? pickBdays(bdayToday) : [];
+    const myBdayIn7 = isMorning ? pickBdays(bdayIn7) : [];
+    const itsMyBirthday = isMorning &&
+      bdayToday.some((b) => b.user_id === uid && fams.has(b.family_id));
+
+    if (totalTasks === 0 && totalEvents === 0 && myOverdue.length === 0 &&
+        myBdayToday.length === 0 && myBdayIn7.length === 0 && !itsMyBirthday) continue;
+
+    const age = (b: BdayMember) => {
+      const y = Number(String(b.birth_date).slice(0, 4));
+      const tY = Number(targetKey.slice(0, 4));
+      return y > 1900 ? ` (${tY - y})` : '';
+    };
+    const names = (list: BdayMember[]) =>
+      list.map((b) => `${b.name}${age(b)}`).join(', ');
 
     const parts: string[] = [];
     if (totalTasks > 0) parts.push(totalTasks === 1 ? '1 incarico' : `${totalTasks} incarichi`);
     if (totalEvents > 0) parts.push(totalEvents === 1 ? '1 evento' : `${totalEvents} eventi`);
-    const body = isMorning
-      ? `Oggi ti aspettano ${parts.join(' e ')}. Buona giornata! ☀️`
-      : `Domani ti aspettano ${parts.join(' e ')}. Buona serata! 🌙`;
+    let body: string;
+    if (isMorning) {
+      body = parts.length > 0
+        ? `Oggi ti aspettano ${parts.join(' e ')}.`
+        : 'Oggi niente in programma.';
+      if (itsMyBirthday) {
+        body = `🎉 Buon compleanno! 🎂 Tanti auguri da tutta FAMMY! ` + body;
+      }
+      if (myBdayToday.length > 0) {
+        body += ` 🎂 Oggi ${myBdayToday.length === 1 ? 'è il compleanno di' : 'compiono gli anni'} ${names(myBdayToday)}: fai gli auguri!`;
+      }
+      if (myBdayIn7.length > 0) {
+        body += ` 🎁 Tra una settimana ${myBdayIn7.length === 1 ? 'compie gli anni' : 'compiono gli anni'} ${names(myBdayIn7)} — dai un'occhiata alle idee regalo in FAMMY.`;
+      }
+      if (myOverdue.length > 0) {
+        body += myOverdue.length === 1
+          ? ' ⏰ E c\'è 1 incarico in ritardo: aprimi per sistemarlo con un tocco.'
+          : ` ⏰ E ci sono ${myOverdue.length} incarichi in ritardo: aprimi per sistemarli con un tocco.`;
+      } else if (myBdayToday.length === 0 && myBdayIn7.length === 0 && !itsMyBirthday) {
+        body += ' Buona giornata! ☀️';
+      }
+    } else {
+      body = `Domani ti aspettano ${parts.join(' e ')}. Buona serata! 🌙`;
+    }
     sendList.push({ uid, body });
   }
 

@@ -52,6 +52,25 @@ serve(async (req) => {
     return json({ error: 'missing_fields', required: ['user_id|user_ids', 'title', 'body'] }, 400);
   }
 
+  // === CENTRO NOTIFICHE 🔔 ===
+  // send-push è il punto di passaggio di TUTTE le push (task, medicine,
+  // compleanni, spese, inviti, digest): scrivendo qui lo storico, ogni
+  // notifica presente e futura finisce automaticamente nella campana.
+  // PRIMA della ricerca subscription: chi non ha attivato le push ha
+  // comunque lo storico in-app. Best-effort: se la tabella manca
+  // (migration non eseguita) le push partono lo stesso.
+  try {
+    await supabaseAdmin.from('notifications').insert(
+      userIds.map((uid) => ({
+        user_id: uid,
+        title: payload.title,
+        body: payload.body,
+        tag: payload.tag || null,
+        data: payload.data || {},
+      }))
+    );
+  } catch (_) { /* fail-open */ }
+
   // Recupera tutte le subscription
   const { data: subs, error } = await supabaseAdmin
     .from('push_subscriptions')
