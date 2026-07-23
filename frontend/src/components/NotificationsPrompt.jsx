@@ -1,6 +1,40 @@
 import { useEffect, useState } from 'react';
+import { useT } from '../lib/i18n.jsx';
 
 const DISMISSED_KEY = 'fammy_notifications_prompt_dismissed';
+
+// i18n locale it/en/fr/de (pattern EditFamilyModal), via `lang` da useT().
+const L = {
+  it: {
+    title1: 'Tieni la famiglia', title2: 'sempre sincronizzata',
+    p1a: 'Senza notifiche, la tua famiglia ', p1b: 'non saprà', p1c: ' che hai aggiunto un incarico o che qualcuno ti ha delegato qualcosa.',
+    p2a: 'FAMMY ti avvisa solo per le cose ', p2b: 'davvero importanti', p2c: ': incarichi urgenti, nuovi eventi, commenti diretti.',
+    p3: '{tr.p3}',
+    waiting: '⏳ Attendo conferma…', allow: '🔔 Attiva notifiche', later: 'Non ora',
+  },
+  en: {
+    title1: 'Keep your family', title2: 'always in sync',
+    p1a: 'Without notifications, your family ', p1b: "won't know", p1c: ' that you added a task or that someone delegated something to you.',
+    p2a: 'FAMMY only alerts you about things that ', p2b: 'really matter', p2c: ': urgent tasks, new events, direct comments.',
+    p3: 'You can turn them off anytime from your Profile, or enable the night "Do not disturb".',
+    waiting: '⏳ Waiting for confirmation…', allow: '🔔 Enable notifications', later: 'Not now',
+  },
+  fr: {
+    title1: 'Garde ta famille', title2: 'toujours synchronisée',
+    p1a: 'Sans notifications, ta famille ', p1b: 'ne saura pas', p1c: ' que tu as ajouté une tâche ou que quelqu\u2019un t\u2019a délégué quelque chose.',
+    p2a: 'FAMMY ne t\u2019avertit que pour les choses ', p2b: 'vraiment importantes', p2c: ' : tâches urgentes, nouveaux événements, commentaires directs.',
+    p3: 'Tu peux les désactiver à tout moment depuis le Profil, ou activer le « Ne pas déranger » nocturne.',
+    waiting: '⏳ En attente de confirmation…', allow: '🔔 Activer les notifications', later: 'Pas maintenant',
+  },
+  de: {
+    title1: 'Halte deine Familie', title2: 'immer synchron',
+    p1a: 'Ohne Benachrichtigungen ', p1b: 'weiß deine Familie nicht', p1c: ', dass du eine Aufgabe hinzugefügt hast oder dass dir jemand etwas übertragen hat.',
+    p2a: 'FAMMY benachrichtigt dich nur bei ', p2b: 'wirklich wichtigen Dingen', p2c: ': dringende Aufgaben, neue Ereignisse, direkte Kommentare.',
+    p3: 'Du kannst sie jederzeit im Profil deaktivieren oder das nächtliche „Nicht stören" aktivieren.',
+    waiting: '⏳ Warte auf Bestätigung…', allow: '🔔 Benachrichtigungen aktivieren', later: 'Nicht jetzt',
+  },
+};
+
 
 /**
  * NotificationsPrompt — pop-up bloccante con messaggio CALDO che spiega
@@ -17,6 +51,8 @@ const DISMISSED_KEY = 'fammy_notifications_prompt_dismissed';
  * Stile Zenzap: motivazione calda, no avviso freddo "consenti notifiche".
  */
 export default function NotificationsPrompt({ onGranted, onDismiss }) {
+  const { lang } = useT();
+  const tr = L[lang] || L.it;
   const [requesting, setRequesting] = useState(false);
   const [dismissed, setDismissed] = useState(() => {
     try { return sessionStorage.getItem(DISMISSED_KEY) === '1'; } catch { return false; }
@@ -92,20 +128,18 @@ export default function NotificationsPrompt({ onGranted, onDismiss }) {
           fontFamily: 'var(--fs)', fontSize: 24, fontWeight: 500,
           letterSpacing: '-0.02em', color: 'var(--k)', lineHeight: 1.2,
         }}>
-          Tieni la famiglia<br />sempre sincronizzata
+          {tr.title1}<br />{tr.title2}
         </h2>
 
         <p style={{
           fontSize: 14, lineHeight: 1.55, color: 'var(--km)',
           margin: '0 0 22px', padding: '0 8px',
         }}>
-          Senza notifiche, la tua famiglia <strong>non saprà</strong> che
-          hai aggiunto un incarico o che qualcuno ti ha delegato qualcosa.
+          {tr.p1a}<strong>{tr.p1b}</strong>{tr.p1c}
           <br /><br />
-          FAMMY ti avvisa solo per le cose <strong>davvero importanti</strong>:
-          incarichi urgenti, nuovi eventi, commenti diretti.
+          {tr.p2a}<strong>{tr.p2b}</strong>{tr.p2c}
           <br /><br />
-          <em style={{ fontSize: 13, opacity: 0.85 }}>Puoi disattivarle in qualsiasi momento dal Profilo, oppure attivare il "Non disturbare" notturno.</em>
+          <em style={{ fontSize: 13, opacity: 0.85 }}>{tr.p3}</em>
         </p>
 
         <button
@@ -121,7 +155,7 @@ export default function NotificationsPrompt({ onGranted, onDismiss }) {
             cursor: 'pointer', marginBottom: 8,
             boxShadow: '0 8px 22px rgba(193,98,75,0.4)',
           }}>
-          {requesting ? '⏳ Attendo conferma…' : '🔔 Attiva notifiche'}
+          {requesting ? tr.waiting : tr.allow}
         </button>
         <button
           type="button"
@@ -133,7 +167,7 @@ export default function NotificationsPrompt({ onGranted, onDismiss }) {
             color: 'var(--km)', fontSize: 13, fontWeight: 600,
             cursor: 'pointer',
           }}>
-          Non ora
+          {tr.later}
         </button>
       </div>
     </div>
