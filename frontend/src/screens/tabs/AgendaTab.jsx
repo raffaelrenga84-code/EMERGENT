@@ -1662,7 +1662,7 @@ function TaskAsEventCard({ task, family, past, onClick }) {
                 padding: '2px 8px', borderRadius: 100,
                 background: '#F39C1222', color: '#B36E00',
                 fontSize: 11, fontWeight: 600,
-              }}>Incarico</span>
+              }}>{t('fm_kind_task') || 'Incarico'}</span>
             )}
             {family && (
               <span style={{
