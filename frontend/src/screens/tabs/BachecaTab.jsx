@@ -7,6 +7,7 @@ import FamilyOfferBanner from '../../components/FamilyOfferBanner.jsx';
 import DomainMigrationBanner from '../../components/DomainMigrationBanner.jsx';
 import FriendJoinedBanner from '../../components/FriendJoinedBanner.jsx';
 import AddTaskModal from '../../components/AddTaskModal.jsx';
+import AddEventModal from '../../components/AddEventModal.jsx';
 import TaskDetailModal from '../../components/TaskDetailModal.jsx';
 import OnboardingChecklist from '../../components/OnboardingChecklist.jsx';
 import SwipeableRow from '../../components/SwipeableRow.jsx';
@@ -29,6 +30,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
   const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
   const [showAdd, setShowAdd] = useState(false);
+  const [showAddEvent, setShowAddEvent] = useState(false);
   // Prefill per "Fare la spesa" dal FAB (titolo + categoria già impostati)
   const [addPrefill, setAddPrefill] = useState(null);
   const [showAbsence, setShowAbsence] = useState(false);
@@ -478,6 +480,7 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
   const buildFabActions = (testidPrefix) => {
     const list = [
       { id: 'task',    icon: '📋', label: t('fab_new_task') || 'Nuovo incarico', onClick: () => setShowAdd(true), testid: `${testidPrefix}-new-task` },
+      { id: 'event',   icon: '🗓️', label: t('fab_new_event') || 'Nuovo evento', onClick: () => setShowAddEvent(true), testid: `${testidPrefix}-new-event` },
       { id: 'shopping', icon: '🛒',
         label: t('fab_new_shopping') || 'Spesa',
         onClick: () => {
@@ -691,6 +694,12 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
             onClose={() => { setShowAdd(false); setAddPrefill(null); }}
             onCreated={() => { setShowAdd(false); setAddPrefill(null); onChanged(); }} />
         )}
+        {showAddEvent && (
+          <AddEventModal familyId={targetFamilyId} families={families} members={allMembers}
+            authorMemberId={me?.id}
+            onClose={() => setShowAddEvent(false)}
+            onCreated={() => { setShowAddEvent(false); onChanged(); }} />
+        )}
         {showAbsence && (
           <AbsenceModal session={session} profile={profile} families={families}
             tasks={tasks} members={allMembers}
@@ -893,6 +902,17 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
           initialChecklistOpen={!!addPrefill?.shopping}
           onClose={() => { setShowAdd(false); setAddPrefill(null); }}
           onCreated={() => { setShowAdd(false); setAddPrefill(null); onChanged(); }}
+        />
+      )}
+
+      {showAddEvent && (
+        <AddEventModal
+          familyId={targetFamilyId}
+          families={families}
+          members={allMembers}
+          authorMemberId={me?.id}
+          onClose={() => setShowAddEvent(false)}
+          onCreated={() => { setShowAddEvent(false); onChanged(); }}
         />
       )}
 
