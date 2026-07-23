@@ -817,6 +817,9 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
               animation: 'fammy-sheet-up 220ms cubic-bezier(.2,.8,.3,1)',
             }}>
             <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--sm)', margin: '0 auto 12px' }} />
+            <ActionRow icon="🗓️" label={t('fab_new_event') || 'Nuovo evento'}
+              testid="agenda-action-event"
+              onClick={() => { setShowQuickActions(false); setShowAdd(true); }} />
             <ActionRow icon="📋" label={t('fab_new_task') || 'Nuovo incarico'}
               testid="agenda-action-task"
               onClick={() => { setShowQuickActions(false); setShowAddTask(true); }} />
@@ -890,6 +893,9 @@ export default function AgendaTab({ familyId, families, events, tasks = [], task
           families={families}
           members={members}
           authorMemberId={me?.id}
+          initialStartsAt={selectedDay
+            ? `${selectedDay.getFullYear()}-${String(selectedDay.getMonth() + 1).padStart(2, '0')}-${String(selectedDay.getDate()).padStart(2, '0')}`
+            : ''}
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); onChanged(); }}
         />
