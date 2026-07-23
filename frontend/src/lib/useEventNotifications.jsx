@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from './supabase.js';
+import { useT } from './i18n.jsx';
 import { wasSelfAssignment } from './assignMarker.js';
 import { isBirthdayTomorrow } from './birthdayUtils.js';
 
@@ -47,6 +48,7 @@ function safeNotificationPermission() {
 }
 
 export function useEventNotifications(session, profile, families, events, taskAssignees, members = [], tasks = [], onDataChange, absences = []) {
+  const { t } = useT();
   const [notificationPermission, setNotificationPermission] = useState(safeNotificationPermission());
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     try {
@@ -334,11 +336,11 @@ export function useEventNotifications(session, profile, families, events, taskAs
       }).eq('id', taskId);
       await supabase.from('task_responses').insert({
         task_id: taskId, author_id: myMember,
-        text: 'Me ne occupo io ✓ (da promemoria)',
+        text: t('notif_sys_claim_rem') || 'Me ne occupo io ✓ (da promemoria)',
         type: 'system',
       });
       window.dispatchEvent(new CustomEvent('fammy_toast', {
-        detail: { text: `✋ Hai preso "${task.title}" — buona giornata!` }
+        detail: { text: t('notif_claim_toast', { title: task.title }) }
       }));
       if (typeof onDataChange === 'function') onDataChange();
     };
@@ -351,13 +353,13 @@ export function useEventNotifications(session, profile, families, events, taskAs
       if (!myMember) return;
       await supabase.from('task_responses').insert({
         task_id: taskId, author_id: myMember,
-        text: '🔔 Sollecito gentile — questa task è in scadenza',
+        text: t('notif_sys_remind') || '🔔 Sollecito gentile — questa task è in scadenza',
         type: 'system',
       });
       // bump priority a 'medium' per evidenziarla a tutti
       await supabase.from('tasks').update({ priority: 'medium' }).eq('id', taskId);
       window.dispatchEvent(new CustomEvent('fammy_toast', {
-        detail: { text: `🔔 Sollecito inviato per "${task.title}"` }
+        detail: { text: t('notif_remind_toast', { title: task.title }) }
       }));
       if (typeof onDataChange === 'function') onDataChange();
     };
