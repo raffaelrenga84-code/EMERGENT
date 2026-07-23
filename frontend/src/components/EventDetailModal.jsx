@@ -111,7 +111,7 @@ export default function EventDetailModal({ event, families = [], members = [], m
 
   const onSeries = async () => {
     if (recurringChoice === 'delete') {
-      if (!confirm('Sei sicuro di voler eliminare TUTTA la serie ricorrente?')) {
+      if (!confirm(t('rec_delete_series_confirm') || 'Sei sicuro di voler eliminare TUTTA la serie ricorrente?')) {
         setRecurringChoice(null); return;
       }
       await supabase.from('events').delete().eq('id', origId);
@@ -225,7 +225,7 @@ export default function EventDetailModal({ event, families = [], members = [], m
               👥 Assegnato a {assigneeMembers.length > 0 ? `(${assigneeMembers.length})` : ''}
             </div>
             {loading ? (
-              <div style={{ fontSize: 13, color: 'var(--km)' }}>Caricamento…</div>
+              <div style={{ fontSize: 13, color: 'var(--km)' }}>{t('loading') || 'Caricamento…'}</div>
             ) : assigneeMembers.length === 0 ? (
               <div style={{ fontSize: 13, color: 'var(--km)', fontStyle: 'italic' }}>
                 Nessuno assegnato — questo evento è per tutta la famiglia
