@@ -70,12 +70,42 @@ export default function NotificationBell() {
     return { memberId, familyId, memberName };
   };
 
+  // Estrae l'id del task da una notifica: prima dal payload `data`,
+  // poi come fallback dall'URL di deep-link (`/?task=<uuid>`) che i
+  // trigger inseriscono per il click sulla push.
+  const taskIdOf = (n) => {
+    const d = (n && n.data) || {};
+    const direct = d.task_id || d.taskId || null;
+    if (direct) return String(direct);
+    const url = typeof d.url === 'string' ? d.url : '';
+    const m = /[?&]task=([^&]+)/.exec(url);
+    if (m) return decodeURIComponent(m[1]);
+    // Ultimo fallback: il tag ha forma `task-<qualcosa>-<uuid>`
+    const tag = n && n.tag ? String(n.tag) : '';
+    const mt = /^task[-_][a-z]+[-_](.+)$/i.exec(tag);
+    return mt ? mt[1] : null;
+  };
+
   const onItemClick = (n) => {
     markRead(n);
+
+    // 1) "X si è unito alla famiglia" → nuovo incarico precompilato
     const jt = joinTargetOf(n);
     if (jt) {
       setOpen(false);
       window.dispatchEvent(new CustomEvent('fammy_new_task_for_member', { detail: jt }));
+      return;
+    }
+
+    // 2) Notifica legata a un incarico → apri il TaskDetailModal.
+    //    Riusa lo stesso evento globale che HomeScreen già ascolta per i
+    //    click sulle push (Service Worker → 'fammy_open_task').
+    const taskId = taskIdOf(n);
+    if (taskId) {
+      setOpen(false);
+      window.dispatchEvent(new CustomEvent('fammy_open_task', {
+        detail: { taskId, kind: (n.data && n.data.kind) || 'task' },
+      }));
     }
   };
 
