@@ -47,6 +47,9 @@ export default function AddEventModal({
   // Logistica evento: chi porta / chi riprende (member_id singoli, opzionali)
   const [bringMemberId, setBringMemberId] = useState(editingEvent?.bring_member_id || '');
   const [pickupMemberId, setPickupMemberId] = useState(editingEvent?.pickup_member_id || '');
+  const [logiRemindMin, setLogiRemindMin] = useState(
+    editingEvent?.logi_remind_min != null ? String(editingEvent.logi_remind_min) : ''
+  );
   // Membri selezionabili per la logistica (esclude i contatti solo-compleanno)
   const logiMembers = (members || []).filter((m) => !m.is_contact_only);
 
@@ -195,6 +198,8 @@ export default function AddEventModal({
       recurring_until: recurringDays.length > 0 && recurringUntil ? recurringUntil : null,
       bring_member_id: bringMemberId || null,
       pickup_member_id: pickupMemberId || null,
+      logi_remind_min: (bringMemberId || pickupMemberId) && logiRemindMin !== ''
+        ? Number(logiRemindMin) : null,
     };
 
     if (isEdit) {
@@ -490,6 +495,25 @@ export default function AddEventModal({
                   </select>
                 </div>
               </div>
+              {(bringMemberId || pickupMemberId) && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 12, color: 'var(--km)', marginBottom: 4 }}>⏰ {t('event_logi_remind')}</div>
+                  <select data-testid="add-event-remind"
+                    value={logiRemindMin} onChange={(e) => setLogiRemindMin(e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 10,
+                      border: '1px solid var(--sm)', background: 'white',
+                      color: 'var(--k)', fontSize: 14,
+                    }}>
+                    <option value="">{t('event_logi_remind_none')}</option>
+                    <option value="60">{t('event_logi_remind_h', { n: 1 })}</option>
+                    <option value="120">{t('event_logi_remind_h', { n: 2 })}</option>
+                    <option value="180">{t('event_logi_remind_h', { n: 3 })}</option>
+                    <option value="720">{t('event_logi_remind_h', { n: 12 })}</option>
+                    <option value="1440">{t('event_logi_remind_d', { n: 1 })}</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* === RICORRENZA === */}
