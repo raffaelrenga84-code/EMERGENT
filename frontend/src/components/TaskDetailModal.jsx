@@ -427,7 +427,7 @@ export default function TaskDetailModal({
 
   const onRecurringSeries = async () => {
     if (showRecurringChoice === 'delete') {
-      if (!confirm('Sei sicuro di voler eliminare TUTTA la serie ricorrente?')) {
+      if (!confirm(t('rec_delete_series_confirm') || 'Sei sicuro di voler eliminare TUTTA la serie ricorrente?')) {
         setShowRecurringChoice(null); return;
       }
       setShowRecurringChoice(null);
@@ -573,7 +573,7 @@ export default function TaskDetailModal({
     });
     if (insErr) {
       console.error('addComment failed', insErr);
-      alert('Errore nell\'invio del messaggio: ' + insErr.message);
+      alert((t('td_send_err') || 'Errore nell\'invio del messaggio: ') + insErr.message);
       setBusy(false);
       return;
     }
