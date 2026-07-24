@@ -1,4 +1,4 @@
-birthdimport { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import Avatar from './Avatar.jsx';
