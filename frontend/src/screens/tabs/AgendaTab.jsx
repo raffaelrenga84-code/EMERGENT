@@ -143,11 +143,24 @@ function ActionRow({ icon, label, onClick, accent, testid }) {
 }
 
 
-export default function AgendaTab({ familyId, families, events, tasks = [], taskAssignees = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily, onOpenAI }) {
+export default function AgendaTab({ familyId, families, events, tasks = [], taskAssignees = [], members, me, isAll, absences = [], session, profile, onChanged, onSwitchFamily, onOpenAI , openEventId, onEventOpened }) {
   const { t: __t0, lang } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const localeMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' };
+
+  // Apre l'EventDetailModal su richiesta esterna (click su notifica evento).
+  // Gestisce anche le istanze ricorrenti (_origId).
+  useEffect(() => {
+    if (!openEventId) return;
+    const list = events || [];
+    const target = list.find((ev) => ev.id === openEventId)
+      || list.find((ev) => ev._origId === openEventId);
+    if (target) {
+      setSelEvent(target);
+      onEventOpened && onEventOpened();
+    }
+  }, [openEventId, events, onEventOpened]);
   const dateLocale = localeMap[lang] || 'it-IT';
   const [showAdd, setShowAdd] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
@@ -1063,7 +1076,7 @@ const ABSENCE_TONE = {
 function AbsenceCard({ absence, memberName, isMine, isOngoing, onClick }) {
   const { t: __t0, lang } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const localeMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', de: 'de-DE' };
   const tone = ABSENCE_TONE[absence.reason] || ABSENCE_TONE.other;
   const label = absenceLabel(absence);
@@ -1256,7 +1269,7 @@ function ExportFamiliesPicker({ families, selected, onChange, t }) {
 function MonthGrid({ month, events, tasks = [], absences = [], members = [], familyId = null, selectedDay, onSelectDay, onPrev, onNext }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const weekdays = t('weekday_short');
   const months = t('months');
 
@@ -1600,7 +1613,7 @@ function EventCard({ event, me, family, past, onRemove, onClick }) {
 function TaskAsEventCard({ task, family, past, onClick }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const due = new Date(task.due_date + 'T00:00:00');
   const priority = task.priority || (task.urgent ? 'high' : 'normal');
   const accentColor = priority === 'high' ? 'var(--rd)' : '#F39C12';

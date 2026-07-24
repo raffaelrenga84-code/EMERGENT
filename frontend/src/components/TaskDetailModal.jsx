@@ -24,7 +24,7 @@ export default function TaskDetailModal({
 }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   useAndroidBack(true, onClose);
   // Solo 3 stati cliccabili. 'taken' viene impostato automaticamente
   // quando si fa "Me ne occupo io".
@@ -464,21 +464,48 @@ export default function TaskDetailModal({
   const isCoAssignee = isAssigned && assignees.length > 1;
   const isDelegateTarget = !!(task.delegated_to && me && task.delegated_to === me.id);
 
+  // Il membro "io" NELLA FAMIGLIA DELL'INCARICO. In vista "Tutte" la prop
+  // `me` puo' appartenere a un'altra famiglia: usarla crea un'assegnazione
+  // incrociata o fa fallire l'INSERT, lasciando l'incarico senza
+  // assegnatari e quindi invisibile (bug "incarico sparito").
+  const meForTask = (() => {
+    if (!me) return null;
+    const fid = task?.family_id;
+    if (!fid) return me;
+    return (members || []).find(
+      (m) => m.user_id === me.user_id && m.family_id === fid
+    ) || null;
+  })();
+
   const claimOnly = async () => {
     if (!me) return;
+    if (!meForTask) {
+      alert(t('claim_wrong_family') || 'Non risulti membro di questa famiglia.');
+      return;
+    }
     setBusy(true);
     const snapshot = (task.delegated_from && task.delegated_from.length > 0)
       ? task.delegated_from
       : assignees.map((a) => a.id);
 
     await supabase.from('task_assignees').delete().eq('task_id', realTaskId);
-    await supabase.from('task_assignees').insert({ task_id: realTaskId, member_id: me.id });
+    const { error: insErr } = await supabase
+      .from('task_assignees').insert({ task_id: realTaskId, member_id: meForTask.id });
+    if (insErr) {
+      if (snapshot.length > 0) {
+        await supabase.from('task_assignees')
+          .insert(snapshot.map((mid) => ({ task_id: realTaskId, member_id: mid })));
+      }
+      setBusy(false);
+      alert((t('claim_failed') || 'Non sono riuscito ad assegnarti l\u2019incarico: ') + insErr.message);
+      return;
+    }
     await supabase.from('tasks').update({
       status: 'taken', urgent: false, priority: 'normal',
       delegated_from: snapshot, delegated_to: null,
     }).eq('id', realTaskId);
     await supabase.from('task_responses').insert({
-      task_id: realTaskId, author_id: me.id,
+      task_id: realTaskId, author_id: meForTask.id,
       text: t('td_sys_claim'), type: 'system',
     });
     setBusy(false); onChanged(); onClosed();

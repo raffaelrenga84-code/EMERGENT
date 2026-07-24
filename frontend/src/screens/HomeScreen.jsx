@@ -106,6 +106,34 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
     return () => window.removeEventListener('fammy_open_task', handler);
   }, []);
 
+  // Stessa catena per gli EVENTI. Finora `openEventId` non veniva passato
+  // a nessuno: le notifiche logistica evento non aprivano nulla.
+  useEffect(() => {
+    const handler = (e) => {
+      const eventId = e?.detail?.eventId;
+      if (!eventId) return;
+      setActiveTab('agenda');
+      setActiveFamily('all');
+      setOpenEventId(eventId);
+    };
+    window.addEventListener('fammy_open_event', handler);
+    return () => window.removeEventListener('fammy_open_event', handler);
+  }, []);
+
+  // Care Hub aperto da una notifica medicine.
+  const [openMedsMemberId, setOpenMedsMemberId] = useState(null);
+  useEffect(() => {
+    const handler = (e) => {
+      const memberId = e?.detail?.memberId;
+      if (!memberId) return;
+      setActiveTab('bacheca');
+      setActiveFamily('all');
+      setOpenMedsMemberId(memberId);
+    };
+    window.addEventListener('fammy_open_meds', handler);
+    return () => window.removeEventListener('fammy_open_meds', handler);
+  }, []);
+
   // Nuovo incarico precompilato per una persona specifica (es. click sulla
   // notifica "X si è unito alla famiglia"). Risolve il membro dagli id nel
   // payload; fallback: match per nome entro la famiglia indicata.
@@ -442,6 +470,8 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
       <div className="tab-content">
         {activeTab === 'bacheca' && (
           <BachecaTab
+            openMedsMemberId={openMedsMemberId}
+            onMedsOpened={() => setOpenMedsMemberId(null)}
             familyId={isAll ? null : activeFamily}
             families={families}
             tasks={tasks}
@@ -461,6 +491,8 @@ export default function HomeScreen({ session, profile, families, onRefresh, onFa
         )}
         {activeTab === 'agenda' && (
           <AgendaTab
+            openEventId={openEventId}
+            onEventOpened={() => setOpenEventId(null)}
             familyId={isAll ? null : activeFamily}
             events={events}
             tasks={tasks}

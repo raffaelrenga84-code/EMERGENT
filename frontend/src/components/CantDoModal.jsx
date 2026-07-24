@@ -9,7 +9,7 @@ import { APP_URL } from '../lib/appUrl.js';
  */
 export default function CantDoModal({ event, members = [], me, session, onClose }) {
   const { t: __t0, lang } = useT();
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 

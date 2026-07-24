@@ -14,7 +14,7 @@ import { useT } from '../lib/i18n.jsx';
 export default function MedicationReminderToast({ reminders, onTaken, onSnooze, onSkip }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [idx, setIdx] = useState(0);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   // Pannello "Salta con nota": motivo rapido o testo libero (facoltativo)

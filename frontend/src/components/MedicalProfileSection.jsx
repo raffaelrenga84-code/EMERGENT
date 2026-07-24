@@ -13,7 +13,7 @@ import CareAttachments from './CareAttachments.jsx';
 export default function MedicalProfileSection({ member, me }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

@@ -11,7 +11,7 @@ import BirthdayWishesModal from './BirthdayWishesModal.jsx';
  */
 export default function BirthdayReminder({ members, session, familyId, families = [] }) {
   const { t: __t0 } = useT();
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [dismissed, setDismissed] = useState({});
   const [giftChatMember, setGiftChatMember] = useState(null);
   const [wishesMember, setWishesMember] = useState(null);

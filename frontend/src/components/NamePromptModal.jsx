@@ -16,7 +16,7 @@ import { useT } from '../lib/i18n.jsx';
 export default function NamePromptModal({ session, profile, nameKnown = false, onSaved }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   // Onboarding in 3 passi (alla Seremy): nome → compleanno → indirizzo.
   // Solo il nome è obbligatorio; gli altri si possono saltare.
   // Se il nome lo sappiamo già (Google o placeholder), si parte dal compleanno

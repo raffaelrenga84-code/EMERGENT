@@ -42,7 +42,7 @@ export default function AddTaskModal({
 }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const isEdit = !!editingTask;
 
   const CATEGORIES = [
@@ -1057,9 +1057,23 @@ export default function AddTaskModal({
                         'Lo vedranno solo tu, gli assegnatari e le persone che aggiungi qui sotto. Il resto della famiglia non lo vedrà.'}
                     </div>
                     {(() => {
-                      const candidates = byFamily
+                      // Un utente in PIU' famiglie compariva una volta per
+                      // famiglia (es. "Raffael Renga" x5). Deduplica per
+                      // user_id, preferendo la riga della famiglia in cui
+                      // l'incarico verra' creato (taskFamily).
+                      const rawCandidates = byFamily
                         .flatMap((g) => g.members)
                         .filter((m) => !assignees.includes(m.id) && m.id !== authorMemberId);
+                      const seen = new Map();
+                      for (const m of rawCandidates) {
+                        const key = m.user_id ? `u:${m.user_id}` : `m:${m.id}`;
+                        const prev = seen.get(key);
+                        if (!prev) { seen.set(key, m); continue; }
+                        if (taskFamily && m.family_id === taskFamily && prev.family_id !== taskFamily) {
+                          seen.set(key, m);
+                        }
+                      }
+                      const candidates = [...seen.values()];
                       if (candidates.length === 0) return null;
                       return (
                         <div style={{ marginTop: 10 }}>

@@ -6,7 +6,7 @@ import GiftIdeasModal from './GiftIdeasModal.jsx';
 
 export default function GiftChatModal({ member, members, familyId, currentUserId, onClose }) {
   const { t: __t0 } = useT();
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [busy, setBusy] = useState(false);

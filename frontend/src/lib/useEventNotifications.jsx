@@ -367,7 +367,24 @@ export function useEventNotifications(session, profile, families, events, taskAs
     const handleAction = (action, data) => {
       // Supporta sia data.taskId (vecchio) sia data.task_id (nuovo, dal trigger DB)
       const taskId = data?.taskId || data?.task_id;
-      if (!taskId) return;
+      if (!taskId) {
+        // Notifica EVENTO (logistica "porti/riprendi") → apri in Agenda
+        const eventId = data?.eventId || data?.event_id;
+        if (eventId) {
+          window.dispatchEvent(new CustomEvent('fammy_open_event', {
+            detail: { eventId, kind: data?.kind || 'event' },
+          }));
+          return;
+        }
+        // Notifica MEDICINE → apri il Care Hub sulla persona assistita
+        const memberId = data?.memberId || data?.member_id;
+        if (memberId) {
+          window.dispatchEvent(new CustomEvent('fammy_open_meds', {
+            detail: { memberId, kind: data?.kind || 'medication' },
+          }));
+        }
+        return;
+      }
       if (action === 'claim')  return void claimTask(taskId);
       if (action === 'remind') return void remindTask(taskId);
       // 'open' o default: apri direttamente il task (anche se l'app è già aperta).
@@ -393,6 +410,21 @@ export function useEventNotifications(session, profile, families, events, taskAs
       const params = new URLSearchParams(window.location.search);
       const action = params.get('fammy_action');
       const taskId = params.get('task');
+      // Deep-link evento e Care Hub (app aperta a freddo dalla push)
+      const eventIdParam = params.get('event');
+      if (eventIdParam) {
+        handleAction('open', { event_id: eventIdParam });
+        const u0 = new URL(window.location.href);
+        u0.searchParams.delete('event');
+        window.history.replaceState({}, '', u0.toString());
+      }
+      const medsParam = params.get('meds');
+      if (medsParam) {
+        handleAction('open', { member_id: medsParam });
+        const u1 = new URL(window.location.href);
+        u1.searchParams.delete('meds');
+        window.history.replaceState({}, '', u1.toString());
+      }
       if (taskId) {
         // Se c'è solo `?task=...` senza action → trattalo come "open"
         handleAction(action || 'open', { taskId });

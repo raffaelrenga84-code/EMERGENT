@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+birthdimport { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useT } from '../lib/i18n.jsx';
 import Avatar from './Avatar.jsx';
@@ -12,7 +12,7 @@ import Avatar from './Avatar.jsx';
  */
 export default function BirthdayWishesModal({ member, members, session, onClose }) {
   const { t: __t0 } = useT();
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [wishes, setWishes] = useState([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);

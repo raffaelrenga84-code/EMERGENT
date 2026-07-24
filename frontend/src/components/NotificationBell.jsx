@@ -10,7 +10,7 @@ import { useT } from '../lib/i18n.jsx';
  */
 export default function NotificationBell() {
   const { t: __t0, lang } = useT();
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [userId, setUserId] = useState(null);
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);
@@ -105,6 +105,30 @@ export default function NotificationBell() {
       setOpen(false);
       window.dispatchEvent(new CustomEvent('fammy_open_task', {
         detail: { taskId, kind: (n.data && n.data.kind) || 'task' },
+      }));
+      return;
+    }
+
+    const d = (n && n.data) || {};
+
+    // 3) Notifica EVENTO → apri l'evento in Agenda
+    const eventId = d.event_id || d.eventId
+      || (typeof d.url === 'string' ? (/[?&]event=([^&]+)/.exec(d.url) || [])[1] : null);
+    if (eventId) {
+      setOpen(false);
+      window.dispatchEvent(new CustomEvent('fammy_open_event', {
+        detail: { eventId: decodeURIComponent(eventId), kind: d.kind || 'event' },
+      }));
+      return;
+    }
+
+    // 4) Notifica MEDICINE → apri il Care Hub
+    const memberId = d.member_id || d.memberId
+      || (typeof d.url === 'string' ? (/[?&]meds=([^&]+)/.exec(d.url) || [])[1] : null);
+    if (memberId) {
+      setOpen(false);
+      window.dispatchEvent(new CustomEvent('fammy_open_meds', {
+        detail: { memberId: decodeURIComponent(memberId), kind: d.kind || 'medication' },
       }));
     }
   };

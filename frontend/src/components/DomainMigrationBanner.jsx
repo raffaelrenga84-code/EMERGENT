@@ -16,7 +16,7 @@ const SNOOZE_DAYS = 7;
  */
 export default function DomainMigrationBanner() {
   const { t: __t0 } = useT();
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
 
   const onOldDomain = typeof window !== 'undefined'
     && window.location.hostname.includes('farxer');

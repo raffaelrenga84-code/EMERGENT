@@ -33,7 +33,7 @@ const COLORS = ['#1C1611', '#2A6FDB', '#C96A3A', '#2E7D52', '#9B59B6', '#E91E8C'
 export default function ProfileTab({ session, profile, families = [], members = [], me, tasks = [], events = [], activeFamilyId = null, onChanged, onNewFamily, onOpenAI, openInboxSignal = 0, focusSection = null, notificationControl = {} }) {
   const { t: __t0, lang, setLang } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [view, setView] = useState('main'); // main | plans | theme | a11y | privacy
   const [showExportCal, setShowExportCal] = useState(false);
 
@@ -1213,7 +1213,7 @@ function ProfileGroup({ icon, title, subtitle, defaultOpen = false, testid, chil
 function NotificationToggle({ enabled, onChange }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   return (
     <div style={{
       padding: 12,
@@ -1255,7 +1255,7 @@ function NotificationToggle({ enabled, onChange }) {
 function TestPushButton({ session }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [msgTone, setMsgTone] = useState('info'); // 'info' | 'success' | 'warn' | 'error'
@@ -1360,7 +1360,7 @@ function TestPushButton({ session }) {
 function PushDiagnosticCard({ session }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [loading, setLoading] = useState(true);
   const [subs, setSubs] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1476,7 +1476,7 @@ function PushDiagnosticCard({ session }) {
 function BackgroundPushHelp() {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [open, setOpen] = useState(false);
   const isIOS = typeof navigator !== 'undefined' &&
     /iPad|iPhone|iPod/.test(navigator.userAgent || '');

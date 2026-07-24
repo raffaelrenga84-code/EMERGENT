@@ -18,7 +18,7 @@ import MedicationsModal from './MedicationsModal.jsx';
 export default function CaregiverGreeting({ session, members = [], me }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [medsCountByMember, setMedsCountByMember] = useState({});
   const [careHubFor, setCareHubFor] = useState(null);
 

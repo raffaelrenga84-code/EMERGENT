@@ -10,7 +10,7 @@ import { useT } from '../lib/i18n.jsx';
  */
 export default function FamilyOfferBanner({ session, onChanged }) {
   const { t: __t0 } = useT();
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [offers, setOffers] = useState([]);
   const [busyId, setBusyId] = useState(null);
 

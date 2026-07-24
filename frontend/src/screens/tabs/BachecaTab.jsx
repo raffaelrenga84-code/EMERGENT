@@ -24,11 +24,11 @@ import { sendPush, memberIdsToUserIds } from '../../lib/pushClient.js';
 
 const CAT = { care: '❤️', home: '🏠', health: '💊', admin: '📋', spese: '💶', other: '📌' };
 
-export default function BachecaTab({ familyId, families, tasks, members, taskAssignees = [], taskMeta = {}, absences = [], profile, me, session, isAll, onChanged, onOpenExpenseForTask, openTaskId, onTaskOpened }) {
+export default function BachecaTab({ familyId, families, tasks, members, taskAssignees = [], taskMeta = {}, absences = [], profile, me, session, isAll, onChanged, onOpenExpenseForTask, openTaskId, onTaskOpened , openMedsMemberId, onMedsOpened }) {
   const allMembers = members;
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [showAdd, setShowAdd] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   // Prefill per "Fare la spesa" dal FAB (titolo + categoria già impostati)
@@ -106,6 +106,17 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
       onTaskOpened && onTaskOpened();
     }
   }, [openTaskId, tasks, onTaskOpened]);
+
+  // Apre il Care Hub sul membro indicato da una notifica medicine
+  // (promemoria dose / dose non registrata / scorte). Speculare a openTaskId.
+  useEffect(() => {
+    if (!openMedsMemberId) return;
+    const target = (members || []).find((m) => m.id === openMedsMemberId);
+    if (target) {
+      setMedsForMember(target);
+      onMedsOpened && onMedsOpened();
+    }
+  }, [openMedsMemberId, members, onMedsOpened]);
 
   const ST_LABEL = {
     todo: t('section_todo'), taken: 'In carico', done: 'Fatto', to_pay: 'Da pagare',
@@ -345,13 +356,45 @@ export default function BachecaTab({ familyId, families, tasks, members, taskAss
     onChanged();
   };
 
+  // Vedi TaskDetailModal: in vista "Tutte" `me` puo' essere il membro di
+  // un'altra famiglia. Qui risolviamo il membro giusto per l'incarico.
+  const meForTask = (task) => {
+    if (!me) return null;
+    const fid = task?.family_id;
+    if (!fid) return me;
+    return allMembers.find(
+      (m) => m.user_id === me.user_id && m.family_id === fid
+    ) || null;
+  };
+
   const quickAssignMe = async (task) => {
     if (!guardOnline()) return;
     if (!me) return;
+    const mine = meForTask(task);
+    if (!mine) {
+      window.dispatchEvent(new CustomEvent('fammy_toast', {
+        detail: { text: t('claim_wrong_family') || 'Non risulti membro di questa famiglia.', tone: 'error' },
+      }));
+      return;
+    }
     const id = task._origId || task.id;
-    // Rimuovi assignees attuali e aggiungi me
+    // Rimuovi assignees attuali e aggiungi me. L'INSERT viene verificato:
+    // se fallisce si ripristinano gli assegnatari precedenti, per non
+    // lasciare l'incarico orfano (bug "incarico sparito").
+    const prev = taskAssignees.filter((a) => a.task_id === id).map((a) => a.member_id);
     await supabase.from('task_assignees').delete().eq('task_id', id);
-    await supabase.from('task_assignees').insert({ task_id: id, member_id: me.id });
+    const { error: insErr } = await supabase
+      .from('task_assignees').insert({ task_id: id, member_id: mine.id });
+    if (insErr) {
+      if (prev.length > 0) {
+        await supabase.from('task_assignees')
+          .insert(prev.map((mid) => ({ task_id: id, member_id: mid })));
+      }
+      window.dispatchEvent(new CustomEvent('fammy_toast', {
+        detail: { text: (t('claim_failed') || 'Non sono riuscito ad assegnarti l\u2019incarico: ') + insErr.message, tone: 'error' },
+      }));
+      return;
+    }
     await supabase.from('tasks').update({
       status: 'taken', urgent: false, priority: 'normal',
       delegated_to: null,

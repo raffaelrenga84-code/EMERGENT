@@ -28,7 +28,7 @@ import { activeTimesForToday, isMedDueOn } from '../lib/medSchedule.js';
 export default function MedicationsModal({ member: rawMember, me, onClose, initialTab = 'meds' }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [activeTab, setActiveTab] = useState(initialTab);
   const [meds, setMeds] = useState([]);
   const [todayLogs, setTodayLogs] = useState([]);
@@ -326,7 +326,7 @@ export default function MedicationsModal({ member: rawMember, me, onClose, initi
 function MedicationCard({ med, member, meId, todayLogs, doctor, onRefresh, onEdit, onRemove }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   // === Scorte: giorni rimanenti stimati ===
   // dosi/giorno = orari di oggi ÷ intervallo (es. 2 orari a giorni alterni = 1/die)
   const supplyInfo = (() => {
@@ -700,7 +700,7 @@ function MedicationCard({ med, member, meId, todayLogs, doctor, onRefresh, onEdi
 function MedicationForm({ member, me, med, familyMembers = [], onCancel, onSaved, onDirtyChange }) {
   const { t: __t0 } = useT();
   // t con fallback: chiave mancante → '' → vale il testo dopo ||
-  const t = (k) => { const v = __t0(k); return v === k ? '' : v; };
+  const t = (k, vars) => { const v = __t0(k, vars); return v === k ? '' : v; };
   const [name, setName] = useState(med?.name || '');
   const [dose, setDose] = useState(med?.dose || '');
   const [notes, setNotes] = useState(med?.notes || '');
